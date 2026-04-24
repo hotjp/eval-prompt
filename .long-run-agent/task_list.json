@@ -30,49 +30,97 @@
       "id": "task_002",
       "title": "F02 配置系统",
       "desc": "F02 配置系统 — koanf 初始化、配置结构体、YAML 加载",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "foundation"
+      "category": "foundation",
+      "updated_at": "2026-04-24T23:45:50.813815",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_003",
       "title": "F03 共享内核",
       "desc": "F03 共享内核 — domain/types.go (ULID)、errors.go (错误码)、events.go (领域事件协议)、state_machine.go",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "foundation"
+      "category": "foundation",
+      "updated_at": "2026-04-24T23:45:51.395541",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_004",
       "title": "F04 L1-Storage 骨架",
       "desc": "F04 L1-Storage 骨架 — SQLite client、ent generate、Outbox 轮询器",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "foundation"
+      "category": "foundation",
+      "updated_at": "2026-04-24T23:45:51.985253",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_005",
       "title": "D01 Asset 领域实体 + Storage",
       "desc": "D01 Asset 领域实体 + Storage — Asset state machine、Validate、Ent schema、Repository",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:45:52.566903",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_006",
       "title": "D02 Snapshot 领域实体 + Storage",
       "desc": "D02 Snapshot 领域实体 + Storage — version/content_hash/commit_hash、Ent schema",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:45:53.159024",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_007",
       "title": "D03 Label 领域实体 + Storage",
       "desc": "D03 Label 领域实体 + Storage — prod/dev/staging labels、Ent schema",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:45:53.742052",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_008",
