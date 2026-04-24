@@ -78,7 +78,7 @@
       align-items: center;
       position: relative;
       overflow: hidden;
-      padding: 6rem 0;
+      padding: 4rem 0;
     }
     .hero::before {
       content: '';
@@ -104,29 +104,35 @@
       background-size: 60px 60px;
       pointer-events: none;
     }
-    .hero h1 {
-      font-size: clamp(2.5rem, 6vw, 4.5rem);
+    .hero-headline {
+      font-size: clamp(2.8rem, 7vw, 5rem);
       font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.03em;
+    }
+    .hero-headline .gradient {
       background: linear-gradient(135deg, var(--go-cyan) 0%, var(--go-blue) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 1.5rem;
-      letter-spacing: -0.02em;
     }
-    .hero .tagline {
-      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    .hero-sub {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
       color: var(--text-secondary);
-      margin-bottom: 2rem;
-      max-width: 600px;
+      margin-bottom: 2.5rem;
+      max-width: 580px;
+      line-height: 1.8;
     }
     .hero-badge {
-      display: inline-block;
-      background: rgba(0, 217, 255, 0.1);
-      border: 1px solid rgba(0, 217, 255, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 217, 255, 0.08);
+      border: 1px solid rgba(0, 217, 255, 0.25);
       border-radius: 2rem;
-      padding: 0.4rem 1rem;
-      font-size: 0.85rem;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.9rem;
       color: var(--go-cyan);
       margin-bottom: 1.5rem;
     }
@@ -134,35 +140,37 @@
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
-      margin-top: 2rem;
     }
     .btn-go {
       background: linear-gradient(135deg, var(--go-cyan) 0%, var(--go-blue) 100%);
       color: var(--go-darker);
-      font-weight: 600;
-      padding: 0.8rem 1.8rem;
+      font-weight: 700;
+      padding: 0.9rem 2rem;
       border-radius: 0.5rem;
       border: none;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
+      font-size: 1rem;
     }
     .btn-go:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0, 217, 255, 0.3);
+      box-shadow: 0 12px 40px rgba(0, 217, 255, 0.35);
       color: var(--go-darker);
     }
     .btn-outline-go {
       background: transparent;
       color: var(--go-cyan);
       font-weight: 600;
-      padding: 0.8rem 1.8rem;
+      padding: 0.9rem 2rem;
       border-radius: 0.5rem;
-      border: 2px solid var(--go-cyan);
+      border: 2px solid rgba(0, 217, 255, 0.4);
       cursor: pointer;
       transition: all 0.2s;
+      font-size: 1rem;
     }
     .btn-outline-go:hover {
       background: rgba(0, 217, 255, 0.1);
+      border-color: var(--go-cyan);
       color: var(--go-cyan);
     }
     .hero-terminal {
@@ -170,7 +178,6 @@
       border: 1px solid rgba(0, 217, 255, 0.2);
       border-radius: 0.8rem;
       overflow: hidden;
-      margin-top: 3rem;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     }
     .terminal-header {
@@ -207,6 +214,71 @@
     }
     .terminal-body .comment {
       color: #6a6a8a;
+    }
+
+    /* Pain Points */
+    .pain-section {
+      background: var(--go-dark);
+      border-top: 1px solid rgba(255, 100, 100, 0.1);
+      border-bottom: 1px solid rgba(255, 100, 100, 0.1);
+      padding: 3rem 0;
+    }
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+    .pain-item {
+      text-align: center;
+      padding: 1.5rem;
+      border-radius: 0.8rem;
+      background: rgba(255, 70, 70, 0.05);
+      border: 1px solid rgba(255, 70, 70, 0.15);
+    }
+    .pain-icon {
+      font-size: 2rem;
+      margin-bottom: 0.8rem;
+    }
+    .pain-item h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #ff7070;
+    }
+    .pain-item p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+    .pain-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 0;
+      color: var(--go-cyan);
+      font-size: 2rem;
+    }
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid rgba(0, 217, 255, 0.15);
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--go-cyan);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
 
     /* Section */
@@ -470,14 +542,26 @@
     /* Responsive */
     @media (max-width: 768px) {
       .hero {
-        padding: 4rem 0;
+        padding: 3rem 0;
         text-align: center;
       }
-      .hero .tagline {
+      .hero-headline {
+        font-size: 2.2rem;
+      }
+      .hero-sub {
         margin-left: auto;
         margin-right: auto;
       }
       .hero-cta {
+        justify-content: center;
+      }
+      .solution-header {
+        padding: 2rem 0 1.5rem;
+      }
+      .solution-header h2 {
+        font-size: 1.8rem;
+      }
+      .stat-row {
         justify-content: center;
       }
       .section {
@@ -489,6 +573,9 @@
       }
       .arch-components {
         width: 100%;
+      }
+      .pain-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -522,6 +609,7 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#pain-points"><i class="fas fa-fire"></i>痛点</a></li>
           <li class="nav-item"><a class="nav-link" href="#features"><i class="fas fa-star"></i>特性</a></li>
           <li class="nav-item"><a class="nav-link" href="#architecture"><i class="fas fa-layer-group"></i>架构</a></li>
           <li class="nav-item"><a class="nav-link" href="#cli"><i class="fas fa-terminal"></i>CLI</a></li>
@@ -536,23 +624,42 @@
   <section class="hero">
     <div class="hero-grid"></div>
     <div class="container position-relative">
-      <div class="row align-items-center">
-        <div class="col-lg-7">
+      <div class="row align-items-start">
+        <div class="col-lg-6">
           <div class="hero-badge">
             <i class="fas fa-shield-halved me-1"></i>本地私有 · 单二进制 · 数据不出域
           </div>
-          <h1>eval-prompt</h1>
-          <p class="tagline">团队级 Prompt 资产的本地私有化管理中枢。以纯 Go 二进制单文件形式分发，通过浏览器访问 Web UI，Agent 通过 CLI/MCP 协议消费。</p>
+          <h1 class="hero-headline">
+            团队 <span class="gradient">Prompt 资产</span><br>
+            集中管理，有据可依
+          </h1>
+          <p class="hero-sub">
+            把散落在各个角落的 Prompt 集中管理，Git 版本控制可追溯，Eval 量化质量有保障，Agent 一键消费提效。
+          </p>
           <div class="hero-cta">
             <a href="#install" class="btn btn-go">
               <i class="fas fa-rocket me-2"></i>快速开始
             </a>
-            <a href="#features" class="btn btn-outline-go">
-              <i class="fas fa-book me-2"></i>了解更多
+            <a href="#pain-points" class="btn btn-outline-go">
+              <i class="fas fa-fire me-2"></i>看看解决了什么
             </a>
           </div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <div class="stat-number">100%</div>
+              <div class="stat-label">数据私有化</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">1</div>
+              <div class="stat-label">单二进制文件</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">运行时依赖</div>
+            </div>
+          </div>
         </div>
-        <div class="col-lg-5">
+        <div class="col-lg-6">
           <div class="hero-terminal">
             <div class="terminal-header">
               <span class="terminal-dot red"></span>
@@ -567,16 +674,51 @@
               <div class="output">SQLite: ~/.eval-prompt/index.db</div>
               <div class="output">Git: ~/my-team-prompts/.git</div>
               <br>
-              <div><span class="comment"># 启动服务</span></div>
-              <div><span class="cmd">$ ep serve</span></div>
-              <div class="output">Starting server at http://127.0.0.1:8080</div>
-              <div class="output">Opening browser...</div>
+              <div><span class="comment"># 创建 Prompt 资产</span></div>
+              <div><span class="cmd">$ ep asset create --id common/sql-review \</span></div>
+              <div class="output">  --file prompt.md --biz-line common</div>
+              <div class="output">Asset created: common/sql-review@v1</div>
               <br>
-              <div><span class="comment"># Agent 查询 Prompt</span></div>
-              <div><span class="cmd">$ ep trigger match "Go SQL注入"</span></div>
-              <div class="output">[{"id":"common/code-review",...}]</div>
+              <div><span class="comment"># 触发 Eval 验证质量</span></div>
+              <div><span class="cmd">$ ep eval run common/sql-review --json</span></div>
+              <div class="output">Score: 92/100 ✓ PASS</div>
+              <br>
+              <div><span class="comment"># Agent 查询消费</span></div>
+              <div><span class="cmd">$ ep trigger match "SQL注入检测"</span></div>
+              <div class="output">{"id":"common/sql-review","score":92}</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pain Points -->
+  <section class="pain-section" id="pain-points">
+    <div class="container">
+      <div class="text-center mb-4">
+        <span style="color: #ff7070; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em;">这些困扰，是否似曾相识？</span>
+      </div>
+      <div class="pain-grid">
+        <div class="pain-item">
+          <div class="pain-icon">📁</div>
+          <h4>Prompt 散落各处</h4>
+          <p>ChatGPT 对话里、Notion 文档中、Slack 消息内……找起来大海捞针</p>
+        </div>
+        <div class="pain-item">
+          <div class="pain-icon">🔢</div>
+          <h4>版本一团乱麻</h4>
+          <p>不知道哪个是最新、哪个在生产、哪个已被废弃，改完心里没底</p>
+        </div>
+        <div class="pain-item">
+          <div class="pain-icon">❓</div>
+          <h4>质量全靠感觉</h4>
+          <p>Prompt 好不好全凭"试了感觉行"，线上翻车了才知道有问题</p>
+        </div>
+        <div class="pain-item">
+          <div class="pain-icon">🤖</div>
+          <h4>Agent 无法复用</h4>
+          <p>换了个 Agent 就得重写 Prompt，积累的经验无法传递</p>
         </div>
       </div>
     </div>
