@@ -3,7 +3,53 @@ package authz
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestSandboxGuard_ValidatePath_TraversalBoundaryCases(t *testing.T) {
+	guard := NewSandboxGuard("/sandbox")
+
+	tests := []struct {
+		name    string
+		path    string
+		wantErr error
+	}{
+		{
+			name:    "path traversal with ../etc/passwd",
+			path:    "/sandbox/../etc/passwd",
+			wantErr: ErrPathTraversal,
+		},
+		{
+			name:    "path traversal attempt to escape sandbox",
+			path:    "../etc/passwd",
+			wantErr: ErrPathTraversal,
+		},
+		{
+			name:    "deep path traversal",
+			path:    "/sandbox/foo/bar/../../../../../etc/passwd",
+			wantErr: ErrPathTraversal,
+		},
+		{
+			name:    "path outside sandbox /etc/passwd",
+			path:    "/etc/passwd",
+			wantErr: ErrOutsideSandbox,
+		},
+		{
+			name:    "path completely outside sandbox using symlink equivalent",
+			path:    "/usr/share/secrets",
+			wantErr: ErrOutsideSandbox,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := guard.ValidatePath(tt.path)
+			require.Error(t, err)
+			require.Equal(t, tt.wantErr, err)
+		})
+	}
+}
 
 func TestSandboxGuard_ValidatePath(t *testing.T) {
 	rootDir := "/sandbox"

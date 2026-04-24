@@ -100,7 +100,7 @@ func (h *AssetHandler) GetAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	detail, err := h.indexer.GetByID(ctx, id)
-	if err != nil {
+	if err != nil || detail == nil {
 		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
 		return
 	}

@@ -4,7 +4,53 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestEvalGateGuard_CheckProdPromotion_BoundaryCases(t *testing.T) {
+	store := NewSnapshotMetricsStore()
+	guard := NewEvalGateGuardWithThreshold(store, 80.0)
+
+	tests := []struct {
+		name       string
+		snapshotID string
+		score      float64
+		wantPass   bool
+	}{
+		{
+			name:       "exactly 80 percent threshold",
+			snapshotID: "snap-80",
+			score:      80.0,
+			wantPass:   true,
+		},
+		{
+			name:       "79 percent just below threshold",
+			snapshotID: "snap-79",
+			score:      79.0,
+			wantPass:   false,
+		},
+		{
+			name:       "100 percent maximum score",
+			snapshotID: "snap-100",
+			score:      100.0,
+			wantPass:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store.SetEvalScore(tt.snapshotID, tt.score)
+			err := guard.CheckProdPromotion(context.Background(), tt.snapshotID)
+			if tt.wantPass {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.ErrorIs(t, err, ErrEvalScoreTooLow)
+			}
+		})
+	}
+}
 
 func TestEvalGateGuard_CheckProdPromotion(t *testing.T) {
 	tests := []struct {

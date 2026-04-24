@@ -3,8 +3,11 @@ package authz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // mockAuditRecorder is a mock implementation of AuditRecorder for testing.
@@ -15,6 +18,17 @@ type mockAuditRecorder struct {
 func (m *mockAuditRecorder) Record(ctx context.Context, entry *AuditEntry) error {
 	m.entries = append(m.entries, entry)
 	return nil
+}
+
+// mockAuditRecorderWithError simulates a recorder that fails
+type mockAuditRecorderWithError struct {
+	err    error
+	called int
+}
+
+func (m *mockAuditRecorderWithError) Record(ctx context.Context, entry *AuditEntry) error {
+	m.called++
+	return m.err
 }
 
 func TestAuditLogger_LogAssetCreated(t *testing.T) {
@@ -147,6 +161,47 @@ func TestAuditLogger_LogEvalCompleted(t *testing.T) {
 	if entry.Details["score"] != 90 {
 		t.Errorf("expected score 90, got %v", entry.Details["score"])
 	}
+}
+
+func TestAuditLogger_Record_WritesSuccessfully(t *testing.T) {
+	recorder := &mockAuditRecorder{}
+	logger := NewAuditLoggerWithRecorder(nil, recorder)
+
+	// Log multiple operations
+	logger.LogAssetCreated(context.Background(), "agent-1", "asset-123", "TestAsset", "ml", []string{"tag1"})
+	logger.LogAssetUpdated(context.Background(), "agent-1", "asset-123", "reason here")
+	logger.LogLabelPromoted(context.Background(), "agent-1", "asset-123", "prod", "v1", "v2", 85)
+
+	require.Len(t, recorder.entries, 3)
+	require.Equal(t, "AssetCreated", recorder.entries[0].Operation)
+	require.Equal(t, "AssetUpdated", recorder.entries[1].Operation)
+	require.Equal(t, "LabelPromoted", recorder.entries[2].Operation)
+}
+
+func TestAuditLogger_LogLabelMoved_NoAssetID(t *testing.T) {
+	recorder := &mockAuditRecorder{}
+	logger := NewAuditLoggerWithRecorder(nil, recorder)
+
+	logger.LogLabelMoved(context.Background(), "agent-1", "asset-123", "staging", "v3.0.0")
+
+	require.Len(t, recorder.entries, 1)
+	entry := recorder.entries[0]
+	require.Equal(t, "LabelMoved", entry.Operation)
+	require.Equal(t, "staging", entry.ResourceID)
+	require.Equal(t, "asset-123", entry.AssetID)
+	require.Equal(t, "v3.0.0", entry.Details["to_version"])
+}
+
+func TestAuditLogger_Record_ErrorHandling(t *testing.T) {
+	// Test that record does not panic when recorder fails
+	recorder := &mockAuditRecorderWithError{err: errors.New("db error")}
+	logger := NewAuditLoggerWithRecorder(nil, recorder)
+
+	// Should not panic, just log the error
+	logger.LogAssetCreated(context.Background(), "agent-1", "asset-123", "TestAsset", "ml", []string{})
+
+	// Verify recorder was called despite error (it just logs and continues)
+	require.Equal(t, 1, recorder.called)
 }
 
 func TestAuditEntryJSON(t *testing.T) {

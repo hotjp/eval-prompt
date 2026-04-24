@@ -43,6 +43,13 @@ func NewClient(cfg config.DatabaseConfig) (*Client, error) {
 	return &Client{ent: client}, nil
 }
 
+// NewClientForTest creates a new storage client wrapping an existing ent.Client.
+// This is useful for testing scenarios where the ent.Client is created
+// via enttest.Open().
+func NewClientForTest(entClient *ent.Client) *Client {
+	return &Client{ent: entClient}
+}
+
 // NewClientWithDSN creates a new storage client with a specific DSN.
 func NewClientWithDSN(dsn string) (*Client, error) {
 	// Append SQLite-specific options for WAL mode and foreign keys
