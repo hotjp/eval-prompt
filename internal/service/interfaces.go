@@ -219,3 +219,61 @@ type EvalRunner interface {
 	// RunRubric runs LLM-based rubric evaluation on output.
 	RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker) (RubricResult, error)
 }
+
+// PromptContent represents the content of a prompt asset.
+type PromptContent struct {
+	Description string   `json:"description"`
+	Instruction string   `json:"instruction"`
+	Examples    []Example `json:"examples,omitempty"`
+	Variables   []string  `json:"variables,omitempty"`
+}
+
+// Example represents a prompt example.
+type Example struct {
+	Input    string `json:"input"`
+	Output   string `json:"output"`
+	Footnote string `json:"footnote,omitempty"`
+}
+
+// AdaptedPrompt contains the result of prompt adaptation.
+type AdaptedPrompt struct {
+	Content          string            `json:"content"`
+	ParamAdjustments map[string]float64 `json:"param_adjustments,omitempty"`
+	FormatChanges    []string          `json:"format_changes,omitempty"`
+	Warnings         []string          `json:"warnings,omitempty"`
+}
+
+// ModelParams contains recommended model parameters.
+type ModelParams struct {
+	Temperature    float64 `json:"temperature"`
+	MaxTokens      int     `json:"max_tokens"`
+	TopP           float64 `json:"top_p,omitempty"`
+	FrequencyPenalty float64 `json:"frequency_penalty,omitempty"`
+	PresencePenalty float64 `json:"presence_penalty,omitempty"`
+}
+
+// ModelProfile contains the characteristics of a model.
+type ModelProfile struct {
+	ContextWindow     int     `json:"context_window"`
+	InstructionStyle  string  `json:"instruction_style"` // xml_preference | markdown_preference | explicit_preference
+	FewShotCapacity   int     `json:"few_shot_capacity"`
+	TemperatureCurve  string  `json:"temperature_curve"` // linear | steep | flat
+	SystemRoleSupport bool    `json:"system_role_support"`
+	JSONReliability   float64 `json:"json_reliability"` // 0.0 - 1.0
+}
+
+// ModelAdapter adapts prompts for different models.
+// Implemented by plugins/modeladapter.
+type ModelAdapter interface {
+	// Adapt converts a prompt from source model to target model format.
+	Adapt(ctx context.Context, prompt PromptContent, sourceModel, targetModel string) (AdaptedPrompt, error)
+
+	// RecommendParams returns recommended parameters for a target model and task type.
+	RecommendParams(ctx context.Context, targetModel string, taskType string) (ModelParams, error)
+
+	// EstimateScore estimates the expected score for a prompt on a target model.
+	EstimateScore(ctx context.Context, promptID string, targetModel string) (float64, error)
+
+	// GetModelProfile returns the characteristics of a model.
+	GetModelProfile(ctx context.Context, model string) (ModelProfile, error)
+}

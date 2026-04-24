@@ -28,7 +28,7 @@ var _ SyncServicer = (*SyncService)(nil)
 // SyncServicer is the interface for sync operations.
 type SyncServicer interface {
 	// Reconcile synchronizes the index with the Git repository.
-	Reconcile(ctx context.Context) (*ReconcileReport, error)
+	Reconcile(ctx context.Context) (ReconcileReport, error)
 
 	// RebuildIndex rebuilds the entire search index from the Git repository.
 	RebuildIndex(ctx context.Context) error
@@ -38,9 +38,9 @@ type SyncServicer interface {
 }
 
 // Reconcile synchronizes the index with the Git repository.
-func (s *SyncService) Reconcile(ctx context.Context) (*ReconcileReport, error) {
+func (s *SyncService) Reconcile(ctx context.Context) (ReconcileReport, error) {
 	if s.indexer == nil {
-		return nil, fmt.Errorf("indexer not configured")
+		return ReconcileReport{}, fmt.Errorf("indexer not configured")
 	}
 	return s.indexer.Reconcile(ctx)
 }
