@@ -126,73 +126,82 @@
       "id": "task_008",
       "title": "D04 EvalCase + EvalRun 领域 + Storage",
       "desc": "D04 EvalCase + EvalRun 领域 + Storage — deterministic_score、rubric_score、Ent schema",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:46:43.973093"
     },
     {
       "id": "task_009",
       "title": "D05 OutboxEvent + AuditLog Storage",
       "desc": "D05 OutboxEvent + AuditLog Storage — 事务内写入、轮询转发",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:46:44.211177"
     },
     {
       "id": "task_010",
       "title": "D06 ModelAdaptation Storage",
       "desc": "D06 ModelAdaptation Storage — 跨模型适配记录",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P2",
-      "category": "domain"
+      "category": "domain",
+      "updated_at": "2026-04-24T23:46:44.450452"
     },
     {
       "id": "task_011",
       "title": "P01 GitBridger 接口 + 实现",
       "desc": "P01 GitBridger 接口 + 实现 — go-git: Init/Add/Commit/Diff/Log/Status",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:46:44.681329"
     },
     {
       "id": "task_012",
       "title": "P02 LLMInvoker 接口 + 实现",
       "desc": "P02 LLMInvoker 接口 + 实现 — OpenAI/Claude/Ollama 调用、InvokeWithSchema",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:47:58.588028"
     },
     {
       "id": "task_013",
       "title": "P03 EvalRunner 接口 + 实现",
       "desc": "P03 EvalRunner 接口 + 实现 — Deterministic Checker + Rubric Grader",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:47:58.825207"
     },
     {
       "id": "task_014",
       "title": "P04 AssetIndexer 接口",
       "desc": "P04 AssetIndexer 接口 — Reconcile/Search 接口定义",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:47:59.065916"
     },
     {
       "id": "task_015",
       "title": "P05 TraceCollector 接口",
       "desc": "P05 TraceCollector 接口 — Span/Event 收集、JSONL trace 文件",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:47:59.314751"
     },
     {
       "id": "task_016",
       "title": "P06 ModelAdapter 接口 + 实现",
       "desc": "P06 ModelAdapter 接口 + 实现 — 跨模型格式转换、参数调整、规则库",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "plugin"
+      "category": "plugin",
+      "updated_at": "2026-04-24T23:47:59.549124"
     },
     {
       "id": "task_017",
