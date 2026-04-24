@@ -1,0 +1,37 @@
+acceptance: []
+description: 通用任务模板
+keywords: []
+name: task
+states:
+- pending
+- in_progress
+- completed
+structure: "# {{ id }}\n\n## ⚠️ 重要提示（Agent 必读）\n\n**当前位置**: `.long-run-agent/tasks/{{id}}.md`（任务描述文件）\n\
+  \n**工作目录**: 项目根目录（`.long-run-agent` 的同级目录）\n\n**产出物**: 请在项目根目录或适当子目录创建交付物\n\n**这是配置文件**，不是最终产出！\n\
+  \n## 描述\n\n{{ description }}\n\n{% if requirements %}\n## 需求 (requirements)\n\n\
+  {{ requirements }}\n{% else %}\n## 需求 (requirements)\n\n<!-- 在此填写具体需求描述 -->\n{%\
+  \ endif %}\n\n{% if acceptance %}\n## 验收标准 (acceptance)\n\n{% for item in acceptance\
+  \ %}\n- {{ item }}\n{% endfor %}\n{% else %}\n## 验收标准 (acceptance)\n\n<!-- 在此填写验收标准，每行一个条件\
+  \ -->\n{% endif %}\n\n{% if deliverables %}\n## 交付物 (deliverables)\n\n{% for item\
+  \ in deliverables %}\n- {{ item }}\n{% endfor %}\n{% else %}\n## 交付物 (deliverables)\n\
+  \n<!-- 在此填写交付物文件路径 -->\n{% endif %}\n\n{% if design %}\n## 设计方案 (design)\n\n{{ design\
+  \ }}\n{% else %}\n## 设计方案 (design)\n\n<!-- 在此填写架构设计、技术选型、实现思路 -->\n{% endif %}\n\
+  \n## 验证证据（完成前必填）\n\n<!-- 标记完成前，请提供以下证据： -->\n\n- [ ] **实现证明**: 简要说明如何实现\n- [ ] **测试验证**:\
+  \ 如何验证功能正常（测试步骤/截图/命令输出）\n- [ ] **影响范围**: 是否影响其他功能\n\n### 测试步骤\n1. \n2. \n3. \n\n\
+  ### 验证结果\n<!-- 粘贴验证截图、命令输出或测试结果 -->\n"
+template_engine: jinja2
+transitions:
+  completed: []
+  in_progress:
+  - completed
+  pending:
+  - in_progress
+validation:
+  evidence_fields:
+  - 实现证明
+  - 测试验证
+  - 影响范围
+  required_for_completion:
+    test_evidence: true
+    verification_steps: true
+version: '2.1'

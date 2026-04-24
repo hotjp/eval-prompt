@@ -1,0 +1,473 @@
+{
+  "version": "3.4.0",
+  "project_name": "eval-prompt",
+  "tasks": [
+    {
+      "id": "task_001",
+      "title": "F01 项目初始化",
+      "desc": "F01 项目初始化 — go mod init、目录结构、ep CLI 根命令脚手架",
+      "status": "completed",
+      "priority": "P0",
+      "category": "foundation",
+      "updated_at": "2026-04-24T22:54:54.500003",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        },
+        "issues": [
+          {
+            "round": 1,
+            "type": "unknown_issue",
+            "message": "项目没有测试文件",
+            "timestamp": "2026-04-24T22:54:54.500000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "task_002",
+      "title": "F02 配置系统",
+      "desc": "F02 配置系统 — koanf 初始化、配置结构体、YAML 加载",
+      "status": "pending",
+      "priority": "P0",
+      "category": "foundation"
+    },
+    {
+      "id": "task_003",
+      "title": "F03 共享内核",
+      "desc": "F03 共享内核 — domain/types.go (ULID)、errors.go (错误码)、events.go (领域事件协议)、state_machine.go",
+      "status": "pending",
+      "priority": "P0",
+      "category": "foundation"
+    },
+    {
+      "id": "task_004",
+      "title": "F04 L1-Storage 骨架",
+      "desc": "F04 L1-Storage 骨架 — SQLite client、ent generate、Outbox 轮询器",
+      "status": "pending",
+      "priority": "P0",
+      "category": "foundation"
+    },
+    {
+      "id": "task_005",
+      "title": "D01 Asset 领域实体 + Storage",
+      "desc": "D01 Asset 领域实体 + Storage — Asset state machine、Validate、Ent schema、Repository",
+      "status": "pending",
+      "priority": "P0",
+      "category": "domain"
+    },
+    {
+      "id": "task_006",
+      "title": "D02 Snapshot 领域实体 + Storage",
+      "desc": "D02 Snapshot 领域实体 + Storage — version/content_hash/commit_hash、Ent schema",
+      "status": "pending",
+      "priority": "P1",
+      "category": "domain"
+    },
+    {
+      "id": "task_007",
+      "title": "D03 Label 领域实体 + Storage",
+      "desc": "D03 Label 领域实体 + Storage — prod/dev/staging labels、Ent schema",
+      "status": "pending",
+      "priority": "P1",
+      "category": "domain"
+    },
+    {
+      "id": "task_008",
+      "title": "D04 EvalCase + EvalRun 领域 + Storage",
+      "desc": "D04 EvalCase + EvalRun 领域 + Storage — deterministic_score、rubric_score、Ent schema",
+      "status": "pending",
+      "priority": "P1",
+      "category": "domain"
+    },
+    {
+      "id": "task_009",
+      "title": "D05 OutboxEvent + AuditLog Storage",
+      "desc": "D05 OutboxEvent + AuditLog Storage — 事务内写入、轮询转发",
+      "status": "pending",
+      "priority": "P1",
+      "category": "domain"
+    },
+    {
+      "id": "task_010",
+      "title": "D06 ModelAdaptation Storage",
+      "desc": "D06 ModelAdaptation Storage — 跨模型适配记录",
+      "status": "pending",
+      "priority": "P2",
+      "category": "domain"
+    },
+    {
+      "id": "task_011",
+      "title": "P01 GitBridger 接口 + 实现",
+      "desc": "P01 GitBridger 接口 + 实现 — go-git: Init/Add/Commit/Diff/Log/Status",
+      "status": "pending",
+      "priority": "P0",
+      "category": "plugin"
+    },
+    {
+      "id": "task_012",
+      "title": "P02 LLMInvoker 接口 + 实现",
+      "desc": "P02 LLMInvoker 接口 + 实现 — OpenAI/Claude/Ollama 调用、InvokeWithSchema",
+      "status": "pending",
+      "priority": "P0",
+      "category": "plugin"
+    },
+    {
+      "id": "task_013",
+      "title": "P03 EvalRunner 接口 + 实现",
+      "desc": "P03 EvalRunner 接口 + 实现 — Deterministic Checker + Rubric Grader",
+      "status": "pending",
+      "priority": "P0",
+      "category": "plugin"
+    },
+    {
+      "id": "task_014",
+      "title": "P04 AssetIndexer 接口",
+      "desc": "P04 AssetIndexer 接口 — Reconcile/Search 接口定义",
+      "status": "pending",
+      "priority": "P1",
+      "category": "plugin"
+    },
+    {
+      "id": "task_015",
+      "title": "P05 TraceCollector 接口",
+      "desc": "P05 TraceCollector 接口 — Span/Event 收集、JSONL trace 文件",
+      "status": "pending",
+      "priority": "P1",
+      "category": "plugin"
+    },
+    {
+      "id": "task_016",
+      "title": "P06 ModelAdapter 接口 + 实现",
+      "desc": "P06 ModelAdapter 接口 + 实现 — 跨模型格式转换、参数调整、规则库",
+      "status": "pending",
+      "priority": "P1",
+      "category": "plugin"
+    },
+    {
+      "id": "task_017",
+      "title": "S01 AssetService",
+      "desc": "S01 AssetService — Asset CRUD、版本管理、Label 操作",
+      "status": "pending",
+      "priority": "P0",
+      "category": "service"
+    },
+    {
+      "id": "task_018",
+      "title": "S02 EvalService",
+      "desc": "S02 EvalService — Eval 编排、A/B 矩阵、报告生成",
+      "status": "pending",
+      "priority": "P0",
+      "category": "service"
+    },
+    {
+      "id": "task_019",
+      "title": "S03 SyncService",
+      "desc": "S03 SyncService — Reconcile、索引重建、导出备份",
+      "status": "pending",
+      "priority": "P1",
+      "category": "service"
+    },
+    {
+      "id": "task_020",
+      "title": "S04 TriggerService",
+      "desc": "S04 TriggerService — 触发匹配、Anti-Pattern Guard、变量注入",
+      "status": "pending",
+      "priority": "P1",
+      "category": "service"
+    },
+    {
+      "id": "task_021",
+      "title": "A01 EvalGateGuard",
+      "desc": "A01 EvalGateGuard — prod 晋升门禁（Eval 得分 ≥ 80）",
+      "status": "pending",
+      "priority": "P0",
+      "category": "authz"
+    },
+    {
+      "id": "task_022",
+      "title": "A02 SandboxGuard",
+      "desc": "A02 SandboxGuard — 文件系统路径校验、防路径遍历",
+      "status": "pending",
+      "priority": "P0",
+      "category": "authz"
+    },
+    {
+      "id": "task_023",
+      "title": "A03 AuditLogger",
+      "desc": "A03 AuditLogger — 操作审计日志",
+      "status": "pending",
+      "priority": "P1",
+      "category": "authz"
+    },
+    {
+      "id": "task_024",
+      "title": "G01 PromptAssetHandler",
+      "desc": "G01 PromptAssetHandler — Asset CRUD、版本管理 API",
+      "status": "pending",
+      "priority": "P0",
+      "category": "gateway"
+    },
+    {
+      "id": "task_025",
+      "title": "G02 EvalHandler",
+      "desc": "G02 EvalHandler — Eval 执行、报告查询 API",
+      "status": "pending",
+      "priority": "P0",
+      "category": "gateway"
+    },
+    {
+      "id": "task_026",
+      "title": "G03 TriggerHandler",
+      "desc": "G03 TriggerHandler — Prompt 匹配查询 API",
+      "status": "pending",
+      "priority": "P1",
+      "category": "gateway"
+    },
+    {
+      "id": "task_027",
+      "title": "G04 MCPHandler + SSE",
+      "desc": "G04 MCPHandler + SSE — MCP 协议端点: prompts/list、prompts/get、prompts/eval",
+      "status": "pending",
+      "priority": "P1",
+      "category": "gateway"
+    },
+    {
+      "id": "task_028",
+      "title": "G05 StaticHandler + Go embed",
+      "desc": "G05 StaticHandler + Go embed — React 静态资源打包",
+      "status": "pending",
+      "priority": "P0",
+      "category": "gateway"
+    },
+    {
+      "id": "task_029",
+      "title": "G06 中间件注册",
+      "desc": "G06 中间件注册 — Recover/RequestID/Metrics/Logging/CORS",
+      "status": "pending",
+      "priority": "P0",
+      "category": "gateway"
+    },
+    {
+      "id": "task_030",
+      "title": "C01 ep init",
+      "desc": "C01 ep init — 仓库初始化、SQLite 创建、Git init",
+      "status": "pending",
+      "priority": "P0",
+      "category": "cli"
+    },
+    {
+      "id": "task_031",
+      "title": "C02 ep serve",
+      "desc": "C02 ep serve — HTTP 服务启动、Web UI 入口",
+      "status": "pending",
+      "priority": "P0",
+      "category": "cli"
+    },
+    {
+      "id": "task_032",
+      "title": "C03 ep asset 子命令",
+      "desc": "C03 ep asset 子命令 — list/show/cat/create/edit/rm",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_033",
+      "title": "C04 ep snapshot 子命令",
+      "desc": "C04 ep snapshot 子命令 — list/diff/checkout",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_034",
+      "title": "C05 ep label 子命令",
+      "desc": "C05 ep label 子命令 — list/set/unset",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_035",
+      "title": "C06 ep eval 子命令",
+      "desc": "C06 ep eval 子命令 — run/cases/compare/report/diagnose",
+      "status": "pending",
+      "priority": "P0",
+      "category": "cli"
+    },
+    {
+      "id": "task_036",
+      "title": "C07 ep trigger 子命令",
+      "desc": "C07 ep trigger 子命令 — match",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_037",
+      "title": "C08 ep sync 子命令",
+      "desc": "C08 ep sync 子命令 — reconcile/export",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_038",
+      "title": "C09 ep adapt 子命令",
+      "desc": "C09 ep adapt 子命令 — 跨模型 Prompt 适配",
+      "status": "pending",
+      "priority": "P1",
+      "category": "cli"
+    },
+    {
+      "id": "task_039",
+      "title": "C10 ep optimize 子命令",
+      "desc": "C10 ep optimize 子命令 — Agent 自主优化",
+      "status": "pending",
+      "priority": "P2",
+      "category": "cli"
+    },
+    {
+      "id": "task_040",
+      "title": "W01 React 项目初始化",
+      "desc": "W01 React 项目初始化 — Vite + Ant Design + Zustand + Monaco Editor + ECharts",
+      "status": "pending",
+      "priority": "P1",
+      "category": "web"
+    },
+    {
+      "id": "task_041",
+      "title": "W02 资产库视图",
+      "desc": "W02 资产库视图 — 左侧分类树、右侧资产卡片网格、搜索筛选",
+      "status": "pending",
+      "priority": "P1",
+      "category": "web"
+    },
+    {
+      "id": "task_042",
+      "title": "W03 编辑器视图",
+      "desc": "W03 编辑器视图 — Monaco Editor + 实时预览 + 保存提交",
+      "status": "pending",
+      "priority": "P1",
+      "category": "web"
+    },
+    {
+      "id": "task_043",
+      "title": "W04 版本树视图",
+      "desc": "W04 版本树视图 — Snapshot 时间轴、Diff 展示",
+      "status": "pending",
+      "priority": "P2",
+      "category": "web"
+    },
+    {
+      "id": "task_044",
+      "title": "W05 Eval 面板",
+      "desc": "W05 Eval 面板 — 得分仪表盘、测试用例、Trace 时间轴",
+      "status": "pending",
+      "priority": "P1",
+      "category": "web"
+    },
+    {
+      "id": "task_045",
+      "title": "W06 A/B 比对视图",
+      "desc": "W06 A/B 比对视图 — 内容 Diff、雷达图比对",
+      "status": "pending",
+      "priority": "P2",
+      "category": "web"
+    },
+    {
+      "id": "task_046",
+      "title": "H01 路径 Sanitize",
+      "desc": "H01 路径 Sanitize — 清理 ..、校验沙箱目录",
+      "status": "pending",
+      "priority": "P0",
+      "category": "security"
+    },
+    {
+      "id": "task_047",
+      "title": "H02 命令白名单",
+      "desc": "H02 命令白名单 — Eval 执行命令校验",
+      "status": "pending",
+      "priority": "P0",
+      "category": "security"
+    },
+    {
+      "id": "task_048",
+      "title": "H03 资源限制",
+      "desc": "H03 资源限制 — 超时、文件大小/数量限制",
+      "status": "pending",
+      "priority": "P1",
+      "category": "security"
+    },
+    {
+      "id": "task_049",
+      "title": "O01 slog 日志集成",
+      "desc": "O01 slog 日志集成 — JSON Handler、trace_id/span_id 链路",
+      "status": "pending",
+      "priority": "P1",
+      "category": "observability"
+    },
+    {
+      "id": "task_050",
+      "title": "O02 OpenTelemetry",
+      "desc": "O02 OpenTelemetry — Trace + Metrics、Prometheus 端点",
+      "status": "pending",
+      "priority": "P1",
+      "category": "observability"
+    },
+    {
+      "id": "task_051",
+      "title": "O03 Health Endpoints",
+      "desc": "O03 Health Endpoints — /healthz、/readyz",
+      "status": "pending",
+      "priority": "P1",
+      "category": "observability"
+    },
+    {
+      "id": "task_052",
+      "title": "B01 Makefile 构建",
+      "desc": "B01 Makefile 构建 — npm build + go build + embed",
+      "status": "pending",
+      "priority": "P1",
+      "category": "build"
+    },
+    {
+      "id": "task_053",
+      "title": "B02 Homebrew 分发",
+      "desc": "B02 Homebrew 分发 — brew tap 配置",
+      "status": "pending",
+      "priority": "P2",
+      "category": "build"
+    },
+    {
+      "id": "task_054",
+      "description": "测试任务",
+      "template": "task",
+      "priority": "P1",
+      "status": "pending",
+      "parent_id": null,
+      "output_req": "8k",
+      "context_hint": "8k",
+      "task_file": "tasks/task_054.md",
+      "created_at": "2026-04-24T22:46:45.048691",
+      "updated_at": "2026-04-24T22:46:45.048697",
+      "dependencies": [],
+      "dependency_type": "all",
+      "deadline": null,
+      "ralph": {
+        "iteration": 0,
+        "max_iterations": 7,
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        },
+        "issues": [],
+        "optimization_history": []
+      }
+    }
+  ]
+}

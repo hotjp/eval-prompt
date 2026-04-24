@@ -1,0 +1,36 @@
+acceptance:
+- 数据完整性校验通过
+- 处理完成
+description: 数据处理流程模板
+keywords:
+- 数据
+- 采集
+- 清洗
+- 分析
+- ETL
+- pipeline
+- data
+- 处理
+- 转换
+name: data-pipeline
+states:
+- pending
+- running
+- failed
+- success
+structure: "# {{ id }}\n\n## ⚠️ 重要提示（Agent 必读）\n\n**当前位置**: `.long-run-agent/tasks/{{id}}.md`（任务描述文件）\n\
+  \n**工作目录**: 项目根目录（`.long-run-agent` 的同级目录）\n\n**产出物位置**: 请在 `data/`、`notebooks/`、`src/`\
+  \ 或适当位置创建\n\n**这是配置文件**，不是最终产出！\n\n## 数据源\n\n{% if data_source %}\n{{ data_source\
+  \ }}\n{% else %}\n<!-- 数据来源说明 -->\n{% endif %}\n\n## 处理步骤\n1. \n2. \n3. \n\n## 输出格式\n\
+  \n<!-- 输出数据格式 -->\n\n## 异常处理\n\n<!-- 异常情况处理 -->\n"
+template_engine: jinja2
+transitions:
+  failed:
+  - running
+  pending:
+  - running
+  running:
+  - failed
+  - success
+  success: []
+version: '2.0'

@@ -1,0 +1,70 @@
+acceptance:
+- 字数 >= 2000
+- 包含场景描写
+- 人物对话完整
+description: 小说章节模板
+keywords:
+- 小说
+- 章节
+- 故事
+- 叙述
+- chapter
+- novel
+- 写作
+- 情节
+name: novel-chapter
+states:
+- drafting
+- revising
+- finalized
+structure: '# {{ title }}
+
+
+  ## ⚠️ 重要提示（Agent 必读）
+
+
+  **当前位置**: `.long-run-agent/tasks/{{id}}.md`（任务描述文件）
+
+
+  **工作目录**: 项目根目录（`.long-run-agent` 的同级目录）
+
+
+  **产出物位置**: 请在 `novel/` 或项目根目录创建章节文件
+
+
+  **不要**将作品内容写在这个文件里！
+
+
+  ## 场景
+
+
+  <!-- 描述本章发生的场景 -->
+
+
+  ## 人物
+
+
+  <!-- 涉及的人物 -->
+
+
+  ## 正文
+
+
+  <!-- 章节内容 -->
+
+
+  ## 伏笔
+
+
+  <!-- 埋下的伏笔 -->
+
+  '
+template_engine: jinja2
+transitions:
+  drafting:
+  - revising
+  finalized: []
+  revising:
+  - drafting
+  - finalized
+version: '2.0'

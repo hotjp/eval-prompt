@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eval-prompt — Prompt 资产管理工具</title>
+  <meta name="description" content="团队级 Prompt 资产的本地私有化管理中枢，单二进制文件分发，数据不出域。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+
+  <!-- Chinese CDN: BootCSS -->
+  <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chinese CDN: FontAwesome -->
+  <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --go-blue: #00ADD8;
+      --go-cyan: #00D7FF;
+      --go-dark: #1a1a2e;
+      --go-darker: #0f0f1a;
+      --go-gray: #2d2d44;
+      --text-primary: #e8e8f0;
+      --text-secondary: #a0a0b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--go-darker);
+      color: var(--text-primary);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: var(--go-cyan);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    a:hover {
+      color: var(--go-blue);
+    }
+
+    /* Navbar */
+    .navbar {
+      background: rgba(15, 15, 26, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+      padding: 1rem 0;
+    }
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--go-cyan) !important;
+    }
+    .navbar-nav .nav-link {
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      transition: color 0.2s;
+    }
+    .navbar-nav .nav-link:hover {
+      color: var(--go-cyan);
+    }
+    .navbar-nav .nav-link i {
+      margin-right: 0.4rem;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      padding: 6rem 0;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(ellipse at 20% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 173, 216, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image:
+        linear-gradient(rgba(0, 217, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--go-cyan) 0%, var(--go-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+    .hero .tagline {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      max-width: 600px;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(0, 217, 255, 0.1);
+      border: 1px solid rgba(0, 217, 255, 0.3);
+      border-radius: 2rem;
+      padding: 0.4rem 1rem;
+      font-size: 0.85rem;
+      color: var(--go-cyan);
+      margin-bottom: 1.5rem;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .btn-go {
+      background: linear-gradient(135deg, var(--go-cyan) 0%, var(--go-blue) 100%);
+      color: var(--go-darker);
+      font-weight: 600;
+      padding: 0.8rem 1.8rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-go:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 217, 255, 0.3);
+      color: var(--go-darker);
+    }
+    .btn-outline-go {
+      background: transparent;
+      color: var(--go-cyan);
+      font-weight: 600;
+      padding: 0.8rem 1.8rem;
+      border-radius: 0.5rem;
+      border: 2px solid var(--go-cyan);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-outline-go:hover {
+      background: rgba(0, 217, 255, 0.1);
+      color: var(--go-cyan);
+    }
+    .hero-terminal {
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.2);
+      border-radius: 0.8rem;
+      overflow: hidden;
+      margin-top: 3rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    .terminal-header {
+      background: var(--go-gray);
+      padding: 0.8rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .terminal-dot.red { background: #ff5f56; }
+    .terminal-dot.yellow { background: #ffbd2e; }
+    .terminal-dot.green { background: #27c93f; }
+    .terminal-title {
+      margin-left: 1rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .terminal-body {
+      padding: 1.5rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.9rem;
+    }
+    .terminal-body .cmd {
+      color: var(--go-cyan);
+    }
+    .terminal-body .output {
+      color: var(--text-secondary);
+      margin-top: 0.3rem;
+    }
+    .terminal-body .comment {
+      color: #6a6a8a;
+    }
+
+    /* Section */
+    .section {
+      padding: 6rem 0;
+    }
+    .section-alt {
+      background: var(--go-dark);
+    }
+    .section-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .section-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 3rem;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--go-cyan), var(--go-blue));
+      margin: 1rem auto 0;
+      border-radius: 2px;
+    }
+
+    /* Features */
+    .feature-card {
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.1);
+      border-radius: 1rem;
+      padding: 2rem;
+      height: 100%;
+      transition: transform 0.3s, border-color 0.3s;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(0, 217, 255, 0.4);
+    }
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(0, 173, 216, 0.1));
+      border-radius: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      color: var(--go-cyan);
+    }
+    .feature-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+    }
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    /* Architecture */
+    .arch-diagram {
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.1);
+      border-radius: 1rem;
+      padding: 2.5rem;
+      overflow-x: auto;
+    }
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .arch-layer:last-child {
+      margin-bottom: 0;
+    }
+    .arch-label {
+      background: linear-gradient(135deg, var(--go-cyan), var(--go-blue));
+      color: var(--go-darker);
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.4rem;
+      min-width: 90px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .arch-components {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .arch-component {
+      background: rgba(0, 217, 255, 0.05);
+      border: 1px solid rgba(0, 217, 255, 0.2);
+      border-radius: 0.4rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+    .arch-arrow {
+      color: var(--go-cyan);
+      font-size: 1.2rem;
+      margin: 0.5rem 0;
+      text-align: center;
+    }
+
+    /* Stack */
+    .stack-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.1);
+      border-radius: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .stack-icon {
+      font-size: 1.5rem;
+      width: 40px;
+      text-align: center;
+      color: var(--go-cyan);
+    }
+    .stack-info h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .stack-info p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    /* CLI Examples */
+    .cli-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .cli-card {
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.1);
+      border-radius: 0.8rem;
+      padding: 1.5rem;
+    }
+    .cli-card h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--go-cyan);
+    }
+    .cli-code {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 0.4rem;
+      padding: 1rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+    }
+    .cli-code .prompt {
+      color: var(--text-secondary);
+    }
+    .cli-code .command {
+      color: var(--go-cyan);
+    }
+    .cli-code .comment {
+      color: #6a6a8a;
+      display: block;
+      margin-top: 0.5rem;
+    }
+
+    /* Install */
+    .install-section {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: linear-gradient(180deg, var(--go-dark) 0%, var(--go-darker) 100%);
+      border-radius: 1rem;
+      border: 1px solid rgba(0, 217, 255, 0.1);
+    }
+    .install-section h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .install-code {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 0.5rem;
+      padding: 1.2rem 2rem;
+      display: inline-block;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .install-methods {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--go-dark);
+      border-top: 1px solid rgba(0, 217, 255, 0.1);
+      padding: 3rem 0 2rem;
+      margin-top: 4rem;
+    }
+    .footer-brand {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--go-cyan);
+      margin-bottom: 0.5rem;
+    }
+    .footer-desc {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .footer-links h5 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+    .footer-links ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .footer-links li {
+      margin-bottom: 0.5rem;
+    }
+    .footer-links a {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .footer-links a:hover {
+      color: var(--go-cyan);
+    }
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero {
+        padding: 4rem 0;
+        text-align: center;
+      }
+      .hero .tagline {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .hero-cta {
+        justify-content: center;
+      }
+      .section {
+        padding: 4rem 0;
+      }
+      .arch-layer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .arch-components {
+        width: 100%;
+      }
+    }
+
+    /* Scroll animation */
+    [data-animate] {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s, transform 0.6s;
+    }
+    [data-animate].visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Highlight */
+    .highlight {
+      color: var(--go-cyan);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="fas fa-bolt me-2"></i>eval-prompt
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="border-color: var(--go-cyan);">
+        <i class="fas fa-bars" style="color: var(--go-cyan);"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#features"><i class="fas fa-star"></i>特性</a></li>
+          <li class="nav-item"><a class="nav-link" href="#architecture"><i class="fas fa-layer-group"></i>架构</a></li>
+          <li class="nav-item"><a class="nav-link" href="#cli"><i class="fas fa-terminal"></i>CLI</a></li>
+          <li class="nav-item"><a class="nav-link" href="#stack"><i class="fas fa-cubes"></i>技术栈</a></li>
+          <li class="nav-item"><a class="nav-link" href="#install"><i class="fas fa-download"></i>安装</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="container position-relative">
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <div class="hero-badge">
+            <i class="fas fa-shield-halved me-1"></i>本地私有 · 单二进制 · 数据不出域
+          </div>
+          <h1>eval-prompt</h1>
+          <p class="tagline">团队级 Prompt 资产的本地私有化管理中枢。以纯 Go 二进制单文件形式分发，通过浏览器访问 Web UI，Agent 通过 CLI/MCP 协议消费。</p>
+          <div class="hero-cta">
+            <a href="#install" class="btn btn-go">
+              <i class="fas fa-rocket me-2"></i>快速开始
+            </a>
+            <a href="#features" class="btn btn-outline-go">
+              <i class="fas fa-book me-2"></i>了解更多
+            </a>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="hero-terminal">
+            <div class="terminal-header">
+              <span class="terminal-dot red"></span>
+              <span class="terminal-dot yellow"></span>
+              <span class="terminal-dot green"></span>
+              <span class="terminal-title">Terminal</span>
+            </div>
+            <div class="terminal-body">
+              <div><span class="comment"># 初始化仓库</span></div>
+              <div><span class="cmd">$ ep init ~/my-team-prompts</span></div>
+              <div class="output">Initialized at /Users/alice/my-team-prompts</div>
+              <div class="output">SQLite: ~/.eval-prompt/index.db</div>
+              <div class="output">Git: ~/my-team-prompts/.git</div>
+              <br>
+              <div><span class="comment"># 启动服务</span></div>
+              <div><span class="cmd">$ ep serve</span></div>
+              <div class="output">Starting server at http://127.0.0.1:8080</div>
+              <div class="output">Opening browser...</div>
+              <br>
+              <div><span class="comment"># Agent 查询 Prompt</span></div>
+              <div><span class="cmd">$ ep trigger match "Go SQL注入"</span></div>
+              <div class="output">[{"id":"common/code-review",...}]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section section-alt" id="features">
+    <div class="container">
+      <h2 class="section-title">核心特性</h2>
+      <p class="section-subtitle">一站式解决 Prompt 的编写、版本控制、效果验证与团队共享</p>
+      <div class="row g-4">
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-code-branch"></i></div>
+            <h3>Git 版本控制</h3>
+            <p>所有 Prompt 资产纳入 Git 管理，支持版本历史、Diff 对比、团队协作提交。提交信息格式化，便于追溯。</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-vials"></i></div>
+            <h3>Eval 效果验证</h3>
+            <p>支持 Deterministic Checker 和 LLM Rubric Grader 两种评测方式，量化 Prompt 质量，守护发布标准。</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-robot"></i></div>
+            <h3>MCP 协议支持</h3>
+            <p>标准 MCP 协议适配，Agent 可通过 CLI 或 MCP 接口查询、获取、触发评测 Prompt 资产。</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-arrows-spin"></i></div>
+            <h3>跨模型适配</h3>
+            <p>Claude ↔ GPT ↔ 本地模型自动适配，自动调整格式、few-shot 数量、温度参数，保持效果一致性。</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-brain"></i></div>
+            <h3>Agent 自主优化</h3>
+            <p>自动分析失败用例、生成优化建议、执行效果验证，形成人机协同的持续改进闭环。</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-shield-halved"></i></div>
+            <h3>安全沙箱</h3>
+            <p>文件系统隔离、命令白名单、执行超时限制，防止路径遍历和恶意指令注入。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="section" id="architecture">
+    <div class="container">
+      <h2 class="section-title">架构设计</h2>
+      <p class="section-subtitle">基于 vibe-go 的 5 层核心 + N 插件分层架构</p>
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="arch-diagram" data-animate>
+            <div class="arch-layer">
+              <span class="arch-label">L5 Gateway</span>
+              <div class="arch-components">
+                <span class="arch-component">StaticHandler</span>
+                <span class="arch-component">PromptAssetHandler</span>
+                <span class="arch-component">EvalHandler</span>
+                <span class="arch-component">MCPHandler</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+            <div class="arch-layer">
+              <span class="arch-label">L3 Authz</span>
+              <div class="arch-components">
+                <span class="arch-component">EvalGateGuard</span>
+                <span class="arch-component">SandboxGuard</span>
+                <span class="arch-component">AuditLogger</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+            <div class="arch-layer">
+              <span class="arch-label">L4 Service</span>
+              <div class="arch-components">
+                <span class="arch-component">AssetService</span>
+                <span class="arch-component">EvalService</span>
+                <span class="arch-component">SyncService</span>
+                <span class="arch-component">TriggerService</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+            <div class="arch-layer">
+              <span class="arch-label">L2 Domain</span>
+              <div class="arch-components">
+                <span class="arch-component">Asset</span>
+                <span class="arch-component">Snapshot</span>
+                <span class="arch-component">EvalCase</span>
+                <span class="arch-component">StateMachine</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+            <div class="arch-layer">
+              <span class="arch-label">L1 Storage</span>
+              <div class="arch-components">
+                <span class="arch-component">SQLite (ent)</span>
+                <span class="arch-component">Outbox</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+            <div class="arch-layer">
+              <span class="arch-label">Plugins</span>
+              <div class="arch-components">
+                <span class="arch-component">GitBridge</span>
+                <span class="arch-component">LLM</span>
+                <span class="arch-component">ModelAdapter</span>
+                <span class="arch-component">Search</span>
+              </div>
+            </div>
+          </div>
+          <p class="text-center mt-4" style="color: var(--text-secondary); font-size: 0.9rem;">
+            <i class="fas fa-lock me-1"></i>核心层定义接口，插件层实现接口，<span class="highlight">核心层禁止 import 插件层具体实现</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLI -->
+  <section class="section section-alt" id="cli">
+    <div class="container">
+      <h2 class="section-title">CLI 命令行</h2>
+      <p class="section-subtitle">简洁的命令行接口，Agent 和人类均可高效操作</p>
+      <div class="cli-section">
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-terminal me-2"></i>资产管理</h4>
+          <div class="cli-code">
+            <span class="prompt">$</span> <span class="command">ep asset list</span>
+            <span class="prompt">$</span> <span class="command">ep asset show common/code-review</span>
+            <span class="prompt">$</span> <span class="command">ep asset create --id common/sql-inject --file prompt.md</span>
+            <span class="prompt">$</span> <span class="command">ep asset edit common/sql-inject --stdin</span>
+          </div>
+        </div>
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-code-compare me-2"></i>版本与 Eval</h4>
+          <div class="cli-code">
+            <span class="prompt">$</span> <span class="command">ep snapshot list common/code-review</span>
+            <span class="prompt">$</span> <span class="command">ep snapshot diff common/code-review v1.2 v1.3</span>
+            <span class="prompt">$</span> <span class="command">ep eval run common/code-review --json</span>
+            <span class="prompt">$</span> <span class="command">ep eval compare common/code-review v1.2 v1.3</span>
+          </div>
+        </div>
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-wand-magic-sparkles me-2"></i>Agent 自主优化</h4>
+          <div class="cli-code">
+            <span class="prompt">$</span> <span class="command">ep optimize common/code-review --strategy failure_driven</span>
+            <span class="prompt">$</span> <span class="command">ep eval diagnose run-123 --format json</span>
+            <span class="prompt">$</span> <span class="command">ep adapt common/code-review --from claude --to gpt-4o</span>
+          </div>
+        </div>
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-robot me-2"></i>Agent 消费</h4>
+          <div class="cli-code">
+            <span class="prompt">$</span> <span class="command">ep trigger match "检查Go代码SQL注入" --top 1</span>
+            <span class="prompt">$</span> <span class="command">ep trigger match "代码评审" --biz-line common --json</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="section" id="stack">
+    <div class="container">
+      <h2 class="section-title">技术栈</h2>
+      <p class="section-subtitle">严选工业级组件，确保生产环境稳定可靠</p>
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="stack-item" data-animate>
+            <div class="stack-icon"><i class="fas fa-gears"></i></div>
+            <div class="stack-info">
+              <h4>connect-go + net/http</h4>
+              <p>gRPC + HTTP 双模协议，标准库 HTTP，无额外框架依赖</p>
+            </div>
+          </div>
+          <div class="stack-item" data-animate>
+            <div class="stack-icon"><i class="fas fa-database"></i></div>
+            <div class="stack-info">
+              <h4>ent + SQLite</h4>
+              <p>类型安全、自动迁移、代码生成，纯 Go 实现无 CGO</p>
+            </div>
+          </div>
+          <div class="stack-item" data-animate>
+            <div class="stack-icon"><i class="fas fa-code"></i></div>
+            <div class="stack-info">
+              <h4>go-git/v6</h4>
+              <p>纯 Go Git 实现，嵌入二进制，支持 init/add/commit/diff/log</p>
+            </div>
+          </div>
+          <div class="stack-item" data-animate>
+            <div class="stack-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="stack-info">
+              <h4>React + Ant Design + ECharts</h4>
+              <p>Web UI：Monaco Editor 编辑、雷达图趋势图、数据可视化</p>
+            </div>
+          </div>
+          <div class="stack-item" data-animate>
+            <div class="stack-icon"><i class="fas fa-feather"></i></div>
+            <div class="stack-info">
+              <h4>log/slog + opentelemetry</h4>
+              <p>结构化 JSON 日志，OTLP 链路追踪与指标，开箱即用</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="section section-alt" id="install">
+    <div class="container">
+      <h2 class="section-title">快速安装</h2>
+      <p class="section-subtitle">一条命令，即刻拥有本地 Prompt 管理中枢</p>
+      <div class="install-section" data-animate>
+        <h3><i class="fas fa-terminal me-2"></i>macOS / Linux</h3>
+        <div class="install-code">
+          curl -sSL https://eval-prompt.dev/install | sh
+        </div>
+        <div class="install-methods">
+          <a href="#" class="btn btn-outline-go"><i class="fab fa-github me-2"></i>GitHub Release</a>
+          <a href="#" class="btn btn-outline-go"><i class="fas fa-beer me-2"></i>Homebrew</a>
+          <a href="#" class="btn btn-outline-go"><i class="fas fa-file-archive me-2"></i>直接下载</a>
+        </div>
+      </div>
+      <div class="row mt-5 justify-content-center">
+        <div class="col-lg-10">
+          <div class="row text-center g-4">
+            <div class="col-4" data-animate>
+              <div style="font-size: 2rem; color: var(--go-cyan);">
+                <i class="fas fa-download"></i>
+              </div>
+              <div style="font-weight: 600;">下载 binary</div>
+              <div class="text-secondary" style="font-size: 0.85rem;">Linux / macOS / Windows</div>
+            </div>
+            <div class="col-4" data-animate>
+              <div style="font-size: 2rem; color: var(--go-cyan);">
+                <i class="fas fa-folder-plus"></i>
+              </div>
+              <div style="font-weight: 600;">初始化仓库</div>
+              <div class="text-secondary" style="font-size: 0.85rem;">ep init ~/prompts</div>
+            </div>
+            <div class="col-4" data-animate>
+              <div style="font-size: 2rem; color: var(--go-cyan);">
+                <i class="fas fa-play"></i>
+              </div>
+              <div style="font-weight: 600;">启动服务</div>
+              <div class="text-secondary" style="font-size: 0.85rem;">ep serve &amp; open http://127.0.0.1:8080</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="footer-brand">
+            <i class="fas fa-bolt me-2"></i>eval-prompt
+          </div>
+          <p class="footer-desc">团队级 Prompt 资产的本地私有化管理中枢。单二进制文件，零运行时依赖，数据不出域。</p>
+        </div>
+        <div class="col-lg-2 col-md-4 footer-links">
+          <h5>快速链接</h5>
+          <ul>
+            <li><a href="#features">特性</a></li>
+            <li><a href="#architecture">架构</a></li>
+            <li><a href="#cli">CLI</a></li>
+            <li><a href="#stack">技术栈</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-4 footer-links">
+          <h5>资源</h5>
+          <ul>
+            <li><a href="#">文档</a></li>
+            <li><a href="#">GitHub</a></li>
+            <li><a href="#">MCP 协议</a></li>
+            <li><a href="#">设计文档</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-4 footer-links">
+          <h5>社区</h5>
+          <ul>
+            <li><a href="#">讨论</a></li>
+            <li><a href="#">贡献指南</a></li>
+            <li><a href="#">版本历史</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 eval-prompt. Built with Go + React. Licensed under MIT.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Chinese CDN: Bootstrap JS -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Scroll animation
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('[data-animate]').forEach(el => {
+      observer.observe(el);
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

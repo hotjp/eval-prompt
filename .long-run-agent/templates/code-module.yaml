@@ -1,0 +1,183 @@
+acceptance:
+- 接口可调用
+- 测试通过
+- 无语法错误
+description: 代码模块开发模板
+keywords:
+- 接口
+- 函数
+- 模块
+- API
+- function
+- module
+- 实现
+- 开发
+- 代码
+- code
+name: code-module
+states:
+- pending
+- in_progress
+- pending_test
+- test_failed
+- completed
+structure: '# {{ id }}
+
+
+  ## ⚠️ 重要提示（Agent 必读）
+
+
+  **当前位置**: `.long-run-agent/tasks/{{id}}.md`（任务描述文件）
+
+
+  **工作目录**: 项目根目录（`.long-run-agent` 的同级目录）
+
+
+  **产出物位置**: 请在 `src/`、`tests/` 或适当位置创建代码文件
+
+
+  **这是配置文件**，不是最终产出！
+
+
+  ## 概述
+
+
+  {{ description }}
+
+
+  ## 技术栈
+
+
+  {% if tech_stack %}
+
+  {{ tech_stack }}
+
+  {% else %}
+
+  <!-- 请指定技术栈 -->
+
+  {% endif %}
+
+
+  ## 输入输出
+
+
+  ### 输入
+
+  ```
+
+  {% if input_params %}
+
+  {{ input_params }}
+
+  {% else %}
+
+  <!-- 参数定义 -->
+
+  {% endif %}
+
+  ```
+
+
+  ### 输出
+
+  ```
+
+  {% if output_return %}
+
+  {{ output_return }}
+
+  {% else %}
+
+  <!-- 返回值定义 -->
+
+  {% endif %}
+
+  ```
+
+
+  ## 实现方案
+
+
+  <!-- 详细实现思路 -->
+
+
+  ## 测试用例
+
+  <!-- 测试场景 -->
+
+
+  ## 验证证据（完成前必填）
+
+
+  **⚠️ 标记 completed 前必须提供以下证据！**
+
+
+  - [ ] **代码实现**: 核心功能已实现
+
+  - [ ] **测试通过**: 单元测试/集成测试通过
+
+  - [ ] **无语法错误**: 代码可正常导入/编译
+
+  - [ ] **回归测试**: 未破坏已有功能
+
+
+  ### 测试命令
+
+  ```bash
+
+  # 粘贴测试命令
+
+  pytest tests/test_xxx.py -v
+
+  ```
+
+
+  ### 测试输出
+
+  ```
+
+  # 粘贴测试输出
+
+  ```
+
+
+  ### 截图（如适用）
+
+  <!-- UI任务请提供截图路径，如：verification/screenshot.png -->
+
+
+  ### 代码片段
+
+  ```python
+
+  # 关键代码片段（可选）
+
+  ```
+
+  '
+template_engine: jinja2
+transitions:
+  completed: []
+  in_progress:
+  - pending_test
+  pending:
+  - in_progress
+  pending_test:
+  - test_failed
+  - completed
+  test_failed:
+  - in_progress
+validation:
+  evidence_fields:
+  - 代码实现
+  - 测试通过
+  - 无语法错误
+  - 回归测试
+  required_for_completion:
+    screenshot: false
+    test_evidence: true
+    test_output: true
+    verification_steps: true
+  test_commands: true
+version: '2.1'

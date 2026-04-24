@@ -1,0 +1,72 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+secrets/
+config/secrets.yaml
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts
+build/
+
+# Coverage
+coverage.html
+coverage.out
+
+# Profiling
+pprof/
+
+# Database
+*.db
+*.sqlite
+
+# Redis dump
+dump.rdb
+
+# Generated protobuf files (if using buf)
+buf.gen.yaml
+buf.work.yaml

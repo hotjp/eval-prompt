@@ -1,0 +1,25 @@
+amendments: []
+core_principles:
+- description: 任务完成前应确保基本质量
+  gates: []
+  id: quality_first
+  name: 质量优先
+  type: MANDATORY
+- description: 任务文件中列出的交付物文件必须实际存在
+  gates:
+  - check_func: check_deliverables_exist
+    check_level: basic
+    description: 检查 deliverables 中的文件是否存在且包含代码
+    name: deliverables_exist
+    required: true
+    type: custom
+  id: deliverables_exist
+  name: 交付物必须存在
+  type: NON_NEGOTIABLE
+project:
+  description: 项目质量宪法
+  name: tag-sense
+  ratified: '2024-03-09'
+  version: 1.0.0
+schema_version: '1.0'
+template_gates: {}

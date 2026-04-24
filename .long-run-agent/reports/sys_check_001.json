@@ -1,0 +1,18 @@
+{
+  "project_id": "eval-prompt",
+  "check_time": "2026-04-24T22:46:45.034538",
+  "code_total_size_mb": 0.01,
+  "code_file_count": 8,
+  "git_valid_ratio": 0,
+  "git_error": "GitPython not installed",
+  "doc_coverage_ratio": 0,
+  "doc_code_modules": 0,
+  "doc_modules": 62,
+  "doc_matched_modules": 0,
+  "func_comment_ratio": 0,
+  "func_total": 0,
+  "func_commented": 0,
+  "decision": "full",
+  "reason": "代码体积0.01MB ≤ 5.0MB，全量解析（未满足：文档覆盖率0% < 40%,Git 规范提交0% < 30%）",
+  "suggestions": []
+}

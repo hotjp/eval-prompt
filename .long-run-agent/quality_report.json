@@ -1,0 +1,96 @@
+{
+  "task_id": "task_001",
+  "template": "task",
+  "score": 85,
+  "max_score": 100,
+  "checks": [
+    {
+      "score": 100,
+      "issues": [],
+      "suggestions": [],
+      "stats": {
+        "total_functions": 0,
+        "documented_functions": 0,
+        "function_coverage": "100.0%",
+        "total_classes": 0,
+        "documented_classes": 0,
+        "class_coverage": "100.0%"
+      },
+      "passed": true
+    },
+    {
+      "score": 100,
+      "issues": [],
+      "suggestions": [],
+      "stats": {
+        "total_lines": 326,
+        "files_checked": 10
+      },
+      "passed": true
+    },
+    {
+      "score": 100,
+      "issues": [],
+      "suggestions": [],
+      "stats": {},
+      "passed": true
+    },
+    {
+      "score": 85,
+      "issues": [
+        {
+          "type": "missing_tests",
+          "severity": "medium",
+          "message": "项目缺少测试目录"
+        }
+      ],
+      "suggestions": [
+        "建议添加测试目录和单元测试"
+      ],
+      "stats": {
+        "has_readme": true,
+        "has_gitignore": true,
+        "has_src": false,
+        "has_tests": false
+      },
+      "passed": true
+    },
+    {
+      "score": 50,
+      "issues": [
+        {
+          "type": "no_tests",
+          "severity": "high",
+          "message": "项目没有测试文件"
+        }
+      ],
+      "suggestions": [
+        "建议添加单元测试以确保代码质量"
+      ],
+      "stats": {
+        "test_files": 0,
+        "code_files": 20,
+        "test_ratio": "0.0%"
+      },
+      "passed": false
+    }
+  ],
+  "failed_required": [],
+  "issues": [
+    {
+      "type": "missing_tests",
+      "severity": "medium",
+      "message": "项目缺少测试目录"
+    },
+    {
+      "type": "no_tests",
+      "severity": "high",
+      "message": "项目没有测试文件"
+    }
+  ],
+  "suggestions": [
+    "建议添加测试目录和单元测试",
+    "建议添加单元测试以确保代码质量"
+  ],
+  "timestamp": "2026-04-24T22:54:54.434439"
+}
