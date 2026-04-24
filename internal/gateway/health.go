@@ -13,7 +13,7 @@ import (
 
 // HealthHandler provides health check endpoints.
 type HealthHandler struct {
-	db        *sql.DB
+	db       *sql.DB
 	llmProv  llm.Provider
 	checkDB  bool
 	checkLLM bool
@@ -22,16 +22,16 @@ type HealthHandler struct {
 // NewHealthHandler creates a new health handler.
 func NewHealthHandler(db *sql.DB, llmProv llm.Provider) *HealthHandler {
 	return &HealthHandler{
-		db:        db,
-		llmProv:   llmProv,
-		checkDB:   db != nil,
-		checkLLM:  llmProv != nil,
+		db:       db,
+		llmProv:  llmProv,
+		checkDB:  db != nil,
+		checkLLM: llmProv != nil,
 	}
 }
 
 // HealthResponse represents the health check response.
 type HealthResponse struct {
-	Status    string            `json:"status"`
+	Status    string           `json:"status"`
 	Timestamp string           `json:"timestamp"`
 	Checks    map[string]Check `json:"checks,omitempty"`
 }

@@ -44,13 +44,13 @@ func (EvalCase) Indexes() []ent.Index {
 
 // Rubric defines the evaluation rubric structure.
 type Rubric struct {
-	MaxScore int            `json:"max_score"`
-	Checks   []RubricCheck  `json:"checks"`
+	MaxScore int           `json:"max_score"`
+	Checks   []RubricCheck `json:"checks"`
 }
 
 // RubricCheck defines a single check in the rubric.
 type RubricCheck struct {
-	ID          string  `json:"id"`
-	Description string  `json:"description"`
-	Weight      int     `json:"weight"`
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Weight      int    `json:"weight"`
 }

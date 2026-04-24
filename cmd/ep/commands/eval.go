@@ -63,7 +63,7 @@ var evalCasesCmd = &cobra.Command{
 	Short: "列出测试用例",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		assetID := args[0]
+		_ = args[0] // assetID
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		// TODO: Get eval cases from storage

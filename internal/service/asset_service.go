@@ -66,16 +66,16 @@ type CreateAssetRequest struct {
 
 // AssetResponse contains the response data for an asset operation.
 type AssetResponse struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	BizLine     string                 `json:"biz_line"`
-	Tags        []string               `json:"tags"`
-	State       string                 `json:"state"`
-	Version     int64                  `json:"version"`
-	Snapshot    *SnapshotResponse       `json:"snapshot,omitempty"`
-	CreatedAt   string                 `json:"created_at"`
-	UpdatedAt   string                 `json:"updated_at"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	BizLine     string            `json:"biz_line"`
+	Tags        []string          `json:"tags"`
+	State       string            `json:"state"`
+	Version     int64             `json:"version"`
+	Snapshot    *SnapshotResponse `json:"snapshot,omitempty"`
+	CreatedAt   string            `json:"created_at"`
+	UpdatedAt   string            `json:"updated_at"`
 }
 
 // SnapshotResponse contains snapshot information.
@@ -91,17 +91,17 @@ type SnapshotResponse struct {
 
 // AssetDetailResponse contains detailed asset information.
 type AssetDetailResponse struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	BizLine     string                 `json:"biz_line"`
-	Tags        []string               `json:"tags"`
-	State       string                 `json:"state"`
-	Version     int64                  `json:"version"`
-	Labels      []*LabelResponse       `json:"labels"`
-	Snapshots   []*SnapshotResponse    `json:"snapshots"`
-	CreatedAt   string                 `json:"created_at"`
-	UpdatedAt   string                 `json:"updated_at"`
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	BizLine     string              `json:"biz_line"`
+	Tags        []string            `json:"tags"`
+	State       string              `json:"state"`
+	Version     int64               `json:"version"`
+	Labels      []*LabelResponse    `json:"labels"`
+	Snapshots   []*SnapshotResponse `json:"snapshots"`
+	CreatedAt   string              `json:"created_at"`
+	UpdatedAt   string              `json:"updated_at"`
 }
 
 // LabelResponse contains label information.
@@ -113,10 +113,10 @@ type LabelResponse struct {
 
 // ListAssetsRequest contains the request data for listing assets.
 type ListAssetsRequest struct {
-	Offset   int
-	Limit    int
-	BizLine  string
-	State    string
+	Offset  int
+	Limit   int
+	BizLine string
+	State   string
 }
 
 // ListAssetsResponse contains the response data for listing assets.
@@ -138,9 +138,9 @@ type UpdateAssetRequest struct {
 
 // SetLabelRequest contains the request data for setting a label.
 type SetLabelRequest struct {
-	AssetID     string
-	SnapshotID  string
-	Name        string
+	AssetID    string
+	SnapshotID string
+	Name       string
 }
 
 // UnsetLabelRequest contains the request data for unsetting a label.

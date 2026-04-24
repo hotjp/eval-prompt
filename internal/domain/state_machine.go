@@ -205,11 +205,11 @@ type AssetStateMachine struct {
 
 // Asset states as defined in DESIGN.md.
 const (
-	AssetStateCreated   State = "CREATED"
+	AssetStateCreated    State = "CREATED"
 	AssetStateEvaluating State = "EVALUATING"
-	AssetStateEvaluated State = "EVALUATED"
-	AssetStatePromoted  State = "PROMOTED"
-	AssetStateArchived  State = "ARCHIVED"
+	AssetStateEvaluated  State = "EVALUATED"
+	AssetStatePromoted   State = "PROMOTED"
+	AssetStateArchived   State = "ARCHIVED"
 )
 
 // NewAssetStateMachine creates a new asset state machine.

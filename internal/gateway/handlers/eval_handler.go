@@ -26,15 +26,15 @@ func NewEvalHandler(evalService service.EvalServiceer, logger *slog.Logger) *Eva
 
 // RunEvalRequest represents the request body for running an eval.
 type RunEvalRequest struct {
-	AssetID          string   `json:"asset_id"`
-	SnapshotVersion  string   `json:"snapshot_version"`
-	EvalCaseIDs      []string `json:"eval_case_ids,omitempty"`
+	AssetID         string   `json:"asset_id"`
+	SnapshotVersion string   `json:"snapshot_version"`
+	EvalCaseIDs     []string `json:"eval_case_ids,omitempty"`
 }
 
 // RunEvalResponse represents the response for running an eval.
 type RunEvalResponse struct {
-	RunID string `json:"run_id"`
-	Status string `json:"status"`
+	RunID   string `json:"run_id"`
+	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -66,8 +66,8 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("eval run started", "asset_id", req.AssetID, "run_id", run.ID, "layer", "L5")
 
 	h.writeJSON(w, http.StatusAccepted, RunEvalResponse{
-		RunID:  run.ID,
-		Status: string(run.Status),
+		RunID:   run.ID,
+		Status:  string(run.Status),
 		Message: "eval run started",
 	})
 }
@@ -112,7 +112,7 @@ func (h *EvalHandler) GetEvalReport(w http.ResponseWriter, r *http.Request) {
 
 // CompareEvalRequest represents the request body for comparing evals.
 type CompareEvalRequest struct {
-	AssetID string `json:"asset_id"`
+	AssetID  string `json:"asset_id"`
 	Version1 string `json:"version1"`
 	Version2 string `json:"version2"`
 }
@@ -177,7 +177,7 @@ func (h *EvalHandler) ListEvalRuns(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]any{
-		"runs": runs,
+		"runs":  runs,
 		"total": len(runs),
 	})
 }

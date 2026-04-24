@@ -37,7 +37,7 @@ func NewMCPHandler(triggerService service.TriggerServicer, evalService service.E
 
 // MCPRequest represents a JSON-RPC request.
 type MCPRequest struct {
-	JSONRPC string          `json:"jsonrpc"`
+	JSONRPC string         `json:"jsonrpc"`
 	Method  string         `json:"method"`
 	Params  map[string]any `json:"params,omitempty"`
 	ID      any            `json:"id,omitempty"`
@@ -45,10 +45,10 @@ type MCPRequest struct {
 
 // MCPResponse represents a JSON-RPC response.
 type MCPResponse struct {
-	JSONRPC string `json:"jsonrpc"`
-	Result  any    `json:"result,omitempty"`
+	JSONRPC string    `json:"jsonrpc"`
+	Result  any       `json:"result,omitempty"`
 	Error   *MCPError `json:"error,omitempty"`
-	ID      any    `json:"id,omitempty"`
+	ID      any       `json:"id,omitempty"`
 }
 
 // MCPError represents a JSON-RPC error.

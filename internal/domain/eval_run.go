@@ -8,7 +8,7 @@ import (
 type EvalRunStatus string
 
 const (
-	EvalRunStatusPending  EvalRunStatus = "pending"
+	EvalRunStatusPending EvalRunStatus = "pending"
 	EvalRunStatusRunning EvalRunStatus = "running"
 	EvalRunStatusPassed  EvalRunStatus = "passed"
 	EvalRunStatusFailed  EvalRunStatus = "failed"
@@ -17,17 +17,17 @@ const (
 // EvalRun represents a single evaluation execution.
 type EvalRun struct {
 	ID                 ID
-	EvalCaseID        ID
-	SnapshotID        ID
-	Status            EvalRunStatus
+	EvalCaseID         ID
+	SnapshotID         ID
+	Status             EvalRunStatus
 	DeterministicScore float64
-	RubricScore       int
-	RubricDetails     []RubricCheckResult
-	TracePath         string
-	TokenInput        int
-	TokenOutput       int
-	DurationMs        int64
-	CreatedAt         time.Time
+	RubricScore        int
+	RubricDetails      []RubricCheckResult
+	TracePath          string
+	TokenInput         int
+	TokenOutput        int
+	DurationMs         int64
+	CreatedAt          time.Time
 }
 
 // Validate validates the eval run.
@@ -62,11 +62,11 @@ func (e *EvalRun) TotalScore() int {
 // NewEvalRun creates a new EvalRun.
 func NewEvalRun(evalCaseID, snapshotID ID) *EvalRun {
 	return &EvalRun{
-		ID:          NewAutoID(),
+		ID:         NewAutoID(),
 		EvalCaseID: evalCaseID,
 		SnapshotID: snapshotID,
 		Status:     EvalRunStatusPending,
-		CreatedAt: time.Now(),
+		CreatedAt:  time.Now(),
 	}
 }
 
@@ -94,10 +94,10 @@ func (e *EvalRun) Fail() {
 // EvalRunSummary is a lightweight representation of an eval run.
 type EvalRunSummary struct {
 	ID                 ID
-	EvalCaseID        ID
-	SnapshotID        ID
-	Status            EvalRunStatus
+	EvalCaseID         ID
+	SnapshotID         ID
+	Status             EvalRunStatus
 	DeterministicScore float64
-	RubricScore       int
-	CreatedAt         time.Time
+	RubricScore        int
+	CreatedAt          time.Time
 }

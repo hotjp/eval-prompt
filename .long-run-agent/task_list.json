@@ -222,10 +222,17 @@
       "id": "task_014",
       "title": "P04 AssetIndexer 接口",
       "desc": "P04 AssetIndexer 接口 — Reconcile/Search 接口定义",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "plugin",
-      "updated_at": "2026-04-24T23:47:59.065916"
+      "updated_at": "2026-04-25T00:39:34.330204",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_015",
@@ -327,25 +334,49 @@
       "id": "task_021",
       "title": "A01 EvalGateGuard",
       "desc": "A01 EvalGateGuard — prod 晋升门禁（Eval 得分 ≥ 80）",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "authz"
+      "category": "authz",
+      "updated_at": "2026-04-25T00:42:49.127944",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_022",
       "title": "A02 SandboxGuard",
       "desc": "A02 SandboxGuard — 文件系统路径校验、防路径遍历",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "authz"
+      "category": "authz",
+      "updated_at": "2026-04-25T00:44:15.440452",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_023",
       "title": "A03 AuditLogger",
       "desc": "A03 AuditLogger — 操作审计日志",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "authz"
+      "category": "authz",
+      "updated_at": "2026-04-25T00:49:01.398200",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_024",
@@ -447,129 +478,257 @@
       "id": "task_030",
       "title": "C01 ep init",
       "desc": "C01 ep init — 仓库初始化、SQLite 创建、Git init",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:47:41.930434",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_031",
       "title": "C02 ep serve",
       "desc": "C02 ep serve — HTTP 服务启动、Web UI 入口",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:47:53.618160",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_032",
       "title": "C03 ep asset 子命令",
       "desc": "C03 ep asset 子命令 — list/show/cat/create/edit/rm",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:49:18.225236",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_033",
       "title": "C04 ep snapshot 子命令",
       "desc": "C04 ep snapshot 子命令 — list/diff/checkout",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:39.709232",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_034",
       "title": "C05 ep label 子命令",
       "desc": "C05 ep label 子命令 — list/set/unset",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:40.816840",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_035",
       "title": "C06 ep eval 子命令",
       "desc": "C06 ep eval 子命令 — run/cases/compare/report/diagnose",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:41.926395",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_036",
       "title": "C07 ep trigger 子命令",
       "desc": "C07 ep trigger 子命令 — match",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:43.058361",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_037",
       "title": "C08 ep sync 子命令",
       "desc": "C08 ep sync 子命令 — reconcile/export",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:44.110647",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_038",
       "title": "C09 ep adapt 子命令",
       "desc": "C09 ep adapt 子命令 — 跨模型 Prompt 适配",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:45.147516",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_039",
       "title": "C10 ep optimize 子命令",
       "desc": "C10 ep optimize 子命令 — Agent 自主优化",
-      "status": "pending",
+      "status": "completed",
       "priority": "P2",
-      "category": "cli"
+      "category": "cli",
+      "updated_at": "2026-04-25T00:35:46.193349",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_040",
       "title": "W01 React 项目初始化",
       "desc": "W01 React 项目初始化 — Vite + Ant Design + Zustand + Monaco Editor + ECharts",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:34.954090",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_041",
       "title": "W02 资产库视图",
       "desc": "W02 资产库视图 — 左侧分类树、右侧资产卡片网格、搜索筛选",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:35.804820",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_042",
       "title": "W03 编辑器视图",
       "desc": "W03 编辑器视图 — Monaco Editor + 实时预览 + 保存提交",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:36.632455",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_043",
       "title": "W04 版本树视图",
       "desc": "W04 版本树视图 — Snapshot 时间轴、Diff 展示",
-      "status": "pending",
+      "status": "completed",
       "priority": "P2",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:37.461309",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_044",
       "title": "W05 Eval 面板",
       "desc": "W05 Eval 面板 — 得分仪表盘、测试用例、Trace 时间轴",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:38.274692",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_045",
       "title": "W06 A/B 比对视图",
       "desc": "W06 A/B 比对视图 — 内容 Diff、雷达图比对",
-      "status": "pending",
+      "status": "completed",
       "priority": "P2",
-      "category": "web"
+      "category": "web",
+      "updated_at": "2026-04-25T00:35:39.100954",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_046",
@@ -671,24 +830,40 @@
       "id": "task_052",
       "title": "B01 Makefile 构建",
       "desc": "B01 Makefile 构建 — npm build + go build + embed",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "build"
+      "category": "build",
+      "updated_at": "2026-04-25T00:42:46.152115",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_053",
       "title": "B02 Homebrew 分发",
       "desc": "B02 Homebrew 分发 — brew tap 配置",
-      "status": "pending",
+      "status": "completed",
       "priority": "P2",
-      "category": "build"
+      "category": "build",
+      "updated_at": "2026-04-25T00:51:48.322740",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_054",
       "description": "测试任务",
       "template": "task",
       "priority": "P1",
-      "status": "pending",
+      "status": "completed",
       "parent_id": null,
       "output_req": "8k",
       "context_hint": "8k",
@@ -704,7 +879,7 @@
         "quality_checks": {
           "tests_passed": false,
           "lint_passed": false,
-          "acceptance_met": false
+          "acceptance_met": true
         },
         "issues": [],
         "optimization_history": []

@@ -1,0 +1,32 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Layout } from 'antd'
+import Sidebar from './components/Sidebar'
+import AssetListView from './views/AssetListView'
+import EditorView from './views/EditorView'
+import VersionTreeView from './views/VersionTreeView'
+import EvalPanelView from './views/EvalPanelView'
+import CompareView from './views/CompareView'
+
+const { Content } = Layout
+
+function App() {
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sidebar />
+      <Layout>
+        <Content style={{ padding: '24px' }}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/assets" replace />} />
+            <Route path="/assets" element={<AssetListView />} />
+            <Route path="/assets/:id/edit" element={<EditorView />} />
+            <Route path="/assets/:id/versions" element={<VersionTreeView />} />
+            <Route path="/assets/:id/eval" element={<EvalPanelView />} />
+            <Route path="/compare" element={<CompareView />} />
+          </Routes>
+        </Content>
+      </Layout>
+    </Layout>
+  )
+}
+
+export default App

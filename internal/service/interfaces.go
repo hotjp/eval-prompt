@@ -151,12 +151,12 @@ type LLMInvoker interface {
 
 // TraceEvent represents a single event in an evaluation trace.
 type TraceEvent struct {
-	SpanID    string                 `json:"span_id"`
-	ParentID  string                 `json:"parent_id,omitempty"`
-	Name      string                 `json:"name"`
-	Timestamp time.Time              `json:"timestamp"`
-	Type      string                 `json:"type"` // span_start | span_end | event | error
-	Data      map[string]any         `json:"data,omitempty"`
+	SpanID    string         `json:"span_id"`
+	ParentID  string         `json:"parent_id,omitempty"`
+	Name      string         `json:"name"`
+	Timestamp time.Time      `json:"timestamp"`
+	Type      string         `json:"type"` // span_start | span_end | event | error
+	Data      map[string]any `json:"data,omitempty"`
 }
 
 // TraceCollector collects evaluation trace events and writes them to JSONL files.
@@ -190,7 +190,7 @@ type DeterministicResult struct {
 
 // Rubric defines the evaluation rubric structure.
 type Rubric struct {
-	MaxScore int          `json:"max_score"`
+	MaxScore int           `json:"max_score"`
 	Checks   []RubricCheck `json:"checks"`
 }
 
@@ -203,11 +203,11 @@ type RubricCheck struct {
 
 // RubricResult contains the result of rubric-based evaluation.
 type RubricResult struct {
-	Score    int                  `json:"score"`
-	MaxScore int                  `json:"max_score"`
-	Passed   bool                 `json:"passed"`
-	Details  []RubricCheckResult  `json:"details,omitempty"`
-	Message  string               `json:"message,omitempty"`
+	Score    int                 `json:"score"`
+	MaxScore int                 `json:"max_score"`
+	Passed   bool                `json:"passed"`
+	Details  []RubricCheckResult `json:"details,omitempty"`
+	Message  string              `json:"message,omitempty"`
 }
 
 // EvalRunner runs evaluations on prompt outputs.
@@ -222,8 +222,8 @@ type EvalRunner interface {
 
 // PromptContent represents the content of a prompt asset.
 type PromptContent struct {
-	Description string   `json:"description"`
-	Instruction string   `json:"instruction"`
+	Description string    `json:"description"`
+	Instruction string    `json:"instruction"`
 	Examples    []Example `json:"examples,omitempty"`
 	Variables   []string  `json:"variables,omitempty"`
 }
@@ -237,19 +237,19 @@ type Example struct {
 
 // AdaptedPrompt contains the result of prompt adaptation.
 type AdaptedPrompt struct {
-	Content          string            `json:"content"`
+	Content          string             `json:"content"`
 	ParamAdjustments map[string]float64 `json:"param_adjustments,omitempty"`
-	FormatChanges    []string          `json:"format_changes,omitempty"`
-	Warnings         []string          `json:"warnings,omitempty"`
+	FormatChanges    []string           `json:"format_changes,omitempty"`
+	Warnings         []string           `json:"warnings,omitempty"`
 }
 
 // ModelParams contains recommended model parameters.
 type ModelParams struct {
-	Temperature    float64 `json:"temperature"`
-	MaxTokens      int     `json:"max_tokens"`
-	TopP           float64 `json:"top_p,omitempty"`
+	Temperature      float64 `json:"temperature"`
+	MaxTokens        int     `json:"max_tokens"`
+	TopP             float64 `json:"top_p,omitempty"`
 	FrequencyPenalty float64 `json:"frequency_penalty,omitempty"`
-	PresencePenalty float64 `json:"presence_penalty,omitempty"`
+	PresencePenalty  float64 `json:"presence_penalty,omitempty"`
 }
 
 // ModelProfile contains the characteristics of a model.

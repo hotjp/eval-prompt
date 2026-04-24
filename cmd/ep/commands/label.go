@@ -7,7 +7,6 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/search"
 	"github.com/spf13/cobra"
 )

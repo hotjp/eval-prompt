@@ -13,27 +13,27 @@ import (
 // TriggerHandler handles trigger API endpoints.
 type TriggerHandler struct {
 	triggerService service.TriggerServicer
-	logger        *slog.Logger
+	logger         *slog.Logger
 }
 
 // NewTriggerHandler creates a new TriggerHandler.
 func NewTriggerHandler(triggerService service.TriggerServicer, logger *slog.Logger) *TriggerHandler {
 	return &TriggerHandler{
 		triggerService: triggerService,
-		logger:        logger,
+		logger:         logger,
 	}
 }
 
 // MatchTriggerRequest represents the request body for matching triggers.
 type MatchTriggerRequest struct {
-	Input string            `json:"input"`
-	Top   int               `json:"top,omitempty"`
+	Input string `json:"input"`
+	Top   int    `json:"top,omitempty"`
 }
 
 // MatchTriggerResponse represents the response for matching triggers.
 type MatchTriggerResponse struct {
 	Matches []*service.MatchedPrompt `json:"matches"`
-	Total   int                     `json:"total"`
+	Total   int                      `json:"total"`
 }
 
 // MatchTrigger handles POST /api/v1/trigger/match.
@@ -72,9 +72,9 @@ type ValidateAntiPatternsRequest struct {
 
 // ValidateAntiPatternsResponse represents the response for anti-pattern validation.
 type ValidateAntiPatternsResponse struct {
-	Valid   bool     `json:"valid"`
+	Valid      bool     `json:"valid"`
 	Violations []string `json:"violations,omitempty"`
-	Message string   `json:"message,omitempty"`
+	Message    string   `json:"message,omitempty"`
 }
 
 // ValidateAntiPatterns handles POST /api/v1/trigger/validate.
@@ -94,21 +94,21 @@ func (h *TriggerHandler) ValidateAntiPatterns(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		// Anti-pattern violation found
 		h.writeJSON(w, http.StatusOK, ValidateAntiPatternsResponse{
-			Valid: false,
+			Valid:   false,
 			Message: err.Error(),
 		})
 		return
 	}
 
 	h.writeJSON(w, http.StatusOK, ValidateAntiPatternsResponse{
-		Valid: true,
+		Valid:   true,
 		Message: "prompt is valid",
 	})
 }
 
 // InjectVariablesRequest represents the request body for injecting variables.
 type InjectVariablesRequest struct {
-	Prompt   string            `json:"prompt"`
+	Prompt    string            `json:"prompt"`
 	Variables map[string]string `json:"variables"`
 }
 

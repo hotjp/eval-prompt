@@ -69,10 +69,10 @@ func NewSnapshotWithCommit(assetID ID, version, contentHash, commitHash, author,
 
 // SnapshotSummary is a lightweight representation of a snapshot.
 type SnapshotSummary struct {
-	ID          ID
-	Version     string
-	CommitHash  string
-	Author      string
-	Reason      string
-	CreatedAt   time.Time
+	ID         ID
+	Version    string
+	CommitHash string
+	Author     string
+	Reason     string
+	CreatedAt  time.Time
 }

@@ -47,8 +47,8 @@ func (EvalRun) Indexes() []ent.Index {
 
 // RubricCheckResult represents the result of a single rubric check.
 type RubricCheckResult struct {
-	CheckID   string `json:"check_id"`
-	Passed    bool   `json:"passed"`
-	Score     int    `json:"score"`
-	Details   string `json:"details,omitempty"`
+	CheckID string `json:"check_id"`
+	Passed  bool   `json:"passed"`
+	Score   int    `json:"score"`
+	Details string `json:"details,omitempty"`
 }

@@ -11,6 +11,7 @@ import (
 )
 
 // StaticFS is the embedded filesystem for React static assets.
+//
 //go:embed web/dist
 var staticFS embed.FS
 

@@ -27,16 +27,16 @@ func NewAssetHandler(indexer service.AssetIndexer, logger *slog.Logger) *AssetHa
 
 // AssetResponse represents the API response for an asset.
 type AssetResponse struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description,omitempty"`
-	BizLine     string                 `json:"biz_line,omitempty"`
-	Tags        []string               `json:"tags,omitempty"`
-	State       string                 `json:"state,omitempty"`
-	Labels      map[string]string      `json:"labels,omitempty"`
-	Snapshots   []SnapshotResponse     `json:"snapshots,omitempty"`
-	CreatedAt   time.Time              `json:"created_at,omitempty"`
-	UpdatedAt   time.Time              `json:"updated_at,omitempty"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description,omitempty"`
+	BizLine     string             `json:"biz_line,omitempty"`
+	Tags        []string           `json:"tags,omitempty"`
+	State       string             `json:"state,omitempty"`
+	Labels      map[string]string  `json:"labels,omitempty"`
+	Snapshots   []SnapshotResponse `json:"snapshots,omitempty"`
+	CreatedAt   time.Time          `json:"created_at,omitempty"`
+	UpdatedAt   time.Time          `json:"updated_at,omitempty"`
 }
 
 // SnapshotResponse represents a snapshot in API response.
@@ -59,7 +59,7 @@ func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 
 	filters := service.SearchFilters{
 		BizLine: bizLine,
-		State:  state,
+		State:   state,
 	}
 	if tag != "" {
 		filters.Tags = []string{tag}
@@ -111,10 +111,10 @@ func (h *AssetHandler) GetAsset(w http.ResponseWriter, r *http.Request) {
 		snapshots[i] = SnapshotResponse{
 			Version:    s.Version,
 			CommitHash: s.CommitHash,
-			Author:    s.Author,
-			Reason:    s.Reason,
-			EvalScore: s.EvalScore,
-			CreatedAt: s.CreatedAt,
+			Author:     s.Author,
+			Reason:     s.Reason,
+			EvalScore:  s.EvalScore,
+			CreatedAt:  s.CreatedAt,
 		}
 	}
 

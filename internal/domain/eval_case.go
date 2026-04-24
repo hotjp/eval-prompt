@@ -20,7 +20,7 @@ type EvalCase struct {
 
 // Rubric defines the evaluation rubric structure.
 type Rubric struct {
-	MaxScore int          `json:"max_score"`
+	MaxScore int           `json:"max_score"`
 	Checks   []RubricCheck `json:"checks"`
 }
 

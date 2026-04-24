@@ -3,7 +3,6 @@ package telemetry
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"os"
 	"time"
@@ -58,7 +57,7 @@ func NewLogger(cfg Config) *Logger {
 	}
 
 	return &Logger{
-		Logger:    slog.New(handler),
+		Logger:     slog.New(handler),
 		traceIDKey: "trace_id",
 		spanIDKey:  "span_id",
 	}

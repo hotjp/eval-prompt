@@ -33,9 +33,9 @@ const (
 	EventEvalFailed    EventType = "EvalFailedV1"
 
 	// Adaptation events
-	EventPromptAdapted          EventType = "PromptAdaptedV1"
-	EventOptimizationSuggested  EventType = "OptimizationSuggestedV1"
-	EventOptimizationApplied    EventType = "OptimizationAppliedV1"
+	EventPromptAdapted         EventType = "PromptAdaptedV1"
+	EventOptimizationSuggested EventType = "OptimizationSuggestedV1"
+	EventOptimizationApplied   EventType = "OptimizationAppliedV1"
 	EventOptimizationDiscarded EventType = "OptimizationDiscardedV1"
 )
 
@@ -43,7 +43,7 @@ const (
 type EventStatus int
 
 const (
-	EventStatusPending   EventStatus = iota
+	EventStatusPending EventStatus = iota
 	EventStatusProcessed
 	EventStatusFailed
 )
@@ -77,26 +77,26 @@ type DomainEventInterface interface {
 // NewBaseEvent creates a new base event with generated ULID and current time.
 func NewBaseEvent(aggregateType string, aggregateID ID, eventType EventType, version int64) BaseEvent {
 	return BaseEvent{
-		EventIDValue:     NewAutoID(),
-		AggregateType:   aggregateType,
-		AggregateID:     aggregateID,
-		EventType_:      eventType,
-		OccurredAt_:      time.Now(),
-		IdempotencyKey:  NewULID(),
-		Version_:         version,
+		EventIDValue:   NewAutoID(),
+		AggregateType:  aggregateType,
+		AggregateID:    aggregateID,
+		EventType_:     eventType,
+		OccurredAt_:    time.Now(),
+		IdempotencyKey: NewULID(),
+		Version_:       version,
 	}
 }
 
 // BaseEvent provides common fields for all domain events.
 // This is embedded by specific event types.
 type BaseEvent struct {
-	EventIDValue    ID        `json:"event_id"`
-	AggregateType   string    `json:"aggregate_type"`
-	AggregateID     ID        `json:"aggregate_id"`
-	EventType_      EventType `json:"event_type"`
-	OccurredAt_      time.Time `json:"occurred_at"`
-	IdempotencyKey  string    `json:"idempotency_key"`
-	Version_         int64    `json:"version"`
+	EventIDValue   ID        `json:"event_id"`
+	AggregateType  string    `json:"aggregate_type"`
+	AggregateID    ID        `json:"aggregate_id"`
+	EventType_     EventType `json:"event_type"`
+	OccurredAt_    time.Time `json:"occurred_at"`
+	IdempotencyKey string    `json:"idempotency_key"`
+	Version_       int64     `json:"version"`
 }
 
 // EventID returns the event ID.
@@ -289,10 +289,10 @@ func (e *SnapshotCommittedEvent) Validate() error {
 // LabelPromotedEvent is raised when a label is promoted to a new snapshot.
 type LabelPromotedEvent struct {
 	BaseEvent
-	LabelName    string `json:"label_name"`
-	FromVersion  string `json:"from_version,omitempty"`
-	ToVersion    string `json:"to_version"`
-	EvalScore    int    `json:"eval_score,omitempty"`
+	LabelName   string `json:"label_name"`
+	FromVersion string `json:"from_version,omitempty"`
+	ToVersion   string `json:"to_version"`
+	EvalScore   int    `json:"eval_score,omitempty"`
 }
 
 // NewLabelPromotedEvent creates a new LabelPromotedEvent.
@@ -333,28 +333,28 @@ func (e *LabelPromotedEvent) Validate() error {
 // EvalCompletedEvent is raised when an eval run completes.
 type EvalCompletedEvent struct {
 	BaseEvent
-	EvalRunID           ID     `json:"eval_run_id"`
-	EvalCaseID          ID     `json:"eval_case_id"`
-	SnapshotID          ID     `json:"snapshot_id"`
-	Status              string `json:"status"` // passed, failed
-	DeterministicScore  float64 `json:"deterministic_score,omitempty"`
-	RubricScore         int     `json:"rubric_score,omitempty"`
-	TotalScore          int     `json:"total_score,omitempty"`
-	DurationMs          int64   `json:"duration_ms,omitempty"`
+	EvalRunID          ID      `json:"eval_run_id"`
+	EvalCaseID         ID      `json:"eval_case_id"`
+	SnapshotID         ID      `json:"snapshot_id"`
+	Status             string  `json:"status"` // passed, failed
+	DeterministicScore float64 `json:"deterministic_score,omitempty"`
+	RubricScore        int     `json:"rubric_score,omitempty"`
+	TotalScore         int     `json:"total_score,omitempty"`
+	DurationMs         int64   `json:"duration_ms,omitempty"`
 }
 
 // NewEvalCompletedEvent creates a new EvalCompletedEvent.
 func NewEvalCompletedEvent(evalRunID, evalCaseID, snapshotID ID, status string, detScore float64, rubricScore, totalScore, durationMs int64, version int64) *EvalCompletedEvent {
 	return &EvalCompletedEvent{
-		BaseEvent:            NewBaseEvent("EvalRun", evalRunID, EventEvalCompleted, version),
-		EvalRunID:            evalRunID,
-		EvalCaseID:           evalCaseID,
-		SnapshotID:           snapshotID,
-		Status:               status,
-		DeterministicScore:   detScore,
-		RubricScore:          int(rubricScore),
-		TotalScore:           int(totalScore),
-		DurationMs:           durationMs,
+		BaseEvent:          NewBaseEvent("EvalRun", evalRunID, EventEvalCompleted, version),
+		EvalRunID:          evalRunID,
+		EvalCaseID:         evalCaseID,
+		SnapshotID:         snapshotID,
+		Status:             status,
+		DeterministicScore: detScore,
+		RubricScore:        int(rubricScore),
+		TotalScore:         int(totalScore),
+		DurationMs:         durationMs,
 	}
 }
 
@@ -447,15 +447,15 @@ func EventFromJSON(data []byte) (map[string]interface{}, error) {
 
 // OutboxEvent represents an event stored in the outbox for reliable delivery.
 type OutboxEvent struct {
-	ID              EventID     `json:"id"`
-	AggregateType   string      `json:"aggregate_type"`
-	AggregateID     ID          `json:"aggregate_id"`
-	EventType       EventType   `json:"event_type"`
-	Payload         []byte      `json:"payload"`
-	OccurredAt      time.Time   `json:"occurred_at"`
-	IdempotencyKey  string      `json:"idempotency_key"`
-	Status          EventStatus `json:"status"`
-	RetryCount      int         `json:"retry_count"`
+	ID             EventID     `json:"id"`
+	AggregateType  string      `json:"aggregate_type"`
+	AggregateID    ID          `json:"aggregate_id"`
+	EventType      EventType   `json:"event_type"`
+	Payload        []byte      `json:"payload"`
+	OccurredAt     time.Time   `json:"occurred_at"`
+	IdempotencyKey string      `json:"idempotency_key"`
+	Status         EventStatus `json:"status"`
+	RetryCount     int         `json:"retry_count"`
 }
 
 // NewOutboxEvent creates a new outbox event from a domain event.

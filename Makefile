@@ -68,6 +68,13 @@ clean:
 	@rm -rf ./bin
 	@rm -f coverage.out coverage.html
 
+## install: Install the binary to /usr/local/bin/
+install:
+	@echo "Installing $(BINARY_NAME)..."
+	@mkdir -p /usr/local/bin/
+	cp $(BINARY_PATH) /usr/local/bin/
+	@echo "Installed to /usr/local/bin/$(BINARY_NAME)"
+
 ## help: Show this help message
 help:
 	@echo "Available targets:"
@@ -79,4 +86,5 @@ help:
 	@echo "  tidy           Tidy dependencies"
 	@echo "  fmt            Format code"
 	@echo "  clean          Clean build artifacts"
+	@echo "  install        Install to /usr/local/bin/"
 	@echo "  help           Show this help message"

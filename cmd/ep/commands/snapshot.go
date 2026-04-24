@@ -7,7 +7,6 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +66,7 @@ var snapshotDiffCmd = &cobra.Command{
 	Short: "版本对比",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		assetID := args[0]
+		_ = args[0] // assetID
 		v1 := args[1]
 		v2 := args[2]
 

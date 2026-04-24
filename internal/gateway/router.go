@@ -47,8 +47,8 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	}
 
 	// Register routes
-	mux.HandleFunc("GET /mcp/v1/sse", chain(mcpHandler.HandleSSE).ServeHTTP)
-	mux.HandleFunc("POST /mcp/v1", chain(mcpHandler.HandlePOST).ServeHTTP)
+	mux.Handle("GET /mcp/v1/sse", chain(http.HandlerFunc(mcpHandler.HandleSSE)))
+	mux.Handle("POST /mcp/v1", chain(http.HandlerFunc(mcpHandler.HandlePOST)))
 
 	// Health check endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

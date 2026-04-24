@@ -10,7 +10,7 @@ import (
 
 // SyncService handles synchronization between Git repository and the index.
 type SyncService struct {
-	indexer  AssetIndexer
+	indexer    AssetIndexer
 	gitBridger GitBridger
 }
 

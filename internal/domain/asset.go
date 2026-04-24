@@ -167,6 +167,6 @@ type AssetSummary struct {
 type AssetDetail struct {
 	Asset
 	SnapshotCount int
-	LabelCount   int
+	LabelCount    int
 	EvalCaseCount int
 }

@@ -175,10 +175,10 @@ func (p Page) Next() Page {
 
 // Result is a generic container for a paginated result.
 type Result[T any] struct {
-	Items      []T
-	Total      int
-	Page       Page
-	HasMore    bool
+	Items   []T
+	Total   int
+	Page    Page
+	HasMore bool
 }
 
 // NewResult creates a new result with items and pagination info.

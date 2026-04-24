@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knadh/koanf/v2"
+	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/v2"
 )
 
 // DefaultConfigPath is the default path to the config file.
@@ -17,11 +17,11 @@ const DefaultConfigPath = "config.yaml"
 
 // Config is the root configuration structure.
 type Config struct {
-	Server       ServerConfig        `koanf:"server"`
-	Database     DatabaseConfig      `koanf:"database"`
+	Server       ServerConfig       `koanf:"server"`
+	Database     DatabaseConfig     `koanf:"database"`
 	Telemetry    TelemetryConfig    `koanf:"telemetry"`
-	Sandbox      SandboxConfig       `koanf:"sandbox"`
-	Plugins      PluginsConfig       `koanf:"plugins"`
+	Sandbox      SandboxConfig      `koanf:"sandbox"`
+	Plugins      PluginsConfig      `koanf:"plugins"`
 	PromptAssets PromptAssetsConfig `koanf:"prompt_assets"`
 }
 
@@ -162,8 +162,8 @@ func getDefaults() map[string]interface{} {
 
 		// Database defaults
 		"database.dsn":          "",
-		"database.max_open":    25,
-		"database.max_idle":    5,
+		"database.max_open":     25,
+		"database.max_idle":     5,
 		"database.max_lifetime": 5 * time.Minute,
 
 		// Telemetry defaults
@@ -184,7 +184,7 @@ func getDefaults() map[string]interface{} {
 
 		// PromptAssets defaults
 		"prompt_assets.repo_path":      "",
-		"prompt_assets.assets_dir":    "prompts",
+		"prompt_assets.assets_dir":     "prompts",
 		"prompt_assets.evals_dir":      ".evals",
 		"prompt_assets.traces_dir":     ".traces",
 		"prompt_assets.eval_threshold": 80,
@@ -197,9 +197,9 @@ func getDefaults() map[string]interface{} {
 		"plugins.llm.default_model": "gpt-4o",
 
 		"plugins.search.enabled": false,
-		"plugins.search.type":     "basic",
-		"plugins.search.url":      "",
-		"plugins.search.api_key":  "",
+		"plugins.search.type":    "basic",
+		"plugins.search.url":     "",
+		"plugins.search.api_key": "",
 	}
 }
 
