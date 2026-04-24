@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/search"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +25,11 @@ func init() {
 	assetCmd.AddCommand(assetCatCmd)
 	assetCmd.AddCommand(assetCreateCmd)
 	assetCmd.AddCommand(assetEditCmd)
+	assetCmd.AddCommand(assetArchiveCmd)
+	assetCmd.AddCommand(assetRestoreCmd)
 	assetCmd.AddCommand(assetRmCmd)
+	assetCmd.AddCommand(assetPromoteCmd)
+	assetCmd.AddCommand(assetDemoteCmd)
 }
 
 // Global indexer instance for CLI
@@ -31,7 +37,7 @@ var cliIndexer service.AssetIndexer
 
 func getIndexer() service.AssetIndexer {
 	if cliIndexer == nil {
-		cliIndexer = search.NewIndexer()
+		cliIndexer = search.NewIndexer(nil, "")
 	}
 	return cliIndexer
 }
@@ -168,17 +174,210 @@ var assetEditCmd = &cobra.Command{
 
 var assetRmCmd = &cobra.Command{
 	Use:   "rm <id>",
-	Short: "删除资产",
+	Short: "删除资产（必须先 archive）",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
-		indexer := getIndexer()
 
+		// Find the file
+		filePath := filepath.Join("prompts", id+".md")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("资产文件不存在: %s", id)
+			}
+			return fmt.Errorf("读取资产文件失败: %w", err)
+		}
+
+		// Parse front matter
+		fm, _, err := yamlutil.ParseFrontMatter(string(content))
+		if err != nil {
+			return fmt.Errorf("解析 front matter 失败: %w", err)
+		}
+
+		// Check state - must be archived
+		if fm.State != "archived" {
+			return fmt.Errorf("请先 archive: %s", id)
+		}
+
+		// Delete the file
+		if err := os.Remove(filePath); err != nil {
+			return fmt.Errorf("删除资产文件失败: %w", err)
+		}
+
+		// Also remove from index
+		indexer := getIndexer()
 		if err := indexer.Delete(context.Background(), id); err != nil {
-			return fmt.Errorf("删除资产失败: %w", err)
+			// Log but don't fail - file is already deleted
+			fmt.Fprintf(os.Stderr, "警告: 从索引删除失败: %v\n", err)
 		}
 
 		fmt.Printf("资产已删除: %s\n", id)
+		return nil
+	},
+}
+
+var assetArchiveCmd = &cobra.Command{
+	Use:   "archive <id>",
+	Short: "归档资产",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id := args[0]
+
+		// Find the file
+		filePath := filepath.Join("prompts", id+".md")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("资产文件不存在: %s", id)
+			}
+			return fmt.Errorf("读取资产文件失败: %w", err)
+		}
+
+		// Parse front matter
+		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
+		if err != nil {
+			return fmt.Errorf("解析 front matter 失败: %w", err)
+		}
+
+		// Update state
+		fm.State = "archived"
+
+		// Write back
+		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
+		if err != nil {
+			return fmt.Errorf("序列化失败: %w", err)
+		}
+
+		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("写入文件失败: %w", err)
+		}
+
+		fmt.Printf("资产已归档: %s\n", id)
+		return nil
+	},
+}
+
+var assetRestoreCmd = &cobra.Command{
+	Use:   "restore <id>",
+	Short: "恢复资产",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id := args[0]
+
+		// Find the file
+		filePath := filepath.Join("prompts", id+".md")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("资产文件不存在: %s", id)
+			}
+			return fmt.Errorf("读取资产文件失败: %w", err)
+		}
+
+		// Parse front matter
+		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
+		if err != nil {
+			return fmt.Errorf("解析 front matter 失败: %w", err)
+		}
+
+		// Update state
+		fm.State = "active"
+
+		// Write back
+		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
+		if err != nil {
+			return fmt.Errorf("序列化失败: %w", err)
+		}
+
+		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("写入文件失败: %w", err)
+		}
+
+		fmt.Printf("资产已恢复: %s\n", id)
+		return nil
+	},
+}
+
+var assetPromoteCmd = &cobra.Command{
+	Use:   "promote <asset_id> <snapshot_id>",
+	Short: "标记推荐版本",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		assetID := args[0]
+		snapshotID := args[1]
+
+		// Find the file
+		filePath := filepath.Join("prompts", assetID+".md")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("资产文件不存在: %s", assetID)
+			}
+			return fmt.Errorf("读取资产文件失败: %w", err)
+		}
+
+		// Parse front matter
+		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
+		if err != nil {
+			return fmt.Errorf("解析 front matter 失败: %w", err)
+		}
+
+		// Update recommended_snapshot_id
+		fm.RecommendedSnapshotID = snapshotID
+
+		// Write back
+		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
+		if err != nil {
+			return fmt.Errorf("序列化失败: %w", err)
+		}
+
+		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("写入文件失败: %w", err)
+		}
+
+		fmt.Printf("已标记推荐版本: %s -> %s\n", assetID, snapshotID)
+		return nil
+	},
+}
+
+var assetDemoteCmd = &cobra.Command{
+	Use:   "demote <asset_id>",
+	Short: "取消推荐版本",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		assetID := args[0]
+
+		// Find the file
+		filePath := filepath.Join("prompts", assetID+".md")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("资产文件不存在: %s", assetID)
+			}
+			return fmt.Errorf("读取资产文件失败: %w", err)
+		}
+
+		// Parse front matter
+		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
+		if err != nil {
+			return fmt.Errorf("解析 front matter 失败: %w", err)
+		}
+
+		// Clear recommended_snapshot_id
+		fm.RecommendedSnapshotID = ""
+
+		// Write back
+		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
+		if err != nil {
+			return fmt.Errorf("序列化失败: %w", err)
+		}
+
+		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("写入文件失败: %w", err)
+		}
+
+		fmt.Printf("已取消推荐版本: %s\n", assetID)
 		return nil
 	},
 }

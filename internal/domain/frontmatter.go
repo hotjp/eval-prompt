@@ -21,15 +21,16 @@ type LabelEntry struct {
 // FrontMatter represents the YAML front matter in a .md prompt file.
 // This is the canonical format for storing prompt metadata in the filesystem.
 type FrontMatter struct {
-	ID          string            `yaml:"id"`
-	Name        string            `yaml:"name"`
-	Description string            `yaml:"description,omitempty"`
-	Version     string            `yaml:"version,omitempty"`
-	ContentHash string            `yaml:"content_hash"`
-	State       string            `yaml:"state"`
-	Tags        []string          `yaml:"tags,omitempty"`
-	EvalHistory []EvalHistoryEntry `yaml:"eval_history,omitempty"`
-	Labels      []LabelEntry       `yaml:"labels,omitempty"`
+	ID                     string            `yaml:"id"`
+	Name                   string            `yaml:"name"`
+	Description            string            `yaml:"description,omitempty"`
+	Version                string            `yaml:"version,omitempty"`
+	ContentHash            string            `yaml:"content_hash"`
+	State                  string            `yaml:"state"`
+	Tags                   []string          `yaml:"tags,omitempty"`
+	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`
+	Labels                 []LabelEntry       `yaml:"labels,omitempty"`
+	RecommendedSnapshotID  string            `yaml:"recommended_snapshot_id,omitempty"`
 }
 
 // Validate validates the front matter structure.
