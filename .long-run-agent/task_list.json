@@ -142,28 +142,49 @@
       "id": "task_009",
       "title": "D05 OutboxEvent + AuditLog Storage",
       "desc": "D05 OutboxEvent + AuditLog Storage — 事务内写入、轮询转发",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "domain",
-      "updated_at": "2026-04-24T23:46:44.211177"
+      "updated_at": "2026-04-25T00:18:50.541664",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_010",
       "title": "D06 ModelAdaptation Storage",
       "desc": "D06 ModelAdaptation Storage — 跨模型适配记录",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P2",
       "category": "domain",
-      "updated_at": "2026-04-24T23:46:44.450452"
+      "updated_at": "2026-04-25T00:18:51.487994",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_011",
       "title": "P01 GitBridger 接口 + 实现",
       "desc": "P01 GitBridger 接口 + 实现 — go-git: Init/Add/Commit/Diff/Log/Status",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "category": "plugin",
-      "updated_at": "2026-04-24T23:46:44.681329"
+      "updated_at": "2026-04-25T00:18:52.486506",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_012",
@@ -210,19 +231,33 @@
       "id": "task_015",
       "title": "P05 TraceCollector 接口",
       "desc": "P05 TraceCollector 接口 — Span/Event 收集、JSONL trace 文件",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "plugin",
-      "updated_at": "2026-04-24T23:47:59.314751"
+      "updated_at": "2026-04-25T00:20:23.011708",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_016",
       "title": "P06 ModelAdapter 接口 + 实现",
       "desc": "P06 ModelAdapter 接口 + 实现 — 跨模型格式转换、参数调整、规则库",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "plugin",
-      "updated_at": "2026-04-24T23:47:59.549124"
+      "updated_at": "2026-04-25T00:13:50.248889",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_017",
@@ -260,17 +295,26 @@
       "id": "task_019",
       "title": "S03 SyncService",
       "desc": "S03 SyncService — Reconcile、索引重建、导出备份",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "service"
+      "category": "service",
+      "updated_at": "2026-04-25T00:14:15.314506",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_020",
       "title": "S04 TriggerService",
       "desc": "S04 TriggerService — 触发匹配、Anti-Pattern Guard、变量注入",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "service"
+      "category": "service",
+      "updated_at": "2026-04-25T00:20:21.211576"
     },
     {
       "id": "task_021",
@@ -476,25 +520,28 @@
       "id": "task_046",
       "title": "H01 路径 Sanitize",
       "desc": "H01 路径 Sanitize — 清理 ..、校验沙箱目录",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "security"
+      "category": "security",
+      "updated_at": "2026-04-25T00:20:59.216293"
     },
     {
       "id": "task_047",
       "title": "H02 命令白名单",
       "desc": "H02 命令白名单 — Eval 执行命令校验",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "security"
+      "category": "security",
+      "updated_at": "2026-04-25T00:20:59.489468"
     },
     {
       "id": "task_048",
       "title": "H03 资源限制",
       "desc": "H03 资源限制 — 超时、文件大小/数量限制",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P1",
-      "category": "security"
+      "category": "security",
+      "updated_at": "2026-04-25T00:20:59.822260"
     },
     {
       "id": "task_049",
