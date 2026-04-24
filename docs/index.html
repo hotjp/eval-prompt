@@ -29,6 +29,9 @@
       box-sizing: border-box;
     }
 
+    html {
+      overflow-x: hidden;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--go-darker);
@@ -427,39 +430,63 @@
     /* CLI Examples */
     .cli-section {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 1.5rem;
+      overflow: hidden;
     }
     .cli-card {
       background: var(--go-dark);
       border: 1px solid rgba(0, 217, 255, 0.1);
       border-radius: 0.8rem;
       padding: 1.5rem;
+      overflow: hidden;
     }
     .cli-card h4 {
       font-size: 1rem;
       font-weight: 600;
       margin-bottom: 1rem;
       color: var(--go-cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    .cli-code {
+    .cli-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .cli-item {
       background: rgba(0, 0, 0, 0.3);
       border-radius: 0.4rem;
-      padding: 1rem;
+      padding: 0.8rem 1rem;
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       font-size: 0.85rem;
       overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--go-gray) transparent;
+      min-width: 0;
     }
-    .cli-code .prompt {
+    .cli-item .cmd-line {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .cli-item .prompt {
       color: var(--text-secondary);
+      flex-shrink: 0;
     }
-    .cli-code .command {
+    .cli-item .command {
       color: var(--go-cyan);
     }
-    .cli-code .comment {
+    .cli-item .desc {
       color: #6a6a8a;
+      font-size: 0.8rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin-left: 1.5rem;
       display: block;
-      margin-top: 0.5rem;
+      margin-top: 0.2rem;
     }
 
     /* Install */
@@ -577,6 +604,302 @@
       .pain-grid {
         grid-template-columns: 1fr;
       }
+      .cli-section {
+        grid-template-columns: 1fr;
+      }
+      .ui-tabs {
+        flex-wrap: wrap;
+      }
+      .ui-preview {
+        min-width: 0;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .cli-section {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Web UI Mockup */
+    .ui-mockup-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    .ui-mockup-card {
+      background: var(--go-dark);
+      border: 1px solid rgba(0, 217, 255, 0.15);
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    .ui-mockup-header {
+      background: var(--go-gray);
+      padding: 0.7rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .ui-dots {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .ui-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .ui-dot.r { background: #ff5f56; }
+    .ui-dot.y { background: #ffbd2e; }
+    .ui-dot.g { background: #27c93f; }
+    .ui-url-bar {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border-radius: 0.3rem;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: monospace;
+    }
+    .ui-body {
+      padding: 0;
+      display: flex;
+      height: 280px;
+    }
+    .ui-sidebar {
+      width: 140px;
+      background: rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      padding: 1rem 0.8rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .ui-sidebar-title {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 0.6rem;
+    }
+    .ui-tree-item {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-bottom: 0.2rem;
+      cursor: default;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ui-tree-item.active {
+      background: rgba(0, 217, 255, 0.15);
+      color: var(--go-cyan);
+    }
+    .ui-tree-item .count {
+      float: right;
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.05);
+      padding: 0 0.3rem;
+      border-radius: 0.2rem;
+    }
+    .ui-main {
+      flex: 1;
+      padding: 1rem;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .ui-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      flex: 1;
+      overflow: hidden;
+    }
+    .ui-asset-card {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(0, 217, 255, 0.1);
+      border-radius: 0.5rem;
+      padding: 0.7rem;
+      overflow: hidden;
+    }
+    .ui-asset-card .title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ui-asset-card .meta {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+    .ui-asset-card .tags {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+    }
+    .ui-tag {
+      font-size: 0.6rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.2rem;
+      background: rgba(0, 217, 255, 0.1);
+      color: var(--go-cyan);
+    }
+    .ui-tag.prod {
+      background: rgba(39, 201, 63, 0.15);
+      color: #27c93f;
+    }
+    .ui-tag.draft {
+      background: rgba(255, 189, 46, 0.1);
+      color: #ffbd2e;
+    }
+    .ui-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .ui-score.pass { color: #27c93f; }
+    .ui-score.fail { color: #ff5f56; }
+    .ui-panel-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 0.8rem;
+      overflow: hidden;
+    }
+    .ui-editor-preview {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border-radius: 0.5rem;
+      border: 1px solid rgba(0,217,255,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .ui-editor-tabs {
+      display: flex;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .ui-editor-tab {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+    }
+    .ui-editor-tab.active {
+      color: var(--go-cyan);
+      border-bottom-color: var(--go-cyan);
+    }
+    .ui-editor-content {
+      padding: 0.6rem;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+    .ui-editor-content .kw {
+      color: var(--go-cyan);
+    }
+    .ui-editor-content .str {
+      color: #ffbd2e;
+    }
+    .ui-editor-content .cmt {
+      color: #6a6a8a;
+    }
+    .ui-eval-panel {
+      background: rgba(0,0,0,0.25);
+      border-radius: 0.5rem;
+      border: 1px solid rgba(0,217,255,0.1);
+      padding: 0.7rem;
+      flex-shrink: 0;
+    }
+    .ui-eval-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .ui-eval-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .ui-gauge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ui-gauge-ring {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid rgba(39, 201, 63, 0.3);
+      border-top-color: #27c93f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #27c93f;
+    }
+    .ui-eval-cases {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .ui-case-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.7rem;
+      padding: 0.25rem 0.4rem;
+      border-radius: 0.3rem;
+      background: rgba(0,0,0,0.2);
+    }
+    .ui-case-item .icon {
+      color: #27c93f;
+    }
+    .ui-case-item.fail .icon { color: #ff5f56; }
+    .ui-case-name {
+      flex: 1;
+      color: var(--text-secondary);
+    }
+    .ui-case-score {
+      font-weight: 600;
+    }
+    .ui-case-score.pass { color: #27c93f; }
+    .ui-case-score.fail { color: #ff5f56; }
+    .ui-view-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 0.8rem;
+    }
+    .ui-view-desc {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 0.3rem;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .ui-preview {
+      min-width: 0;
     }
 
     /* Scroll animation */
@@ -611,7 +934,7 @@
         <ul class="navbar-nav ms-auto">
           <li class="nav-item"><a class="nav-link" href="#pain-points"><i class="fas fa-fire"></i>痛点</a></li>
           <li class="nav-item"><a class="nav-link" href="#features"><i class="fas fa-star"></i>特性</a></li>
-          <li class="nav-item"><a class="nav-link" href="#architecture"><i class="fas fa-layer-group"></i>架构</a></li>
+          <li class="nav-item"><a class="nav-link" href="#web-ui"><i class="fas fa-desktop"></i>Web UI</a></li>
           <li class="nav-item"><a class="nav-link" href="#cli"><i class="fas fa-terminal"></i>CLI</a></li>
           <li class="nav-item"><a class="nav-link" href="#stack"><i class="fas fa-cubes"></i>技术栈</a></li>
           <li class="nav-item"><a class="nav-link" href="#install"><i class="fas fa-download"></i>安装</a></li>
@@ -852,41 +1175,380 @@
   <!-- CLI -->
   <section class="section section-alt" id="cli">
     <div class="container">
-      <h2 class="section-title">CLI 命令行</h2>
-      <p class="section-subtitle">简洁的命令行接口，Agent 和人类均可高效操作</p>
+      <h2 class="section-title">两种入口，灵活选用</h2>
+      <p class="section-subtitle">
+        <strong>Web UI</strong> 给人类使用 — 资产浏览、编辑、版本树、Eval 报告全部可视化<br>
+        <strong>CLI / MCP</strong> 给 Agent 使用 — 语义匹配、管道集成、CI/CD 自动化
+      </p>
       <div class="cli-section">
         <div class="cli-card" data-animate>
-          <h4><i class="fas fa-terminal me-2"></i>资产管理</h4>
-          <div class="cli-code">
-            <span class="prompt">$</span> <span class="command">ep asset list</span>
-            <span class="prompt">$</span> <span class="command">ep asset show common/code-review</span>
-            <span class="prompt">$</span> <span class="command">ep asset create --id common/sql-inject --file prompt.md</span>
-            <span class="prompt">$</span> <span class="command">ep asset edit common/sql-inject --stdin</span>
+          <h4><i class="fas fa-terminal"></i>资产管理</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep asset list</span></div>
+              <span class="desc">查看所有 Prompt 资产</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep asset show common/code-review</span></div>
+              <span class="desc">查看指定资产的详细信息</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep asset create --id common/sql-review --file prompt.md</span></div>
+              <span class="desc">新建 Prompt 资产并提交 Git</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep asset edit common/sql-review --stdin</span></div>
+              <span class="desc">通过管道编辑资产内容</span>
+            </div>
           </div>
         </div>
         <div class="cli-card" data-animate>
-          <h4><i class="fas fa-code-compare me-2"></i>版本与 Eval</h4>
-          <div class="cli-code">
-            <span class="prompt">$</span> <span class="command">ep snapshot list common/code-review</span>
-            <span class="prompt">$</span> <span class="command">ep snapshot diff common/code-review v1.2 v1.3</span>
-            <span class="prompt">$</span> <span class="command">ep eval run common/code-review --json</span>
-            <span class="prompt">$</span> <span class="command">ep eval compare common/code-review v1.2 v1.3</span>
+          <h4><i class="fas fa-code-compare"></i>版本与 Eval</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep snapshot list common/code-review</span></div>
+              <span class="desc">查看资产的版本历史</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep snapshot diff common/code-review v1.2 v1.3</span></div>
+              <span class="desc">对比两个版本的差异</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep eval run common/code-review --json</span></div>
+              <span class="desc">运行评测，输出结构化结果</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep snapshot checkout common/code-review v1.2</span></div>
+              <span class="desc">切换到指定版本</span>
+            </div>
           </div>
         </div>
         <div class="cli-card" data-animate>
-          <h4><i class="fas fa-wand-magic-sparkles me-2"></i>Agent 自主优化</h4>
-          <div class="cli-code">
-            <span class="prompt">$</span> <span class="command">ep optimize common/code-review --strategy failure_driven</span>
-            <span class="prompt">$</span> <span class="command">ep eval diagnose run-123 --format json</span>
-            <span class="prompt">$</span> <span class="command">ep adapt common/code-review --from claude --to gpt-4o</span>
+          <h4><i class="fas fa-tag"></i>Label 晋升</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep label list common/code-review</span></div>
+              <span class="desc">查看资产的所有标签</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep label set common/code-review prod v1.3</span></div>
+              <span class="desc">将 v1.3 标记为生产版本</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep eval compare common/code-review v1.2 v1.3</span></div>
+              <span class="desc">对比两个版本的评测得分</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep label unset common/code-review prod</span></div>
+              <span class="desc">移除生产标签</span>
+            </div>
           </div>
         </div>
         <div class="cli-card" data-animate>
-          <h4><i class="fas fa-robot me-2"></i>Agent 消费</h4>
-          <div class="cli-code">
-            <span class="prompt">$</span> <span class="command">ep trigger match "检查Go代码SQL注入" --top 1</span>
-            <span class="prompt">$</span> <span class="command">ep trigger match "代码评审" --biz-line common --json</span>
+          <h4><i class="fas fa-wand-magic-sparkles"></i>Agent 自主优化</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep optimize common/code-review --strategy failure_driven</span></div>
+              <span class="desc">分析失败用例，生成并验证优化</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep eval diagnose run-123 --format json</span></div>
+              <span class="desc">归因失败原因，输出优化建议</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep adapt common/code-review --from claude --to gpt-4o</span></div>
+              <span class="desc">跨模型适配 Prompt</span>
+            </div>
           </div>
+        </div>
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-robot"></i>Agent 消费</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep trigger match "SQL注入检测" --top 1</span></div>
+              <span class="desc">语义匹配最相关的 Prompt</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep trigger match "代码评审" --biz-line common --json</span></div>
+              <span class="desc">按业务线筛选，输出 JSON</span>
+            </div>
+          </div>
+        </div>
+        <div class="cli-card" data-animate>
+          <h4><i class="fas fa-arrows-rotate"></i>同步与工具</h4>
+          <div class="cli-list">
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep sync reconcile</span></div>
+              <span class="desc">对账 Git 仓库与数据库索引</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep sync export --format json</span></div>
+              <span class="desc">导出全部资产为 JSON</span>
+            </div>
+            <div class="cli-item">
+              <div class="cmd-line"><span class="prompt">$</span> <span class="command">ep version</span></div>
+              <span class="desc">查看版本信息</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Web UI -->
+  <section class="section" id="web-ui">
+    <div class="container">
+      <h2 class="section-title">Web UI 概览</h2>
+      <p class="section-subtitle">浏览器访问，本地服务，数据永不离开你的机器</p>
+      <div class="ui-mockup-wrap">
+        <!-- 资产库视图 -->
+        <div class="ui-preview" data-animate>
+          <div class="ui-mockup-card">
+            <div class="ui-mockup-header">
+              <div class="ui-dots">
+                <span class="ui-dot r"></span>
+                <span class="ui-dot y"></span>
+                <span class="ui-dot g"></span>
+              </div>
+              <div class="ui-url-bar">http://127.0.0.1:8080/assets</div>
+            </div>
+            <div class="ui-body">
+              <div class="ui-sidebar">
+                <div class="ui-sidebar-title">业务线</div>
+                <div class="ui-tree-item active">common <span class="count">12</span></div>
+                <div class="ui-tree-item">security <span class="count">5</span></div>
+                <div class="ui-tree-item">ops <span class="count">8</span></div>
+                <div class="ui-tree-item">data <span class="count">3</span></div>
+                <div class="ui-sidebar-title" style="margin-top:1rem;">标签</div>
+                <div class="ui-tree-item">prod <span class="count">9</span></div>
+                <div class="ui-tree-item">draft <span class="count">6</span></div>
+              </div>
+              <div class="ui-main">
+                <div class="ui-card-grid">
+                  <div class="ui-asset-card">
+                    <div class="title">common/code-review</div>
+                    <div class="meta">v1.2.3 · updated 2h ago</div>
+                    <div class="tags">
+                      <span class="ui-tag prod">prod</span>
+                      <span class="ui-tag">go</span>
+                      <span class="ui-tag">review</span>
+                    </div>
+                    <div style="margin-top:0.4rem;">
+                      <span class="ui-score pass">● 92</span>
+                    </div>
+                  </div>
+                  <div class="ui-asset-card">
+                    <div class="title">common/sql-inject</div>
+                    <div class="meta">v1.1.0 · updated 1d ago</div>
+                    <div class="tags">
+                      <span class="ui-tag">security</span>
+                      <span class="ui-tag">sql</span>
+                    </div>
+                    <div style="margin-top:0.4rem;">
+                      <span class="ui-score pass">● 88</span>
+                    </div>
+                  </div>
+                  <div class="ui-asset-card">
+                    <div class="title">security/xss-check</div>
+                    <div class="meta">v2.0.1 · updated 3d ago</div>
+                    <div class="tags">
+                      <span class="ui-tag draft">draft</span>
+                      <span class="ui-tag">security</span>
+                    </div>
+                    <div style="margin-top:0.4rem;">
+                      <span class="ui-score fail">● 71</span>
+                    </div>
+                  </div>
+                  <div class="ui-asset-card">
+                    <div class="title">ops/log-parser</div>
+                    <div class="meta">v1.0.4 · updated 5d ago</div>
+                    <div class="tags">
+                      <span class="ui-tag prod">prod</span>
+                      <span class="ui-tag">ops</span>
+                    </div>
+                    <div style="margin-top:0.4rem;">
+                      <span class="ui-score pass">● 95</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ui-view-label">资产库视图</div>
+          <div class="ui-view-desc">左侧分类树 + 右侧卡片网格，顶部搜索筛选，每张卡片展示版本、标签、Eval 得分</div>
+        </div>
+
+        <!-- 编辑器视图 -->
+        <div class="ui-preview" data-animate>
+          <div class="ui-mockup-card">
+            <div class="ui-mockup-header">
+              <div class="ui-dots">
+                <span class="ui-dot r"></span>
+                <span class="ui-dot y"></span>
+                <span class="ui-dot g"></span>
+              </div>
+              <div class="ui-url-bar">http://127.0.0.1:8080/assets/common/code-review/edit</div>
+            </div>
+            <div class="ui-body" style="height:280px;">
+              <div class="ui-panel-right">
+                <div class="ui-editor-preview">
+                  <div class="ui-editor-tabs">
+                    <div class="ui-editor-tab active">PROMPT.md</div>
+                    <div class="ui-editor-tab">预览</div>
+                    <div class="ui-editor-tab">变量注入</div>
+                  </div>
+                  <div class="ui-editor-content">
+                    <span class="cmt">---</span><br>
+                    <span class="kw">id:</span> <span class="str">common/code-review</span><br>
+                    <span class="kw">version:</span> <span class="str">1.2.3</span><br>
+                    <span class="kw">model:</span> <span class="str">claude-3-5-sonnet</span><br>
+                    <span class="cmt">---</span><br><br>
+                    <span class="cmt">## Instruction</span><br>
+                    你是一位资深 Go 开发专家...<br><br>
+                    <span class="cmt">## Examples</span><br>
+                    <span class="str">Input:</span> <span class="kw">func GetUser...</span><br>
+                    <span class="str">Output:</span> <span class="str">{"issues": [...]}</span>
+                  </div>
+                </div>
+                <div class="ui-eval-panel">
+                  <div class="ui-eval-header">
+                    <span class="ui-eval-title">当前版本 Eval</span>
+                    <div class="ui-gauge">
+                      <div class="ui-gauge-ring">92</div>
+                      <span class="ui-score pass">92/100</span>
+                    </div>
+                  </div>
+                  <div class="ui-eval-cases">
+                    <div class="ui-case-item">
+                      <span class="icon">✓</span>
+                      <span class="ui-case-name">go-sql-injection</span>
+                      <span class="ui-case-score pass">95</span>
+                    </div>
+                    <div class="ui-case-item">
+                      <span class="icon">✓</span>
+                      <span class="ui-case-name">null-pointer-check</span>
+                      <span class="ui-case-score pass">90</span>
+                    </div>
+                    <div class="ui-case-item fail">
+                      <span class="icon">✗</span>
+                      <span class="ui-case-name">concurrent-safe</span>
+                      <span class="ui-case-score fail">82</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ui-view-label">编辑器视图</div>
+          <div class="ui-view-desc">Monaco Editor 编辑，左侧编写区，右侧实时预览，底部展示当前版本的 Eval 得分明细</div>
+        </div>
+
+        <!-- 版本树视图 -->
+        <div class="ui-preview" data-animate>
+          <div class="ui-mockup-card">
+            <div class="ui-mockup-header">
+              <div class="ui-dots">
+                <span class="ui-dot r"></span>
+                <span class="ui-dot y"></span>
+                <span class="ui-dot g"></span>
+              </div>
+              <div class="ui-url-bar">http://127.0.0.1:8080/assets/common/code-review/history</div>
+            </div>
+            <div class="ui-body" style="height:280px; align-items:flex-start; padding-top:1rem;">
+              <div style="display:flex; gap:2rem; padding:0 1rem; width:100%;">
+                <div style="width:60px; display:flex; flex-direction:column; align-items:center; gap:0;">
+                  <div style="width:12px; height:12px; border-radius:50%; background:#27c93f; border:2px solid #27c93f;"></div>
+                  <div style="width:2px; flex:1; background:rgba(0,217,255,0.2);"></div>
+                  <div style="width:12px; height:12px; border-radius:50%; background:rgba(0,217,255,0.3); border:2px solid var(--go-cyan);"></div>
+                  <div style="width:2px; flex:1; background:rgba(0,217,255,0.2);"></div>
+                  <div style="width:12px; height:12px; border-radius:50%; background:rgba(0,217,255,0.2); border:2px solid rgba(0,217,255,0.4);"></div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:1.5rem; padding-top:0;">
+                  <div>
+                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-primary);">v1.2.3 <span style="font-size:0.65rem; color:var(--go-cyan); background:rgba(0,217,255,0.1); padding:0.1rem 0.4rem; border-radius:0.2rem;">prod</span></div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:0.2rem;">修复并发场景误报 · alice · 2h ago</div>
+                    <div style="font-size:0.7rem; color:#27c93f; margin-top:0.2rem;">● 92 pass</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-primary);">v1.2.2</div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:0.2rem;">增加安全检查维度 · alice · 1d ago</div>
+                    <div style="font-size:0.7rem; color:#27c93f; margin-top:0.2rem;">● 89 pass</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-primary);">v1.2.0</div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:0.2rem;">重构 Instruction 结构 · bob · 3d ago</div>
+                    <div style="font-size:0.7rem; color:#ff5f56; margin-top:0.2rem;">● 71 fail</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ui-view-label">版本树视图</div>
+          <div class="ui-view-desc">垂直时间轴展示 Snapshot 历史，节点显示版本号、提交信息、Eval 得分，prod 标签高亮</div>
+        </div>
+
+        <!-- Eval 报告视图 -->
+        <div class="ui-preview" data-animate>
+          <div class="ui-mockup-card">
+            <div class="ui-mockup-header">
+              <div class="ui-dots">
+                <span class="ui-dot r"></span>
+                <span class="ui-dot y"></span>
+                <span class="ui-dot g"></span>
+              </div>
+              <div class="ui-url-bar">http://127.0.0.1:8080/eval/run-20260424-001</div>
+            </div>
+            <div class="ui-body" style="height:280px;">
+              <div class="ui-panel-right">
+                <div style="display:flex; gap:0.8rem; margin-bottom:0.3rem;">
+                  <div style="flex:1; background:rgba(0,0,0,0.25); border-radius:0.5rem; padding:0.7rem; text-align:center; border:1px solid rgba(0,217,255,0.1);">
+                    <div style="font-size:1.4rem; font-weight:800; color:#27c93f;">92</div>
+                    <div style="font-size:0.65rem; color:var(--text-secondary);">总体得分</div>
+                  </div>
+                  <div style="flex:1; background:rgba(0,0,0,0.25); border-radius:0.5rem; padding:0.7rem; text-align:center; border:1px solid rgba(0,217,255,0.1);">
+                    <div style="font-size:1.4rem; font-weight:800; color:#27c93f;">100%</div>
+                    <div style="font-size:0.65rem; color:var(--text-secondary);">通过率</div>
+                  </div>
+                  <div style="flex:1; background:rgba(0,0,0,0.25); border-radius:0.5rem; padding:0.7rem; text-align:center; border:1px solid rgba(0,217,255,0.1);">
+                    <div style="font-size:1.4rem; font-weight:800; color:var(--go-cyan);">3/3</div>
+                    <div style="font-size:0.65rem; color:var(--text-secondary);">用例通过</div>
+                  </div>
+                </div>
+                <div class="ui-eval-panel" style="flex:1; overflow:auto;">
+                  <div class="ui-eval-header">
+                    <span class="ui-eval-title">评测明细</span>
+                    <span style="font-size:0.65rem; color:var(--text-secondary);">run-20260424-001 · 4.2s</span>
+                  </div>
+                  <div class="ui-eval-cases">
+                    <div class="ui-case-item">
+                      <span class="icon">✓</span>
+                      <span class="ui-case-name">go-sql-injection</span>
+                      <span class="ui-case-score pass">95</span>
+                    </div>
+                    <div class="ui-case-item">
+                      <span class="icon">✓</span>
+                      <span class="ui-case-name">null-pointer-check</span>
+                      <span class="ui-case-score pass">90</span>
+                    </div>
+                    <div class="ui-case-item">
+                      <span class="icon">✓</span>
+                      <span class="ui-case-name">concurrent-safe</span>
+                      <span class="ui-case-score pass">91</span>
+                    </div>
+                    <div style="margin-top:0.5rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.5rem;">
+                      <div style="font-size:0.65rem; color:var(--text-secondary); margin-bottom:0.3rem;">Token 消耗</div>
+                      <div style="display:flex; gap:1rem; font-size:0.7rem;">
+                        <span><span style="color:var(--text-secondary);">输入</span> <span style="color:var(--go-cyan);">1,240</span></span>
+                        <span><span style="color:var(--text-secondary);">输出</span> <span style="color:var(--go-cyan);">892</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ui-view-label">Eval 报告视图</div>
+          <div class="ui-view-desc">总体得分仪表盘、用例明细、Token 消耗、Trace 时长，全部可追溯</div>
         </div>
       </div>
     </div>
