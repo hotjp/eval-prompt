@@ -6,6 +6,10 @@
 *.dylib
 bin/
 dist/
+ep
+web/ep
+web/dist/
+web/node_modules/
 
 # Test binary
 *.test
