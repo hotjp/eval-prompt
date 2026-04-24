@@ -126,10 +126,17 @@
       "id": "task_008",
       "title": "D04 EvalCase + EvalRun 领域 + Storage",
       "desc": "D04 EvalCase + EvalRun 领域 + Storage — deterministic_score、rubric_score、Ent schema",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "domain",
-      "updated_at": "2026-04-24T23:46:43.973093"
+      "updated_at": "2026-04-24T23:55:37.751597",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_009",
@@ -162,10 +169,17 @@
       "id": "task_012",
       "title": "P02 LLMInvoker 接口 + 实现",
       "desc": "P02 LLMInvoker 接口 + 实现 — OpenAI/Claude/Ollama 调用、InvokeWithSchema",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "category": "plugin",
-      "updated_at": "2026-04-24T23:47:58.588028"
+      "updated_at": "2026-04-24T23:53:34.479473",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_013",
@@ -207,17 +221,26 @@
       "id": "task_017",
       "title": "S01 AssetService",
       "desc": "S01 AssetService — Asset CRUD、版本管理、Label 操作",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "service"
+      "category": "service",
+      "updated_at": "2026-04-25T00:01:51.430876",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_018",
       "title": "S02 EvalService",
       "desc": "S02 EvalService — Eval 编排、A/B 矩阵、报告生成",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
-      "category": "service"
+      "category": "service",
+      "updated_at": "2026-04-25T00:01:55.321232"
     },
     {
       "id": "task_019",

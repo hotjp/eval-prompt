@@ -148,3 +148,74 @@ type LLMInvoker interface {
 	// Returns the parsed JSON response.
 	InvokeWithSchema(ctx context.Context, prompt string, schema []byte) ([]byte, error)
 }
+
+// TraceEvent represents a single event in an evaluation trace.
+type TraceEvent struct {
+	SpanID    string                 `json:"span_id"`
+	ParentID  string                 `json:"parent_id,omitempty"`
+	Name      string                 `json:"name"`
+	Timestamp time.Time              `json:"timestamp"`
+	Type      string                 `json:"type"` // span_start | span_end | event | error
+	Data      map[string]any         `json:"data,omitempty"`
+}
+
+// TraceCollector collects evaluation trace events and writes them to JSONL files.
+type TraceCollector interface {
+	// StartSpan begins a new trace span and returns an updated context with span info.
+	StartSpan(ctx context.Context, assetID, snapshotID string) (context.Context, error)
+
+	// RecordEvent records a trace event to the current span.
+	RecordEvent(ctx context.Context, event TraceEvent) error
+
+	// Finalize completes the trace and returns the path to the trace file.
+	Finalize(ctx context.Context) (string, error)
+}
+
+// DeterministicCheck defines a deterministic check to run on trace events.
+type DeterministicCheck struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"` // command_executed, file_exists, json_valid, content_contains, json_path
+	Path     string `json:"path,omitempty"`
+	Expected string `json:"expected,omitempty"`
+	JSONPath string `json:"json_path,omitempty"`
+}
+
+// DeterministicResult contains the result of deterministic evaluation.
+type DeterministicResult struct {
+	Passed  bool     `json:"passed"`
+	Score   float64  `json:"score"` // 0.0 - 1.0
+	Message string   `json:"message,omitempty"`
+	Failed  []string `json:"failed,omitempty"` // IDs of failed checks
+}
+
+// Rubric defines the evaluation rubric structure.
+type Rubric struct {
+	MaxScore int          `json:"max_score"`
+	Checks   []RubricCheck `json:"checks"`
+}
+
+// RubricCheck defines a single check in the rubric.
+type RubricCheck struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Weight      int    `json:"weight"`
+}
+
+// RubricResult contains the result of rubric-based evaluation.
+type RubricResult struct {
+	Score    int                  `json:"score"`
+	MaxScore int                  `json:"max_score"`
+	Passed   bool                 `json:"passed"`
+	Details  []RubricCheckResult  `json:"details,omitempty"`
+	Message  string               `json:"message,omitempty"`
+}
+
+// EvalRunner runs evaluations on prompt outputs.
+// Implemented by plugins/eval.
+type EvalRunner interface {
+	// RunDeterministic runs deterministic checks on trace events.
+	RunDeterministic(ctx context.Context, trace []TraceEvent, checks []DeterministicCheck) (DeterministicResult, error)
+
+	// RunRubric runs LLM-based rubric evaluation on output.
+	RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker) (RubricResult, error)
+}
