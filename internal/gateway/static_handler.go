@@ -6,7 +6,6 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
-	"path"
 	"strings"
 )
 
@@ -31,27 +30,27 @@ func StaticHandler() http.Handler {
 	fileServer := http.FileServer(http.FS(fs))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Try to serve the file directly
-		filePath := path.Join("/", r.URL.Path)
+		// Clean the path
+		path := strings.TrimPrefix(r.URL.Path, "/")
 
-		// Check if file exists
-		if _, err := fs.Open(filePath); err == nil {
+		// Try to open the file directly
+		if f, err := fs.Open(path); err == nil {
+			f.Close()
 			fileServer.ServeHTTP(w, r)
 			return
 		}
 
-		// SPA fallback: serve index.html for non-file paths
-		if !strings.Contains(r.URL.Path, ".") {
-			indexPath := path.Join("/", "index.html")
-			if f, err := fs.Open(indexPath); err == nil {
+		// SPA fallback: serve index.html for non-asset paths
+		if !strings.Contains(r.URL.Path, ".") || strings.HasPrefix(r.URL.Path, "/assets/") {
+			if f, err := fs.Open("index.html"); err == nil {
 				f.Close()
-				http.ServeFileFS(w, r, fs, indexPath)
+				http.ServeFileFS(w, r, fs, "index.html")
 				return
 			}
 		}
 
-		// Fallback to index.html for SPA routing
-		http.ServeFileFS(w, r, fs, "/index.html")
+		// Default fallback to index.html for SPA routing
+		http.ServeFileFS(w, r, fs, "index.html")
 	})
 }
 

@@ -24,6 +24,7 @@ build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p ./bin
 	cd web && npm run build 2>/dev/null || true
+	rm -rf internal/gateway/web/dist && cp -r web/dist internal/gateway/web/
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_PATH) ./cmd/ep/
 
 ## build-server: Build the server binary
