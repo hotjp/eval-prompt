@@ -613,10 +613,22 @@
       .ui-preview {
         min-width: 0;
       }
+      .ui-mockup-wrap {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (min-width: 769px) and (max-width: 1024px) {
       .cli-section {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .ui-mockup-wrap {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1025px) {
+      .ui-mockup-wrap {
         grid-template-columns: repeat(2, 1fr);
       }
     }
@@ -624,7 +636,6 @@
     /* Web UI Mockup */
     .ui-mockup-wrap {
       display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 2rem;
       margin-top: 2rem;
     }
