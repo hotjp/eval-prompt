@@ -311,10 +311,17 @@
       "id": "task_020",
       "title": "S04 TriggerService",
       "desc": "S04 TriggerService — 触发匹配、Anti-Pattern Guard、变量注入",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "service",
-      "updated_at": "2026-04-25T00:20:21.211576"
+      "updated_at": "2026-04-25T00:26:56.349081",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_021",
@@ -344,49 +351,97 @@
       "id": "task_024",
       "title": "G01 PromptAssetHandler",
       "desc": "G01 PromptAssetHandler — Asset CRUD、版本管理 API",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:04.173392",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_025",
       "title": "G02 EvalHandler",
       "desc": "G02 EvalHandler — Eval 执行、报告查询 API",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:05.231272",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_026",
       "title": "G03 TriggerHandler",
       "desc": "G03 TriggerHandler — Prompt 匹配查询 API",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:06.308004",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_027",
       "title": "G04 MCPHandler + SSE",
       "desc": "G04 MCPHandler + SSE — MCP 协议端点: prompts/list、prompts/get、prompts/eval",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:07.345299",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_028",
       "title": "G05 StaticHandler + Go embed",
       "desc": "G05 StaticHandler + Go embed — React 静态资源打包",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:08.377310",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_029",
       "title": "G06 中间件注册",
       "desc": "G06 中间件注册 — Recover/RequestID/Metrics/Logging/CORS",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
-      "category": "gateway"
+      "category": "gateway",
+      "updated_at": "2026-04-25T00:26:09.389235",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_030",
@@ -520,52 +575,97 @@
       "id": "task_046",
       "title": "H01 路径 Sanitize",
       "desc": "H01 路径 Sanitize — 清理 ..、校验沙箱目录",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "category": "security",
-      "updated_at": "2026-04-25T00:20:59.216293"
+      "updated_at": "2026-04-25T00:25:20.106442",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_047",
       "title": "H02 命令白名单",
       "desc": "H02 命令白名单 — Eval 执行命令校验",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
       "category": "security",
-      "updated_at": "2026-04-25T00:20:59.489468"
+      "updated_at": "2026-04-25T00:25:20.889535",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_048",
       "title": "H03 资源限制",
       "desc": "H03 资源限制 — 超时、文件大小/数量限制",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P1",
       "category": "security",
-      "updated_at": "2026-04-25T00:20:59.822260"
+      "updated_at": "2026-04-25T00:25:21.660938",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_049",
       "title": "O01 slog 日志集成",
       "desc": "O01 slog 日志集成 — JSON Handler、trace_id/span_id 链路",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "observability"
+      "category": "observability",
+      "updated_at": "2026-04-25T00:26:11.734782",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_050",
       "title": "O02 OpenTelemetry",
       "desc": "O02 OpenTelemetry — Trace + Metrics、Prometheus 端点",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "observability"
+      "category": "observability",
+      "updated_at": "2026-04-25T00:26:12.773192",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_051",
       "title": "O03 Health Endpoints",
       "desc": "O03 Health Endpoints — /healthz、/readyz",
-      "status": "pending",
+      "status": "completed",
       "priority": "P1",
-      "category": "observability"
+      "category": "observability",
+      "updated_at": "2026-04-25T00:26:13.764528",
+      "ralph": {
+        "quality_checks": {
+          "tests_passed": false,
+          "lint_passed": false,
+          "acceptance_met": false
+        }
+      }
     },
     {
       "id": "task_052",
