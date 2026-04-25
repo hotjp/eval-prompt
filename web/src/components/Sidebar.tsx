@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Tooltip } from 'antd'
+import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -11,9 +11,25 @@ import {
   BranchesOutlined,
   SyncOutlined,
   FieldTimeOutlined,
+  FolderOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
-import { healthApi, adminApi, type HealthStatus, type GitInfo } from '../api/client'
+import { healthApi, adminApi, type HealthStatus } from '../api/client'
 import { useStore } from '../store'
+
+interface RepoStatus {
+  path?: string
+  valid?: boolean
+  branch?: string
+  dirty?: boolean
+  short_commit?: string
+  error?: string
+}
+
+interface RepoEntry {
+  path: string
+  status: string
+}
 
 const { Header } = Layout
 const { Text } = Typography
@@ -24,10 +40,13 @@ function Sidebar() {
   const navigate = useNavigate()
   const [serverStatus, setServerStatus] = useState<Status>('loading')
   const [healthData, setHealthData] = useState<HealthStatus | null>(null)
-  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null)
+  const [repoStatus, setRepoStatus] = useState<{ current?: RepoStatus; repos: RepoEntry[]; is_first_use: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
+  const [initModalOpen, setInitModalOpen] = useState(false)
+  const [initPath, setInitPath] = useState('')
+  const [initLoading, setInitLoading] = useState(false)
   const runningEval = useStore(s => s.runningEval)
 
   useEffect(() => {
@@ -64,18 +83,18 @@ function Sidebar() {
     }
   }
 
-  const fetchGitInfo = async () => {
+  const fetchRepoStatus = async () => {
     try {
-      const res = await adminApi.gitInfo()
-      setGitInfo(res)
+      const res = await adminApi.getRepoStatus()
+      setRepoStatus(res)
     } catch {
-      // Silently fail for git info
+      setRepoStatus(null)
     }
   }
 
   useEffect(() => {
     fetchHealth()
-    fetchGitInfo()
+    fetchRepoStatus()
     const interval = setInterval(fetchHealth, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -107,6 +126,65 @@ function Sidebar() {
       message.error('Failed to reload config')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoToLLMSettings = () => {
+    setStatusOpen(false)
+    navigate('/settings?section=llm')
+  }
+
+  const handleReconcile = async () => {
+    setLoading(true)
+    try {
+      const report = await adminApi.reconcile()
+      message.success(`Sync complete: ${report.added} added, ${report.updated} updated, ${report.deleted} deleted`)
+    } catch {
+      message.error('Sync failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGitPull = async () => {
+    setLoading(true)
+    try {
+      await adminApi.gitPull()
+      message.success('Git pull successful')
+      fetchRepoStatus()
+    } catch {
+      message.error('Git pull failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSwitchRepo = async (path: string) => {
+    setLoading(true)
+    try {
+      await adminApi.switchRepo(path)
+      message.success('Repository switched')
+      fetchRepoStatus()
+    } catch {
+      message.error('Failed to switch repository')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleInitRepo = async () => {
+    if (!initPath.trim()) return
+    setInitLoading(true)
+    try {
+      await adminApi.switchRepo(initPath.trim())
+      message.success('Repository initialized')
+      setInitModalOpen(false)
+      setInitPath('')
+      fetchRepoStatus()
+    } catch {
+      message.error('Failed to initialize repository')
+    } finally {
+      setInitLoading(false)
     }
   }
 
@@ -156,19 +234,6 @@ function Sidebar() {
     { key: '/compare', icon: <SwapOutlined />, label: 'Compare' },
     { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
   ]
-
-  const gitBranchContent = gitInfo ? (
-    <div style={{ fontSize: 12 }}>
-      {gitInfo.dirty ? (
-        <>
-          <div style={{ marginBottom: 4 }}>Uncommitted changes — run <code>git stash</code> or <code>git commit</code></div>
-          <div style={{ color: '#8c8c8c', fontSize: 11 }}>Working directory has uncommitted modifications</div>
-        </>
-      ) : (
-        <div>Branch: <strong>{gitInfo.branch}</strong></div>
-      )}
-    </div>
-  ) : null
 
   const popoverContent = (
     <div style={{ width: 260 }}>
@@ -252,6 +317,19 @@ function Sidebar() {
         </div>
       )}
 
+      {healthData?.checks?.llm?.status !== 'ok' && (
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            type="link"
+            size="small"
+            onClick={handleGoToLLMSettings}
+            style={{ padding: 0, fontSize: 12 }}
+          >
+            Configure LLM →
+          </Button>
+        </div>
+      )}
+
       {healthData && (
         <div style={{ marginBottom: 12 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>Details</Text>
@@ -322,6 +400,7 @@ function Sidebar() {
   )
 
   return (
+    <>
     <Header
       style={{
         background: '#fff',
@@ -358,26 +437,140 @@ function Sidebar() {
       />
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-        {gitInfo && (
-          <Tooltip
-            title={gitBranchContent}
-            placement="bottomRight"
-            arrow={false}
+        {repoStatus?.current?.valid ? (
+          <Dropdown
+            menu={{
+              items: [
+                // Repo path header
+                {
+                  key: 'current',
+                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>Current: {repoStatus.current?.path}</span>,
+                  disabled: true,
+                },
+                { type: 'divider' as const },
+                // Repo switcher (if repos exist)
+                ...(repoStatus.repos.length > 0 ? [
+                  {
+                    key: 'switch',
+                    label: 'Switch Repository',
+                    icon: <SwapOutlined />,
+                    children: repoStatus.repos.map(r => ({
+                      key: `repo-${r.path}`,
+                      label: (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12 }}>{r.path.split('/').pop()}</span>
+                          <span style={{ fontSize: 10, color: r.status === 'valid' ? '#52c41a' : '#ff4d4f' }}>
+                            {r.status === 'valid' ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      ),
+                      onClick: () => handleSwitchRepo(r.path),
+                    })),
+                  },
+                  { type: 'divider' as const },
+                ] : []),
+                // Init new repo
+                {
+                  key: 'init',
+                  label: 'Initialize New Repo',
+                  icon: <FolderOutlined />,
+                  onClick: () => setInitModalOpen(true),
+                },
+                { type: 'divider' as const },
+                // Git operations
+                {
+                  key: 'reconcile',
+                  label: 'Sync Index (Reconcile)',
+                  icon: <SyncOutlined />,
+                  onClick: handleReconcile,
+                },
+                {
+                  key: 'gitpull',
+                  label: 'Git Pull',
+                  icon: <BranchesOutlined />,
+                  onClick: handleGitPull,
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'refresh',
+                  label: 'Refresh',
+                  icon: <ReloadOutlined />,
+                  onClick: fetchRepoStatus,
+                },
+              ],
+            }}
+            trigger={['click']}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'default' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'pointer' }}>
               <BranchesOutlined style={{ fontSize: 11 }} />
-              {gitInfo.branch}
-              {gitInfo.dirty && <SyncOutlined spin style={{ fontSize: 10, color: '#fa8c16' }} />}
+              {repoStatus.current?.branch || 'no branch'}
+              {repoStatus.current?.dirty && <SyncOutlined spin style={{ fontSize: 10, color: '#fa8c16' }} />}
             </span>
-          </Tooltip>
+          </Dropdown>
+        ) : (
+          // No valid repo - show warning + init button
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'warning',
+                  label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ff4d4f' }}>
+                      <WarningOutlined />
+                      <span>No Git repository</span>
+                    </div>
+                  ),
+                  disabled: true,
+                },
+                {
+                  key: 'hint',
+                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>Initialize a repo to start</span>,
+                  disabled: true,
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'init',
+                  label: 'Initialize New Repo',
+                  icon: <FolderOutlined />,
+                  onClick: () => setInitModalOpen(true),
+                },
+              ],
+            }}
+            trigger={['click']}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ff4d4f', cursor: 'pointer' }}>
+              <WarningOutlined style={{ fontSize: 11 }} />
+              No Repo
+            </span>
+          </Dropdown>
         )}
-        {gitInfo?.short_commit && (
+        {repoStatus?.current?.short_commit && (
           <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
-            {gitInfo.short_commit}
+            {repoStatus.current.short_commit}
           </Text>
         )}
       </div>
     </Header>
+
+    <Modal
+      title="Initialize New Repository"
+      open={initModalOpen}
+      onOk={handleInitRepo}
+      onCancel={() => { setInitModalOpen(false); setInitPath('') }}
+      okText="Initialize"
+      confirmLoading={initLoading}
+    >
+      <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
+        Enter the path to a directory. It will be created and initialized as a Git repository if it doesn't exist.
+      </div>
+      <Input
+        placeholder="~/path/to/repo"
+        value={initPath}
+        onChange={e => setInitPath(e.target.value)}
+        onPressEnter={handleInitRepo}
+      />
+    </Modal>
+    </>
   )
 }
 

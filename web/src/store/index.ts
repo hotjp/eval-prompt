@@ -49,7 +49,7 @@ interface AppState {
   setEvalRuns: (runs: EvalRun[]) => void
   setMatchedPrompts: (prompts: MatchedPrompt[]) => void
   setLoading: (loading: boolean) => void
-  setRunningEval: (eval: { id: string; assetId: string; assetName: string } | null) => void
+  setRunningEval: (data: { id: string; assetId: string; assetName: string } | null) => void
   setEvalConcurrency: (concurrency: number) => void
 }
 
