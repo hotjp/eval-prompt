@@ -14,7 +14,7 @@ import {
   FolderOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import { healthApi, adminApi, type HealthStatus } from '../api/client'
+import { healthApi, adminApi, assetApi, type HealthStatus } from '../api/client'
 import { useStore } from '../store'
 
 interface RepoStatus {
@@ -41,12 +41,14 @@ function Sidebar() {
   const [serverStatus, setServerStatus] = useState<Status>('loading')
   const [healthData, setHealthData] = useState<HealthStatus | null>(null)
   const [repoStatus, setRepoStatus] = useState<{ current?: RepoStatus; repos: RepoEntry[]; is_first_use: boolean } | null>(null)
+  const [assetCount, setAssetCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
   const [initModalOpen, setInitModalOpen] = useState(false)
   const [initPath, setInitPath] = useState('')
   const [initLoading, setInitLoading] = useState(false)
+  const [gitSyncing, setGitSyncing] = useState(false)
   const runningEval = useStore(s => s.runningEval)
 
   useEffect(() => {
@@ -92,9 +94,19 @@ function Sidebar() {
     }
   }
 
+  const fetchAssetCount = async () => {
+    try {
+      const res = await assetApi.list()
+      setAssetCount(res.total)
+    } catch {
+      setAssetCount(0)
+    }
+  }
+
   useEffect(() => {
     fetchHealth()
     fetchRepoStatus()
+    fetchAssetCount()
     const interval = setInterval(fetchHealth, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -135,40 +147,41 @@ function Sidebar() {
   }
 
   const handleReconcile = async () => {
-    setLoading(true)
+    setGitSyncing(true)
     try {
       const report = await adminApi.reconcile()
       message.success(`Sync complete: ${report.added} added, ${report.updated} updated, ${report.deleted} deleted`)
-    } catch {
-      message.error('Sync failed')
+      fetchRepoStatus()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Sync failed')
     } finally {
-      setLoading(false)
+      setGitSyncing(false)
     }
   }
 
   const handleGitPull = async () => {
-    setLoading(true)
+    setGitSyncing(true)
     try {
       await adminApi.gitPull()
       message.success('Git pull successful')
       fetchRepoStatus()
-    } catch {
-      message.error('Git pull failed')
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Git pull failed')
     } finally {
-      setLoading(false)
+      setGitSyncing(false)
     }
   }
 
   const handleSwitchRepo = async (path: string) => {
-    setLoading(true)
+    setGitSyncing(true)
     try {
       await adminApi.switchRepo(path)
       message.success('Repository switched')
       fetchRepoStatus()
-    } catch {
-      message.error('Failed to switch repository')
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Failed to switch repository')
     } finally {
-      setLoading(false)
+      setGitSyncing(false)
     }
   }
 
@@ -181,8 +194,8 @@ function Sidebar() {
       setInitModalOpen(false)
       setInitPath('')
       fetchRepoStatus()
-    } catch {
-      message.error('Failed to initialize repository')
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Failed to initialize repository')
     } finally {
       setInitLoading(false)
     }
@@ -230,10 +243,20 @@ function Sidebar() {
   }
 
   const navItems = [
-    { key: '/assets', icon: <AppstoreOutlined />, label: 'Assets' },
+    { key: '/assets', icon: <AppstoreOutlined />, label: <span>Assets {assetCount > 0 && <span style={{ color: '#8c8c8c', fontWeight: 'normal' }}>({assetCount})</span>}</span> },
     { key: '/compare', icon: <SwapOutlined />, label: 'Compare' },
     { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
   ]
+
+  const repoStatusIcon = (entry: RepoEntry) => {
+    if (entry.status === 'valid') {
+      return <span style={{ fontSize: 10, color: '#52c41a' }}>✓</span>
+    }
+    if (entry.status === 'notfound') {
+      return <span style={{ fontSize: 10, color: '#ff4d4f' }}>✗</span>
+    }
+    return <span style={{ fontSize: 10, color: '#fa8c16' }}>⚠</span>
+  }
 
   const popoverContent = (
     <div style={{ width: 260 }}>
@@ -399,6 +422,26 @@ function Sidebar() {
     </div>
   )
 
+  const branchLabel = () => {
+    if (gitSyncing) {
+      return (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'not-allowed', opacity: 0.6 }}>
+          <SyncOutlined spin style={{ fontSize: 11 }} />
+          Syncing...
+        </span>
+      )
+    }
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'pointer' }}>
+        <BranchesOutlined style={{ fontSize: 11 }} />
+        {repoStatus?.current?.branch || 'no branch'}
+        {repoStatus?.current?.dirty && (
+          <span style={{ fontSize: 8, color: '#fa8c16', lineHeight: 1 }}>●</span>
+        )}
+      </span>
+    )
+  }
+
   return (
     <>
     <Header
@@ -448,7 +491,7 @@ function Sidebar() {
                   disabled: true,
                 },
                 { type: 'divider' as const },
-                // Repo switcher (if repos exist)
+                // Repo switcher
                 ...(repoStatus.repos.length > 0 ? [
                   {
                     key: 'switch',
@@ -459,9 +502,7 @@ function Sidebar() {
                       label: (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12 }}>{r.path.split('/').pop()}</span>
-                          <span style={{ fontSize: 10, color: r.status === 'valid' ? '#52c41a' : '#ff4d4f' }}>
-                            {r.status === 'valid' ? '✓' : '✗'}
-                          </span>
+                          {repoStatusIcon(r)}
                         </div>
                       ),
                       onClick: () => handleSwitchRepo(r.path),
@@ -483,12 +524,14 @@ function Sidebar() {
                   label: 'Sync Index (Reconcile)',
                   icon: <SyncOutlined />,
                   onClick: handleReconcile,
+                  disabled: gitSyncing,
                 },
                 {
                   key: 'gitpull',
                   label: 'Git Pull',
                   icon: <BranchesOutlined />,
                   onClick: handleGitPull,
+                  disabled: gitSyncing,
                 },
                 { type: 'divider' as const },
                 {
@@ -496,19 +539,15 @@ function Sidebar() {
                   label: 'Refresh',
                   icon: <ReloadOutlined />,
                   onClick: fetchRepoStatus,
+                  disabled: gitSyncing,
                 },
-              ],
+              ]
             }}
             trigger={['click']}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'pointer' }}>
-              <BranchesOutlined style={{ fontSize: 11 }} />
-              {repoStatus.current?.branch || 'no branch'}
-              {repoStatus.current?.dirty && <SyncOutlined spin style={{ fontSize: 10, color: '#fa8c16' }} />}
-            </span>
+            {branchLabel()}
           </Dropdown>
         ) : (
-          // No valid repo - show warning + init button
           <Dropdown
             menu={{
               items: [
@@ -544,7 +583,7 @@ function Sidebar() {
             </span>
           </Dropdown>
         )}
-        {repoStatus?.current?.short_commit && (
+        {repoStatus?.current?.short_commit && !gitSyncing && (
           <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
             {repoStatus.current.short_commit}
           </Text>

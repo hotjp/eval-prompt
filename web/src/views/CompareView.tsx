@@ -18,7 +18,7 @@ function CompareView() {
     setAssetLoading(true)
     try {
       const data = await assetApi.list()
-      setAssets(data)
+      setAssets(data.assets)
     } catch {
       message.error('Failed to load assets')
     } finally {

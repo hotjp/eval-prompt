@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
@@ -22,18 +23,62 @@ func init() {
 	syncCmd.AddCommand(syncExportCmd)
 }
 
+// resolveWorkDir resolves the working directory from --repo or --dir flag.
+// If --repo is specified, it switches to that repo in lock.json first.
+// If --dir is specified, uses that directory directly without touching lock.
+// If neither is specified, uses the current repo from lock.json.
+// Returns an error if no repo is set and neither flag is provided.
+func resolveWorkDir(cmd *cobra.Command) (string, error) {
+	repoPath, _ := cmd.Flags().GetString("repo")
+	dirPath, _ := cmd.Flags().GetString("dir")
+
+	if repoPath != "" {
+		// --repo specified: add to lock and switch to it
+		absPath, err := filepath.Abs(repoPath)
+		if err != nil {
+			return "", fmt.Errorf("无法获取绝对路径: %w", err)
+		}
+
+		repoLock, err := lock.ReadLock()
+		if err != nil {
+			return "", fmt.Errorf("读取 lock 文件失败: %w", err)
+		}
+
+		repoLock.AddRepo(absPath)
+		repoLock.SetCurrent(absPath)
+		if err := lock.WriteLock(repoLock); err != nil {
+			return "", fmt.Errorf("写入 lock 文件失败: %w", err)
+		}
+
+		fmt.Printf("已切换到仓库: %s\n", absPath)
+		return absPath, nil
+	}
+
+	if dirPath != "" {
+		// --dir specified: use it directly
+		return dirPath, nil
+	}
+
+	// Neither --repo nor --dir specified: require current repo from lock
+	repoLock, err := lock.ReadLock()
+	if err != nil {
+		return "", fmt.Errorf("读取 lock 文件失败: %w", err)
+	}
+
+	current := repoLock.GetCurrent()
+	if current == "" {
+		return "", fmt.Errorf("未设置仓库，请先运行 ep init 或使用 --repo 指定")
+	}
+	return current, nil
+}
+
 var syncReconcileCmd = &cobra.Command{
 	Use:   "reconcile",
 	Short: "对账",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get directory from flag or fallback to working directory
-		wd, _ := cmd.Flags().GetString("dir")
-		if wd == "" {
-			var err error
-			wd, err = os.Getwd()
-			if err != nil {
-				return fmt.Errorf("获取工作目录失败: %w", err)
-			}
+		wd, err := resolveWorkDir(cmd)
+		if err != nil {
+			return err
 		}
 
 		indexer := search.Default()
@@ -65,7 +110,8 @@ var syncReconcileCmd = &cobra.Command{
 }
 
 func init() {
-	syncReconcileCmd.Flags().String("dir", "", "项目目录路径")
+	syncReconcileCmd.Flags().String("repo", "", "仓库路径（默认为当前仓库）")
+	syncReconcileCmd.Flags().String("dir", "", "项目目录路径（仅影响 --dir 模式，不写入 lock）")
 }
 
 var syncExportCmd = &cobra.Command{
@@ -75,14 +121,9 @@ var syncExportCmd = &cobra.Command{
 		format, _ := cmd.Flags().GetString("format")
 		output, _ := cmd.Flags().GetString("output")
 
-		// Get directory from flag or fallback to working directory
-		wd, _ := cmd.Flags().GetString("dir")
-		if wd == "" {
-			var err error
-			wd, err = os.Getwd()
-			if err != nil {
-				return fmt.Errorf("获取工作目录失败: %w", err)
-			}
+		wd, err := resolveWorkDir(cmd)
+		if err != nil {
+			return err
 		}
 
 		indexer := search.Default()
@@ -116,5 +157,6 @@ var syncExportCmd = &cobra.Command{
 func init() {
 	syncExportCmd.Flags().String("format", "json", "导出格式: json|yaml")
 	syncExportCmd.Flags().String("output", "", "输出文件路径")
-	syncExportCmd.Flags().String("dir", "", "项目目录路径")
+	syncExportCmd.Flags().String("repo", "", "仓库路径（默认为当前仓库）")
+	syncExportCmd.Flags().String("dir", "", "项目目录路径（仅影响 --dir 模式，不写入 lock）")
 }

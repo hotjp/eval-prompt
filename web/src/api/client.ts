@@ -180,13 +180,18 @@ export const adminApi = {
   },
 }
 
+export interface AssetListResponse {
+  assets: AssetSummary[]
+  total: number
+}
+
 export const assetApi = {
-  list: async (filters?: { biz_line?: string; tag?: string }): Promise<AssetSummary[]> => {
+  list: async (filters?: { biz_line?: string; tag?: string }): Promise<AssetListResponse> => {
     const params = new URLSearchParams()
     if (filters?.biz_line) params.append('biz_line', filters.biz_line)
     if (filters?.tag) params.append('tag', filters.tag)
     const { data } = await api.get(`/assets?${params}`)
-    return data.assets || []
+    return { assets: data.assets || [], total: data.total || 0 }
   },
 
   get: async (id: string): Promise<AssetDetail> => {

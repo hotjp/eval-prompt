@@ -486,6 +486,19 @@ func (h *AdminHandler) PutRepoSwitch(w http.ResponseWriter, r *http.Request) {
 		h.configManager.Notify(r.Context(), "repo", []string{"repo_path"})
 	}
 
+	// Trigger async reconcile after repo switch to refresh index with new repo's assets
+	if h.indexer != nil {
+		go func() {
+			ctx := context.Background()
+			if report, err := h.indexer.Reconcile(ctx); err != nil {
+				h.logger.Warn("reconcile failed after repo switch", "error", err, "layer", "L5")
+			} else {
+				h.logger.Info("reconcile completed after repo switch",
+					"added", report.Added, "updated", report.Updated, "deleted", report.Deleted, "layer", "L5")
+			}
+		}()
+	}
+
 	h.writeJSON(w, http.StatusOK, RepoSwitchResponse{
 		Status: "ok",
 		Path:   absPath,
