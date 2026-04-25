@@ -322,4 +322,15 @@ export const llmConfigApi = {
   },
 }
 
+export const llmApi = {
+  rewrite: async (content: string, instruction: string) => {
+    const { data } = await api.post('/rewrite', { content, instruction })
+    return data
+  },
+  diff: async (oldContent: string, newContent: string, oldVersion: string, newVersion: string) => {
+    const { data } = await api.post('/eval/diff', { old_content: oldContent, new_content: newContent, old_version: oldVersion, new_version: newVersion })
+    return data
+  },
+}
+
 export default api

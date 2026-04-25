@@ -1,12 +1,25 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, SwapOutlined, DiffOutlined } from '@ant-design/icons'
+import { SaveOutlined, PlayCircleOutlined, SwapOutlined, DiffOutlined, EditOutlined } from '@ant-design/icons'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
-import { assetApi, triggerApi } from '../api/client'
+import { assetApi, triggerApi, llmApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
 
 const { TextArea } = Input
+
+function formatUpdatedAt(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d ago`
+}
 
 // Default body template — frontmatter is handled server-side
 const defaultBody = `## Instruction
@@ -76,8 +89,11 @@ function EditorView() {
   const [updatedAt, setUpdatedAt] = useState('')
   const [conflictDraft, setConflictDraft] = useState<Draft | null>(null)
   const [conflictServerContent, setConflictServerContent] = useState('')
+  const [showRewriteInput, setShowRewriteInput] = useState(false)
+  const [rewriteInstruction, setRewriteInstruction] = useState('')
+  const [rewriting, setRewriting] = useState(false)
   const loadedRef = useRef(false)
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>()
+  const autoSaveTimer = useRef<number | undefined>(undefined)
 
   // Auto-save draft to localStorage on content change
   useEffect(() => {
@@ -100,7 +116,7 @@ function EditorView() {
       return
     }
 
-    let timeout: ReturnType<typeof setTimeout>
+    let timeout: number
     let cancelled = false
 
     const loadAsset = async () => {
@@ -259,6 +275,29 @@ function EditorView() {
     setHasChanges(false)
   }
 
+  const handleRewrite = async () => {
+    if (!rewriteInstruction.trim()) {
+      message.warning('Please enter a rewrite instruction')
+      return
+    }
+    setRewriting(true)
+    try {
+      const result = await llmApi.rewrite(promptValue, rewriteInstruction)
+      setPromptValue(result.rewritten)
+      setShowRewriteInput(false)
+      setRewriteInstruction('')
+      message.success('Rewrite applied')
+    } catch (err: any) {
+      if (err?.response?.status === 503) {
+        message.warning('请先在设置中配置 LLM')
+      } else {
+        message.error('Rewrite failed')
+      }
+    } finally {
+      setRewriting(false)
+    }
+  }
+
   if (loading) {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />
   }
@@ -317,12 +356,36 @@ function EditorView() {
                       >
                         Validate
                       </Button>
+                      <Button
+                        icon={<EditOutlined />}
+                        onClick={() => setShowRewriteInput(!showRewriteInput)}
+                      >
+                        Rewrite
+                      </Button>
                       {hasChanges && (
                         <Button onClick={handleRestore}>
                           Restore
                         </Button>
                       )}
                     </Space>
+                    {showRewriteInput && (
+                      <Space>
+                        <Input
+                          placeholder="Enter rewrite instruction (e.g., 改成更礼貌, 缩短, 扩充)"
+                          value={rewriteInstruction}
+                          onChange={(e) => setRewriteInstruction(e.target.value)}
+                          onPressEnter={handleRewrite}
+                          style={{ width: 300 }}
+                          disabled={rewriting}
+                        />
+                        <Button type="primary" onClick={handleRewrite} loading={rewriting}>
+                          Apply
+                        </Button>
+                        <Button onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>
+                          Cancel
+                        </Button>
+                      </Space>
+                    )}
                     {validationResult && (
                       <Tag color={validationResult.valid ? 'green' : 'red'}>
                         {validationResult.valid ? 'Valid' : validationResult.message}
