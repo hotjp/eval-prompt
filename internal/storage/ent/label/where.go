@@ -203,29 +203,6 @@ func HasAssetWith(preds ...predicate.Asset) predicate.Label {
 	})
 }
 
-// HasSnapshot applies the HasEdge predicate on the "snapshot" edge.
-func HasSnapshot() predicate.Label {
-	return predicate.Label(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, SnapshotTable, SnapshotColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasSnapshotWith applies the HasEdge predicate on the "snapshot" edge with a given conditions (other predicates).
-func HasSnapshotWith(preds ...predicate.Snapshot) predicate.Label {
-	return predicate.Label(func(s *sql.Selector) {
-		step := newSnapshotStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Label) predicate.Label {
 	return predicate.Label(sql.AndPredicates(predicates...))

@@ -34,7 +34,6 @@ func (EvalRun) Fields() []ent.Field {
 func (EvalRun) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("eval_case", EvalCase.Type).Ref("eval_runs").Unique().Required(),
-		edge.From("snapshot", Snapshot.Type).Ref("eval_runs").Unique().Required(),
 	}
 }
 

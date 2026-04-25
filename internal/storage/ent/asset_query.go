@@ -17,7 +17,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // AssetQuery is the builder for querying Asset entities.
@@ -27,7 +26,6 @@ type AssetQuery struct {
 	order           []asset.OrderOption
 	inters          []Interceptor
 	predicates      []predicate.Asset
-	withSnapshots   *SnapshotQuery
 	withLabels      *LabelQuery
 	withEvalCases   *EvalCaseQuery
 	withAdaptations *ModelAdaptationQuery
@@ -65,28 +63,6 @@ func (_q *AssetQuery) Unique(unique bool) *AssetQuery {
 func (_q *AssetQuery) Order(o ...asset.OrderOption) *AssetQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QuerySnapshots chains the current query on the "snapshots" edge.
-func (_q *AssetQuery) QuerySnapshots() *SnapshotQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, selector),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.SnapshotsTable, asset.SnapshotsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // QueryLabels chains the current query on the "labels" edge.
@@ -347,7 +323,6 @@ func (_q *AssetQuery) Clone() *AssetQuery {
 		order:           append([]asset.OrderOption{}, _q.order...),
 		inters:          append([]Interceptor{}, _q.inters...),
 		predicates:      append([]predicate.Asset{}, _q.predicates...),
-		withSnapshots:   _q.withSnapshots.Clone(),
 		withLabels:      _q.withLabels.Clone(),
 		withEvalCases:   _q.withEvalCases.Clone(),
 		withAdaptations: _q.withAdaptations.Clone(),
@@ -355,17 +330,6 @@ func (_q *AssetQuery) Clone() *AssetQuery {
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
-}
-
-// WithSnapshots tells the query-builder to eager-load the nodes that are connected to
-// the "snapshots" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AssetQuery) WithSnapshots(opts ...func(*SnapshotQuery)) *AssetQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withSnapshots = query
-	return _q
 }
 
 // WithLabels tells the query-builder to eager-load the nodes that are connected to
@@ -479,8 +443,7 @@ func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset,
 	var (
 		nodes       = []*Asset{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
-			_q.withSnapshots != nil,
+		loadedTypes = [3]bool{
 			_q.withLabels != nil,
 			_q.withEvalCases != nil,
 			_q.withAdaptations != nil,
@@ -503,13 +466,6 @@ func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset,
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
-	}
-	if query := _q.withSnapshots; query != nil {
-		if err := _q.loadSnapshots(ctx, query, nodes,
-			func(n *Asset) { n.Edges.Snapshots = []*Snapshot{} },
-			func(n *Asset, e *Snapshot) { n.Edges.Snapshots = append(n.Edges.Snapshots, e) }); err != nil {
-			return nil, err
-		}
 	}
 	if query := _q.withLabels; query != nil {
 		if err := _q.loadLabels(ctx, query, nodes,
@@ -535,37 +491,6 @@ func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset,
 	return nodes, nil
 }
 
-func (_q *AssetQuery) loadSnapshots(ctx context.Context, query *SnapshotQuery, nodes []*Asset, init func(*Asset), assign func(*Asset, *Snapshot)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*Asset)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	query.withFKs = true
-	query.Where(predicate.Snapshot(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(asset.SnapshotsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.asset_snapshots
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "asset_snapshots" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "asset_snapshots" returned %v for node %v`, *fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
 func (_q *AssetQuery) loadLabels(ctx context.Context, query *LabelQuery, nodes []*Asset, init func(*Asset), assign func(*Asset, *Label)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[string]*Asset)

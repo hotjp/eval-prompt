@@ -19,7 +19,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -87,7 +86,6 @@ func checkColumn(t, c string) error {
 			label.Table:           label.ValidColumn,
 			modeladaptation.Table: modeladaptation.ValidColumn,
 			outboxevent.Table:     outboxevent.ValidColumn,
-			snapshot.Table:        snapshot.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

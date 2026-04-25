@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// Label represents a named pointer to a snapshot (e.g., "prod", "dev").
+// Label represents a named pointer to an asset at a specific version (e.g., "prod", "dev").
 type Label struct {
 	ent.Schema
 }
@@ -27,7 +27,6 @@ func (Label) Fields() []ent.Field {
 func (Label) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("asset", Asset.Type).Ref("labels").Unique().Required(),
-		edge.From("snapshot", Snapshot.Type).Ref("labels").Unique().Required(),
 	}
 }
 

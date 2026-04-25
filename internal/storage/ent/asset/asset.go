@@ -33,8 +33,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// EdgeSnapshots holds the string denoting the snapshots edge name in mutations.
-	EdgeSnapshots = "snapshots"
 	// EdgeLabels holds the string denoting the labels edge name in mutations.
 	EdgeLabels = "labels"
 	// EdgeEvalCases holds the string denoting the eval_cases edge name in mutations.
@@ -43,13 +41,6 @@ const (
 	EdgeAdaptations = "adaptations"
 	// Table holds the table name of the asset in the database.
 	Table = "assets"
-	// SnapshotsTable is the table that holds the snapshots relation/edge.
-	SnapshotsTable = "snapshots"
-	// SnapshotsInverseTable is the table name for the Snapshot entity.
-	// It exists in this package in order to avoid circular dependency with the "snapshot" package.
-	SnapshotsInverseTable = "snapshots"
-	// SnapshotsColumn is the table column denoting the snapshots relation/edge.
-	SnapshotsColumn = "asset_snapshots"
 	// LabelsTable is the table that holds the labels relation/edge.
 	LabelsTable = "labels"
 	// LabelsInverseTable is the table name for the Label entity.
@@ -193,20 +184,6 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
-// BySnapshotsCount orders the results by snapshots count.
-func BySnapshotsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newSnapshotsStep(), opts...)
-	}
-}
-
-// BySnapshots orders the results by snapshots terms.
-func BySnapshots(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newSnapshotsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
 // ByLabelsCount orders the results by labels count.
 func ByLabelsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -247,13 +224,6 @@ func ByAdaptations(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newAdaptationsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
-}
-func newSnapshotsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(SnapshotsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, SnapshotsTable, SnapshotsColumn),
-	)
 }
 func newLabelsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

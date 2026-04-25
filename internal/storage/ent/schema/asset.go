@@ -33,7 +33,6 @@ func (Asset) Fields() []ent.Field {
 // Edges of the Asset.
 func (Asset) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("snapshots", Snapshot.Type),
 		edge.To("labels", Label.Type),
 		edge.To("eval_cases", EvalCase.Type),
 		edge.To("adaptations", ModelAdaptation.Type),

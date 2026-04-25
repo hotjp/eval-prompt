@@ -14,7 +14,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // EvalRunQuery is the builder for querying EvalRun entities.
@@ -25,7 +24,6 @@ type EvalRunQuery struct {
 	inters       []Interceptor
 	predicates   []predicate.EvalRun
 	withEvalCase *EvalCaseQuery
-	withSnapshot *SnapshotQuery
 	withFKs      bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -78,28 +76,6 @@ func (_q *EvalRunQuery) QueryEvalCase() *EvalCaseQuery {
 			sqlgraph.From(evalrun.Table, evalrun.FieldID, selector),
 			sqlgraph.To(evalcase.Table, evalcase.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, evalrun.EvalCaseTable, evalrun.EvalCaseColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QuerySnapshot chains the current query on the "snapshot" edge.
-func (_q *EvalRunQuery) QuerySnapshot() *SnapshotQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalrun.Table, evalrun.FieldID, selector),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, evalrun.SnapshotTable, evalrun.SnapshotColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -300,7 +276,6 @@ func (_q *EvalRunQuery) Clone() *EvalRunQuery {
 		inters:       append([]Interceptor{}, _q.inters...),
 		predicates:   append([]predicate.EvalRun{}, _q.predicates...),
 		withEvalCase: _q.withEvalCase.Clone(),
-		withSnapshot: _q.withSnapshot.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -315,17 +290,6 @@ func (_q *EvalRunQuery) WithEvalCase(opts ...func(*EvalCaseQuery)) *EvalRunQuery
 		opt(query)
 	}
 	_q.withEvalCase = query
-	return _q
-}
-
-// WithSnapshot tells the query-builder to eager-load the nodes that are connected to
-// the "snapshot" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *EvalRunQuery) WithSnapshot(opts ...func(*SnapshotQuery)) *EvalRunQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withSnapshot = query
 	return _q
 }
 
@@ -408,12 +372,11 @@ func (_q *EvalRunQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Eval
 		nodes       = []*EvalRun{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [1]bool{
 			_q.withEvalCase != nil,
-			_q.withSnapshot != nil,
 		}
 	)
-	if _q.withEvalCase != nil || _q.withSnapshot != nil {
+	if _q.withEvalCase != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -440,12 +403,6 @@ func (_q *EvalRunQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Eval
 	if query := _q.withEvalCase; query != nil {
 		if err := _q.loadEvalCase(ctx, query, nodes, nil,
 			func(n *EvalRun, e *EvalCase) { n.Edges.EvalCase = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withSnapshot; query != nil {
-		if err := _q.loadSnapshot(ctx, query, nodes, nil,
-			func(n *EvalRun, e *Snapshot) { n.Edges.Snapshot = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -477,38 +434,6 @@ func (_q *EvalRunQuery) loadEvalCase(ctx context.Context, query *EvalCaseQuery, 
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "eval_case_eval_runs" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
-func (_q *EvalRunQuery) loadSnapshot(ctx context.Context, query *SnapshotQuery, nodes []*EvalRun, init func(*EvalRun), assign func(*EvalRun, *Snapshot)) error {
-	ids := make([]string, 0, len(nodes))
-	nodeids := make(map[string][]*EvalRun)
-	for i := range nodes {
-		if nodes[i].snapshot_eval_runs == nil {
-			continue
-		}
-		fk := *nodes[i].snapshot_eval_runs
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(snapshot.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "snapshot_eval_runs" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

@@ -111,7 +111,6 @@ var (
 		{Name: "duration_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "eval_case_eval_runs", Type: field.TypeString, Size: 128},
-		{Name: "snapshot_eval_runs", Type: field.TypeString, Size: 128},
 	}
 	// EvalRunsTable holds the schema information for the "eval_runs" table.
 	EvalRunsTable = &schema.Table{
@@ -123,12 +122,6 @@ var (
 				Symbol:     "eval_runs_eval_cases_eval_runs",
 				Columns:    []*schema.Column{EvalRunsColumns[10]},
 				RefColumns: []*schema.Column{EvalCasesColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
-				Symbol:     "eval_runs_snapshots_eval_runs",
-				Columns:    []*schema.Column{EvalRunsColumns[11]},
-				RefColumns: []*schema.Column{SnapshotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -146,7 +139,6 @@ var (
 		{Name: "name", Type: field.TypeString, Size: 32},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "asset_labels", Type: field.TypeString, Size: 128},
-		{Name: "snapshot_labels", Type: field.TypeString, Size: 128},
 	}
 	// LabelsTable holds the schema information for the "labels" table.
 	LabelsTable = &schema.Table{
@@ -158,12 +150,6 @@ var (
 				Symbol:     "labels_assets_labels",
 				Columns:    []*schema.Column{LabelsColumns[3]},
 				RefColumns: []*schema.Column{AssetsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
-				Symbol:     "labels_snapshots_labels",
-				Columns:    []*schema.Column{LabelsColumns[4]},
-				RefColumns: []*schema.Column{SnapshotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -246,46 +232,6 @@ var (
 			},
 		},
 	}
-	// SnapshotsColumns holds the columns for the "snapshots" table.
-	SnapshotsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
-		{Name: "version", Type: field.TypeString, Size: 32},
-		{Name: "content_hash", Type: field.TypeString, Size: 64},
-		{Name: "commit_hash", Type: field.TypeString, Nullable: true, Size: 40},
-		{Name: "author", Type: field.TypeString, Nullable: true, Size: 128},
-		{Name: "reason", Type: field.TypeString, Nullable: true, Size: 512},
-		{Name: "model", Type: field.TypeString, Nullable: true, Size: 64},
-		{Name: "temperature", Type: field.TypeFloat64, Nullable: true},
-		{Name: "metrics", Type: field.TypeJSON, Nullable: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "asset_snapshots", Type: field.TypeString, Size: 128},
-	}
-	// SnapshotsTable holds the schema information for the "snapshots" table.
-	SnapshotsTable = &schema.Table{
-		Name:       "snapshots",
-		Columns:    SnapshotsColumns,
-		PrimaryKey: []*schema.Column{SnapshotsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "snapshots_assets_snapshots",
-				Columns:    []*schema.Column{SnapshotsColumns[10]},
-				RefColumns: []*schema.Column{AssetsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "snapshot_version",
-				Unique:  false,
-				Columns: []*schema.Column{SnapshotsColumns[1]},
-			},
-			{
-				Name:    "snapshot_commit_hash",
-				Unique:  false,
-				Columns: []*schema.Column{SnapshotsColumns[3]},
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AssetsTable,
@@ -295,16 +241,12 @@ var (
 		LabelsTable,
 		ModelAdaptationsTable,
 		OutboxEventsTable,
-		SnapshotsTable,
 	}
 )
 
 func init() {
 	EvalCasesTable.ForeignKeys[0].RefTable = AssetsTable
 	EvalRunsTable.ForeignKeys[0].RefTable = EvalCasesTable
-	EvalRunsTable.ForeignKeys[1].RefTable = SnapshotsTable
 	LabelsTable.ForeignKeys[0].RefTable = AssetsTable
-	LabelsTable.ForeignKeys[1].RefTable = SnapshotsTable
 	ModelAdaptationsTable.ForeignKeys[0].RefTable = AssetsTable
-	SnapshotsTable.ForeignKeys[0].RefTable = AssetsTable
 }

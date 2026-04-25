@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // LabelCreate is the builder for creating a Label entity.
@@ -57,17 +56,6 @@ func (_c *LabelCreate) SetAssetID(id string) *LabelCreate {
 // SetAsset sets the "asset" edge to the Asset entity.
 func (_c *LabelCreate) SetAsset(v *Asset) *LabelCreate {
 	return _c.SetAssetID(v.ID)
-}
-
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_c *LabelCreate) SetSnapshotID(id string) *LabelCreate {
-	_c.mutation.SetSnapshotID(id)
-	return _c
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_c *LabelCreate) SetSnapshot(v *Snapshot) *LabelCreate {
-	return _c.SetSnapshotID(v.ID)
 }
 
 // Mutation returns the LabelMutation object of the builder.
@@ -132,9 +120,6 @@ func (_c *LabelCreate) check() error {
 	if len(_c.mutation.AssetIDs()) == 0 {
 		return &ValidationError{Name: "asset", err: errors.New(`ent: missing required edge "Label.asset"`)}
 	}
-	if len(_c.mutation.SnapshotIDs()) == 0 {
-		return &ValidationError{Name: "snapshot", err: errors.New(`ent: missing required edge "Label.snapshot"`)}
-	}
 	return nil
 }
 
@@ -193,23 +178,6 @@ func (_c *LabelCreate) createSpec() (*Label, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.asset_labels = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.SnapshotTable,
-			Columns: []string{label.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.snapshot_labels = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

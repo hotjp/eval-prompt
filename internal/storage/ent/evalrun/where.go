@@ -518,29 +518,6 @@ func HasEvalCaseWith(preds ...predicate.EvalCase) predicate.EvalRun {
 	})
 }
 
-// HasSnapshot applies the HasEdge predicate on the "snapshot" edge.
-func HasSnapshot() predicate.EvalRun {
-	return predicate.EvalRun(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, SnapshotTable, SnapshotColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasSnapshotWith applies the HasEdge predicate on the "snapshot" edge with a given conditions (other predicates).
-func HasSnapshotWith(preds ...predicate.Snapshot) predicate.EvalRun {
-	return predicate.EvalRun(func(s *sql.Selector) {
-		step := newSnapshotStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.EvalRun) predicate.EvalRun {
 	return predicate.EvalRun(sql.AndPredicates(predicates...))

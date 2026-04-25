@@ -8,7 +8,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // EvalRunRepository provides repository operations for EvalRun entities.
@@ -36,7 +35,6 @@ func (r *EvalRunRepository) Create(ctx context.Context, e *domain.EvalRun) error
 	_, err := r.client.ent.EvalRun.Create().
 		SetID(e.ID.String()).
 		SetEvalCaseID(e.EvalCaseID.String()).
-		SetSnapshotID(e.SnapshotID.String()).
 		SetStatus(r.statusToEnt(e.Status)).
 		SetDeterministicScore(e.DeterministicScore).
 		SetRubricScore(e.RubricScore).
@@ -75,20 +73,10 @@ func (r *EvalRunRepository) GetByEvalCaseID(ctx context.Context, evalCaseID stri
 	return runs, nil
 }
 
-// GetBySnapshotID retrieves all eval runs for a snapshot.
+// GetBySnapshotID is deprecated and always returns empty results.
+// Snapshot is no longer used - eval history is stored in .md files.
 func (r *EvalRunRepository) GetBySnapshotID(ctx context.Context, snapshotID string) ([]*domain.EvalRun, error) {
-	entRuns, err := r.client.ent.EvalRun.Query().
-		Where(evalrun.HasSnapshotWith(snapshot.IDEQ(snapshotID))).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	runs := make([]*domain.EvalRun, len(entRuns))
-	for i, entRun := range entRuns {
-		runs[i] = r.toDomainEvalRun(entRun)
-	}
-	return runs, nil
+	return []*domain.EvalRun{}, nil
 }
 
 // List retrieves eval runs with pagination.
@@ -182,11 +170,6 @@ func (r *EvalRunRepository) toDomainEvalRun(e *ent.EvalRun) *domain.EvalRun {
 		evalCaseID = domain.MustNewID(e.Edges.EvalCase.ID)
 	}
 
-	snapshotID := domain.ID{}
-	if e.Edges.Snapshot != nil {
-		snapshotID = domain.MustNewID(e.Edges.Snapshot.ID)
-	}
-
 	rubricDetails := make([]domain.RubricCheckResult, len(e.RubricDetails))
 	for i, rd := range e.RubricDetails {
 		rubricDetails[i] = domain.RubricCheckResult{
@@ -200,7 +183,6 @@ func (r *EvalRunRepository) toDomainEvalRun(e *ent.EvalRun) *domain.EvalRun {
 	return &domain.EvalRun{
 		ID:                 domain.MustNewID(e.ID),
 		EvalCaseID:         evalCaseID,
-		SnapshotID:         snapshotID,
 		Status:             r.statusFromEnt(e.Status),
 		DeterministicScore: e.DeterministicScore,
 		RubricScore:        e.RubricScore,

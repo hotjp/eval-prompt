@@ -13,7 +13,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
 	"github.com/eval-prompt/internal/storage/ent/schema"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -443,82 +442,6 @@ func init() {
 	// outboxevent.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	outboxevent.IDValidator = func() func(string) error {
 		validators := outboxeventDescID.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(id string) error {
-			for _, fn := range fns {
-				if err := fn(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	snapshotFields := schema.Snapshot{}.Fields()
-	_ = snapshotFields
-	// snapshotDescVersion is the schema descriptor for version field.
-	snapshotDescVersion := snapshotFields[1].Descriptor()
-	// snapshot.VersionValidator is a validator for the "version" field. It is called by the builders before save.
-	snapshot.VersionValidator = func() func(string) error {
-		validators := snapshotDescVersion.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(version string) error {
-			for _, fn := range fns {
-				if err := fn(version); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// snapshotDescContentHash is the schema descriptor for content_hash field.
-	snapshotDescContentHash := snapshotFields[2].Descriptor()
-	// snapshot.ContentHashValidator is a validator for the "content_hash" field. It is called by the builders before save.
-	snapshot.ContentHashValidator = func() func(string) error {
-		validators := snapshotDescContentHash.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(content_hash string) error {
-			for _, fn := range fns {
-				if err := fn(content_hash); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// snapshotDescCommitHash is the schema descriptor for commit_hash field.
-	snapshotDescCommitHash := snapshotFields[3].Descriptor()
-	// snapshot.CommitHashValidator is a validator for the "commit_hash" field. It is called by the builders before save.
-	snapshot.CommitHashValidator = snapshotDescCommitHash.Validators[0].(func(string) error)
-	// snapshotDescAuthor is the schema descriptor for author field.
-	snapshotDescAuthor := snapshotFields[4].Descriptor()
-	// snapshot.AuthorValidator is a validator for the "author" field. It is called by the builders before save.
-	snapshot.AuthorValidator = snapshotDescAuthor.Validators[0].(func(string) error)
-	// snapshotDescReason is the schema descriptor for reason field.
-	snapshotDescReason := snapshotFields[5].Descriptor()
-	// snapshot.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
-	snapshot.ReasonValidator = snapshotDescReason.Validators[0].(func(string) error)
-	// snapshotDescModel is the schema descriptor for model field.
-	snapshotDescModel := snapshotFields[6].Descriptor()
-	// snapshot.ModelValidator is a validator for the "model" field. It is called by the builders before save.
-	snapshot.ModelValidator = snapshotDescModel.Validators[0].(func(string) error)
-	// snapshotDescCreatedAt is the schema descriptor for created_at field.
-	snapshotDescCreatedAt := snapshotFields[9].Descriptor()
-	// snapshot.DefaultCreatedAt holds the default value on creation for the created_at field.
-	snapshot.DefaultCreatedAt = snapshotDescCreatedAt.Default.(func() time.Time)
-	// snapshotDescID is the schema descriptor for id field.
-	snapshotDescID := snapshotFields[0].Descriptor()
-	// snapshot.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	snapshot.IDValidator = func() func(string) error {
-		validators := snapshotDescID.Validators
 		fns := [...]func(string) error{
 			validators[0].(func(string) error),
 			validators[1].(func(string) error),

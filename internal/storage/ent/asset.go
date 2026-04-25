@@ -44,8 +44,6 @@ type Asset struct {
 
 // AssetEdges holds the relations/edges for other nodes in the graph.
 type AssetEdges struct {
-	// Snapshots holds the value of the snapshots edge.
-	Snapshots []*Snapshot `json:"snapshots,omitempty"`
 	// Labels holds the value of the labels edge.
 	Labels []*Label `json:"labels,omitempty"`
 	// EvalCases holds the value of the eval_cases edge.
@@ -54,22 +52,13 @@ type AssetEdges struct {
 	Adaptations []*ModelAdaptation `json:"adaptations,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
-}
-
-// SnapshotsOrErr returns the Snapshots value or an error if the edge
-// was not loaded in eager-loading.
-func (e AssetEdges) SnapshotsOrErr() ([]*Snapshot, error) {
-	if e.loadedTypes[0] {
-		return e.Snapshots, nil
-	}
-	return nil, &NotLoadedError{edge: "snapshots"}
+	loadedTypes [3]bool
 }
 
 // LabelsOrErr returns the Labels value or an error if the edge
 // was not loaded in eager-loading.
 func (e AssetEdges) LabelsOrErr() ([]*Label, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[0] {
 		return e.Labels, nil
 	}
 	return nil, &NotLoadedError{edge: "labels"}
@@ -78,7 +67,7 @@ func (e AssetEdges) LabelsOrErr() ([]*Label, error) {
 // EvalCasesOrErr returns the EvalCases value or an error if the edge
 // was not loaded in eager-loading.
 func (e AssetEdges) EvalCasesOrErr() ([]*EvalCase, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[1] {
 		return e.EvalCases, nil
 	}
 	return nil, &NotLoadedError{edge: "eval_cases"}
@@ -87,7 +76,7 @@ func (e AssetEdges) EvalCasesOrErr() ([]*EvalCase, error) {
 // AdaptationsOrErr returns the Adaptations value or an error if the edge
 // was not loaded in eager-loading.
 func (e AssetEdges) AdaptationsOrErr() ([]*ModelAdaptation, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[2] {
 		return e.Adaptations, nil
 	}
 	return nil, &NotLoadedError{edge: "adaptations"}
@@ -192,11 +181,6 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Asset) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QuerySnapshots queries the "snapshots" edge of the Asset entity.
-func (_m *Asset) QuerySnapshots() *SnapshotQuery {
-	return NewAssetClient(_m.config).QuerySnapshots(_m)
 }
 
 // QueryLabels queries the "labels" edge of the Asset entity.

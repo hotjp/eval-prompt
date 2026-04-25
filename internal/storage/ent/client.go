@@ -22,7 +22,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // Client is the client that holds all ent builders.
@@ -44,8 +43,6 @@ type Client struct {
 	ModelAdaptation *ModelAdaptationClient
 	// OutboxEvent is the client for interacting with the OutboxEvent builders.
 	OutboxEvent *OutboxEventClient
-	// Snapshot is the client for interacting with the Snapshot builders.
-	Snapshot *SnapshotClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -64,7 +61,6 @@ func (c *Client) init() {
 	c.Label = NewLabelClient(c.config)
 	c.ModelAdaptation = NewModelAdaptationClient(c.config)
 	c.OutboxEvent = NewOutboxEventClient(c.config)
-	c.Snapshot = NewSnapshotClient(c.config)
 }
 
 type (
@@ -164,7 +160,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Label:           NewLabelClient(cfg),
 		ModelAdaptation: NewModelAdaptationClient(cfg),
 		OutboxEvent:     NewOutboxEventClient(cfg),
-		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
 
@@ -191,7 +186,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Label:           NewLabelClient(cfg),
 		ModelAdaptation: NewModelAdaptationClient(cfg),
 		OutboxEvent:     NewOutboxEventClient(cfg),
-		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
 
@@ -222,7 +216,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Asset, c.AuditLog, c.EvalCase, c.EvalRun, c.Label, c.ModelAdaptation,
-		c.OutboxEvent, c.Snapshot,
+		c.OutboxEvent,
 	} {
 		n.Use(hooks...)
 	}
@@ -233,7 +227,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Asset, c.AuditLog, c.EvalCase, c.EvalRun, c.Label, c.ModelAdaptation,
-		c.OutboxEvent, c.Snapshot,
+		c.OutboxEvent,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -256,8 +250,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ModelAdaptation.mutate(ctx, m)
 	case *OutboxEventMutation:
 		return c.OutboxEvent.mutate(ctx, m)
-	case *SnapshotMutation:
-		return c.Snapshot.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -369,22 +361,6 @@ func (c *AssetClient) GetX(ctx context.Context, id string) *Asset {
 		panic(err)
 	}
 	return obj
-}
-
-// QuerySnapshots queries the snapshots edge of a Asset.
-func (c *AssetClient) QuerySnapshots(_m *Asset) *SnapshotQuery {
-	query := (&SnapshotClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, id),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.SnapshotsTable, asset.SnapshotsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
 }
 
 // QueryLabels queries the labels edge of a Asset.
@@ -882,22 +858,6 @@ func (c *EvalRunClient) QueryEvalCase(_m *EvalRun) *EvalCaseQuery {
 	return query
 }
 
-// QuerySnapshot queries the snapshot edge of a EvalRun.
-func (c *EvalRunClient) QuerySnapshot(_m *EvalRun) *SnapshotQuery {
-	query := (&SnapshotClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalrun.Table, evalrun.FieldID, id),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, evalrun.SnapshotTable, evalrun.SnapshotColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *EvalRunClient) Hooks() []Hook {
 	return c.hooks.EvalRun
@@ -1040,22 +1000,6 @@ func (c *LabelClient) QueryAsset(_m *Label) *AssetQuery {
 			sqlgraph.From(label.Table, label.FieldID, id),
 			sqlgraph.To(asset.Table, asset.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, label.AssetTable, label.AssetColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QuerySnapshot queries the snapshot edge of a Label.
-func (c *LabelClient) QuerySnapshot(_m *Label) *SnapshotQuery {
-	query := (&SnapshotClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(label.Table, label.FieldID, id),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, label.SnapshotTable, label.SnapshotColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1354,195 +1298,14 @@ func (c *OutboxEventClient) mutate(ctx context.Context, m *OutboxEventMutation) 
 	}
 }
 
-// SnapshotClient is a client for the Snapshot schema.
-type SnapshotClient struct {
-	config
-}
-
-// NewSnapshotClient returns a client for the Snapshot from the given config.
-func NewSnapshotClient(c config) *SnapshotClient {
-	return &SnapshotClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `snapshot.Hooks(f(g(h())))`.
-func (c *SnapshotClient) Use(hooks ...Hook) {
-	c.hooks.Snapshot = append(c.hooks.Snapshot, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `snapshot.Intercept(f(g(h())))`.
-func (c *SnapshotClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Snapshot = append(c.inters.Snapshot, interceptors...)
-}
-
-// Create returns a builder for creating a Snapshot entity.
-func (c *SnapshotClient) Create() *SnapshotCreate {
-	mutation := newSnapshotMutation(c.config, OpCreate)
-	return &SnapshotCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of Snapshot entities.
-func (c *SnapshotClient) CreateBulk(builders ...*SnapshotCreate) *SnapshotCreateBulk {
-	return &SnapshotCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *SnapshotClient) MapCreateBulk(slice any, setFunc func(*SnapshotCreate, int)) *SnapshotCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &SnapshotCreateBulk{err: fmt.Errorf("calling to SnapshotClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*SnapshotCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &SnapshotCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for Snapshot.
-func (c *SnapshotClient) Update() *SnapshotUpdate {
-	mutation := newSnapshotMutation(c.config, OpUpdate)
-	return &SnapshotUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *SnapshotClient) UpdateOne(_m *Snapshot) *SnapshotUpdateOne {
-	mutation := newSnapshotMutation(c.config, OpUpdateOne, withSnapshot(_m))
-	return &SnapshotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *SnapshotClient) UpdateOneID(id string) *SnapshotUpdateOne {
-	mutation := newSnapshotMutation(c.config, OpUpdateOne, withSnapshotID(id))
-	return &SnapshotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for Snapshot.
-func (c *SnapshotClient) Delete() *SnapshotDelete {
-	mutation := newSnapshotMutation(c.config, OpDelete)
-	return &SnapshotDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *SnapshotClient) DeleteOne(_m *Snapshot) *SnapshotDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SnapshotClient) DeleteOneID(id string) *SnapshotDeleteOne {
-	builder := c.Delete().Where(snapshot.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &SnapshotDeleteOne{builder}
-}
-
-// Query returns a query builder for Snapshot.
-func (c *SnapshotClient) Query() *SnapshotQuery {
-	return &SnapshotQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeSnapshot},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a Snapshot entity by its id.
-func (c *SnapshotClient) Get(ctx context.Context, id string) (*Snapshot, error) {
-	return c.Query().Where(snapshot.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *SnapshotClient) GetX(ctx context.Context, id string) *Snapshot {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryAsset queries the asset edge of a Snapshot.
-func (c *SnapshotClient) QueryAsset(_m *Snapshot) *AssetQuery {
-	query := (&AssetClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(snapshot.Table, snapshot.FieldID, id),
-			sqlgraph.To(asset.Table, asset.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, snapshot.AssetTable, snapshot.AssetColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryEvalRuns queries the eval_runs edge of a Snapshot.
-func (c *SnapshotClient) QueryEvalRuns(_m *Snapshot) *EvalRunQuery {
-	query := (&EvalRunClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(snapshot.Table, snapshot.FieldID, id),
-			sqlgraph.To(evalrun.Table, evalrun.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, snapshot.EvalRunsTable, snapshot.EvalRunsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryLabels queries the labels edge of a Snapshot.
-func (c *SnapshotClient) QueryLabels(_m *Snapshot) *LabelQuery {
-	query := (&LabelClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(snapshot.Table, snapshot.FieldID, id),
-			sqlgraph.To(label.Table, label.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, snapshot.LabelsTable, snapshot.LabelsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *SnapshotClient) Hooks() []Hook {
-	return c.hooks.Snapshot
-}
-
-// Interceptors returns the client interceptors.
-func (c *SnapshotClient) Interceptors() []Interceptor {
-	return c.inters.Snapshot
-}
-
-func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&SnapshotCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&SnapshotUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&SnapshotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&SnapshotDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown Snapshot mutation op: %q", m.Op())
-	}
-}
-
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation, OutboxEvent,
-		Snapshot []ent.Hook
+		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation,
+		OutboxEvent []ent.Hook
 	}
 	inters struct {
-		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation, OutboxEvent,
-		Snapshot []ent.Interceptor
+		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation,
+		OutboxEvent []ent.Interceptor
 	}
 )

@@ -26,6 +26,3 @@ type ModelAdaptation func(*sql.Selector)
 
 // OutboxEvent is the predicate function for outboxevent builders.
 type OutboxEvent func(*sql.Selector)
-
-// Snapshot is the predicate function for snapshot builders.
-type Snapshot func(*sql.Selector)

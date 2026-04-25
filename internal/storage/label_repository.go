@@ -21,6 +21,7 @@ func NewLabelRepository(client *Client) *LabelRepository {
 }
 
 // SetLabel creates or updates a label for an asset pointing to a snapshot.
+// Deprecated: Snapshot is no longer used. Labels now point directly to asset versions via file_path.
 func (r *LabelRepository) SetLabel(ctx context.Context, assetID, snapshotID domain.ID, name string) error {
 	// Check if label already exists
 	existing, err := r.client.ent.Label.Query().
@@ -36,18 +37,14 @@ func (r *LabelRepository) SetLabel(ctx context.Context, assetID, snapshotID doma
 	}
 
 	if len(existing) > 0 {
-		// Update existing label
-		_, err = r.client.ent.Label.UpdateOne(existing[0]).
-			SetSnapshotID(snapshotID.String()).
-			Save(ctx)
-		return err
+		// Update existing label (snapshotID is no longer stored)
+		return nil
 	}
 
 	// Create new label
 	_, err = r.client.ent.Label.Create().
 		SetID(domain.NewAutoID().String()).
 		SetAssetID(assetID.String()).
-		SetSnapshotID(snapshotID.String()).
 		SetName(name).
 		Save(ctx)
 	return err
@@ -110,16 +107,10 @@ func (r *LabelRepository) toDomainLabel(e *ent.Label) *domain.Label {
 		assetID = domain.MustNewID(e.Edges.Asset.ID)
 	}
 
-	snapshotID := domain.ID{}
-	if e.Edges.Snapshot != nil {
-		snapshotID = domain.MustNewID(e.Edges.Snapshot.ID)
-	}
-
 	return &domain.Label{
 		ID:         domain.MustNewID(e.ID),
 		AssetID:    assetID,
 		Name:       e.Name,
-		SnapshotID: snapshotID,
 		UpdatedAt:  e.UpdatedAt,
 	}
 }

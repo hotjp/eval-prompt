@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // Label is the model entity for the Label schema.
@@ -25,21 +24,18 @@ type Label struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the LabelQuery when eager-loading is set.
-	Edges           LabelEdges `json:"edges"`
-	asset_labels    *string
-	snapshot_labels *string
-	selectValues    sql.SelectValues
+	Edges        LabelEdges `json:"edges"`
+	asset_labels *string
+	selectValues sql.SelectValues
 }
 
 // LabelEdges holds the relations/edges for other nodes in the graph.
 type LabelEdges struct {
 	// Asset holds the value of the asset edge.
 	Asset *Asset `json:"asset,omitempty"`
-	// Snapshot holds the value of the snapshot edge.
-	Snapshot *Snapshot `json:"snapshot,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [1]bool
 }
 
 // AssetOrErr returns the Asset value or an error if the edge
@@ -53,17 +49,6 @@ func (e LabelEdges) AssetOrErr() (*Asset, error) {
 	return nil, &NotLoadedError{edge: "asset"}
 }
 
-// SnapshotOrErr returns the Snapshot value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e LabelEdges) SnapshotOrErr() (*Snapshot, error) {
-	if e.Snapshot != nil {
-		return e.Snapshot, nil
-	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: snapshot.Label}
-	}
-	return nil, &NotLoadedError{edge: "snapshot"}
-}
-
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Label) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -74,8 +59,6 @@ func (*Label) scanValues(columns []string) ([]any, error) {
 		case label.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case label.ForeignKeys[0]: // asset_labels
-			values[i] = new(sql.NullString)
-		case label.ForeignKeys[1]: // snapshot_labels
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -117,13 +100,6 @@ func (_m *Label) assignValues(columns []string, values []any) error {
 				_m.asset_labels = new(string)
 				*_m.asset_labels = value.String
 			}
-		case label.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field snapshot_labels", values[i])
-			} else if value.Valid {
-				_m.snapshot_labels = new(string)
-				*_m.snapshot_labels = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -140,11 +116,6 @@ func (_m *Label) Value(name string) (ent.Value, error) {
 // QueryAsset queries the "asset" edge of the Label entity.
 func (_m *Label) QueryAsset() *AssetQuery {
 	return NewLabelClient(_m.config).QueryAsset(_m)
-}
-
-// QuerySnapshot queries the "snapshot" edge of the Label entity.
-func (_m *Label) QuerySnapshot() *SnapshotQuery {
-	return NewLabelClient(_m.config).QuerySnapshot(_m)
 }
 
 // Update returns a builder for updating this Label.

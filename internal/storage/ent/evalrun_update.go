@@ -16,7 +16,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 	"github.com/eval-prompt/internal/storage/ent/schema"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // EvalRunUpdate is the builder for updating EvalRun entities.
@@ -244,17 +243,6 @@ func (_u *EvalRunUpdate) SetEvalCase(v *EvalCase) *EvalRunUpdate {
 	return _u.SetEvalCaseID(v.ID)
 }
 
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_u *EvalRunUpdate) SetSnapshotID(id string) *EvalRunUpdate {
-	_u.mutation.SetSnapshotID(id)
-	return _u
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_u *EvalRunUpdate) SetSnapshot(v *Snapshot) *EvalRunUpdate {
-	return _u.SetSnapshotID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_u *EvalRunUpdate) Mutation() *EvalRunMutation {
 	return _u.mutation
@@ -263,12 +251,6 @@ func (_u *EvalRunUpdate) Mutation() *EvalRunMutation {
 // ClearEvalCase clears the "eval_case" edge to the EvalCase entity.
 func (_u *EvalRunUpdate) ClearEvalCase() *EvalRunUpdate {
 	_u.mutation.ClearEvalCase()
-	return _u
-}
-
-// ClearSnapshot clears the "snapshot" edge to the Snapshot entity.
-func (_u *EvalRunUpdate) ClearSnapshot() *EvalRunUpdate {
-	_u.mutation.ClearSnapshot()
 	return _u
 }
 
@@ -313,9 +295,6 @@ func (_u *EvalRunUpdate) check() error {
 	}
 	if _u.mutation.EvalCaseCleared() && len(_u.mutation.EvalCaseIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "EvalRun.eval_case"`)
-	}
-	if _u.mutation.SnapshotCleared() && len(_u.mutation.SnapshotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalRun.snapshot"`)
 	}
 	return nil
 }
@@ -422,35 +401,6 @@ func (_u *EvalRunUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.SnapshotCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.SnapshotTable,
-			Columns: []string{evalrun.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.SnapshotTable,
-			Columns: []string{evalrun.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -690,17 +640,6 @@ func (_u *EvalRunUpdateOne) SetEvalCase(v *EvalCase) *EvalRunUpdateOne {
 	return _u.SetEvalCaseID(v.ID)
 }
 
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_u *EvalRunUpdateOne) SetSnapshotID(id string) *EvalRunUpdateOne {
-	_u.mutation.SetSnapshotID(id)
-	return _u
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_u *EvalRunUpdateOne) SetSnapshot(v *Snapshot) *EvalRunUpdateOne {
-	return _u.SetSnapshotID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_u *EvalRunUpdateOne) Mutation() *EvalRunMutation {
 	return _u.mutation
@@ -709,12 +648,6 @@ func (_u *EvalRunUpdateOne) Mutation() *EvalRunMutation {
 // ClearEvalCase clears the "eval_case" edge to the EvalCase entity.
 func (_u *EvalRunUpdateOne) ClearEvalCase() *EvalRunUpdateOne {
 	_u.mutation.ClearEvalCase()
-	return _u
-}
-
-// ClearSnapshot clears the "snapshot" edge to the Snapshot entity.
-func (_u *EvalRunUpdateOne) ClearSnapshot() *EvalRunUpdateOne {
-	_u.mutation.ClearSnapshot()
 	return _u
 }
 
@@ -772,9 +705,6 @@ func (_u *EvalRunUpdateOne) check() error {
 	}
 	if _u.mutation.EvalCaseCleared() && len(_u.mutation.EvalCaseIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "EvalRun.eval_case"`)
-	}
-	if _u.mutation.SnapshotCleared() && len(_u.mutation.SnapshotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalRun.snapshot"`)
 	}
 	return nil
 }
@@ -898,35 +828,6 @@ func (_u *EvalRunUpdateOne) sqlSave(ctx context.Context) (_node *EvalRun, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.SnapshotCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.SnapshotTable,
-			Columns: []string{evalrun.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.SnapshotTable,
-			Columns: []string{evalrun.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

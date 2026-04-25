@@ -13,7 +13,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // EvalRun is the model entity for the EvalRun schema.
@@ -43,7 +42,6 @@ type EvalRun struct {
 	// The values are being populated by the EvalRunQuery when eager-loading is set.
 	Edges               EvalRunEdges `json:"edges"`
 	eval_case_eval_runs *string
-	snapshot_eval_runs  *string
 	selectValues        sql.SelectValues
 }
 
@@ -51,11 +49,9 @@ type EvalRun struct {
 type EvalRunEdges struct {
 	// EvalCase holds the value of the eval_case edge.
 	EvalCase *EvalCase `json:"eval_case,omitempty"`
-	// Snapshot holds the value of the snapshot edge.
-	Snapshot *Snapshot `json:"snapshot,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [1]bool
 }
 
 // EvalCaseOrErr returns the EvalCase value or an error if the edge
@@ -67,17 +63,6 @@ func (e EvalRunEdges) EvalCaseOrErr() (*EvalCase, error) {
 		return nil, &NotFoundError{label: evalcase.Label}
 	}
 	return nil, &NotLoadedError{edge: "eval_case"}
-}
-
-// SnapshotOrErr returns the Snapshot value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e EvalRunEdges) SnapshotOrErr() (*Snapshot, error) {
-	if e.Snapshot != nil {
-		return e.Snapshot, nil
-	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: snapshot.Label}
-	}
-	return nil, &NotLoadedError{edge: "snapshot"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -96,8 +81,6 @@ func (*EvalRun) scanValues(columns []string) ([]any, error) {
 		case evalrun.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case evalrun.ForeignKeys[0]: // eval_case_eval_runs
-			values[i] = new(sql.NullString)
-		case evalrun.ForeignKeys[1]: // snapshot_eval_runs
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -183,13 +166,6 @@ func (_m *EvalRun) assignValues(columns []string, values []any) error {
 				_m.eval_case_eval_runs = new(string)
 				*_m.eval_case_eval_runs = value.String
 			}
-		case evalrun.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field snapshot_eval_runs", values[i])
-			} else if value.Valid {
-				_m.snapshot_eval_runs = new(string)
-				*_m.snapshot_eval_runs = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -206,11 +182,6 @@ func (_m *EvalRun) Value(name string) (ent.Value, error) {
 // QueryEvalCase queries the "eval_case" edge of the EvalRun entity.
 func (_m *EvalRun) QueryEvalCase() *EvalCaseQuery {
 	return NewEvalRunClient(_m.config).QueryEvalCase(_m)
-}
-
-// QuerySnapshot queries the "snapshot" edge of the EvalRun entity.
-func (_m *EvalRun) QuerySnapshot() *SnapshotQuery {
-	return NewEvalRunClient(_m.config).QuerySnapshot(_m)
 }
 
 // Update returns a builder for updating this EvalRun.

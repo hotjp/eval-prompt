@@ -26,8 +26,6 @@ type Tx struct {
 	ModelAdaptation *ModelAdaptationClient
 	// OutboxEvent is the client for interacting with the OutboxEvent builders.
 	OutboxEvent *OutboxEventClient
-	// Snapshot is the client for interacting with the Snapshot builders.
-	Snapshot *SnapshotClient
 
 	// lazily loaded.
 	client     *Client
@@ -166,7 +164,6 @@ func (tx *Tx) init() {
 	tx.Label = NewLabelClient(tx.config)
 	tx.ModelAdaptation = NewModelAdaptationClient(tx.config)
 	tx.OutboxEvent = NewOutboxEventClient(tx.config)
-	tx.Snapshot = NewSnapshotClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

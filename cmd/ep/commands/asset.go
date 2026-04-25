@@ -37,7 +37,7 @@ var cliIndexer service.AssetIndexer
 
 func getIndexer() service.AssetIndexer {
 	if cliIndexer == nil {
-		cliIndexer = search.NewIndexer(nil, "")
+		cliIndexer = search.NewIndexer()
 	}
 	return cliIndexer
 }

@@ -14,19 +14,17 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // LabelQuery is the builder for querying Label entities.
 type LabelQuery struct {
 	config
-	ctx          *QueryContext
-	order        []label.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.Label
-	withAsset    *AssetQuery
-	withSnapshot *SnapshotQuery
-	withFKs      bool
+	ctx        *QueryContext
+	order      []label.OrderOption
+	inters     []Interceptor
+	predicates []predicate.Label
+	withAsset  *AssetQuery
+	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,28 +76,6 @@ func (_q *LabelQuery) QueryAsset() *AssetQuery {
 			sqlgraph.From(label.Table, label.FieldID, selector),
 			sqlgraph.To(asset.Table, asset.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, label.AssetTable, label.AssetColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QuerySnapshot chains the current query on the "snapshot" edge.
-func (_q *LabelQuery) QuerySnapshot() *SnapshotQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(label.Table, label.FieldID, selector),
-			sqlgraph.To(snapshot.Table, snapshot.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, label.SnapshotTable, label.SnapshotColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +270,12 @@ func (_q *LabelQuery) Clone() *LabelQuery {
 		return nil
 	}
 	return &LabelQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]label.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.Label{}, _q.predicates...),
-		withAsset:    _q.withAsset.Clone(),
-		withSnapshot: _q.withSnapshot.Clone(),
+		config:     _q.config,
+		ctx:        _q.ctx.Clone(),
+		order:      append([]label.OrderOption{}, _q.order...),
+		inters:     append([]Interceptor{}, _q.inters...),
+		predicates: append([]predicate.Label{}, _q.predicates...),
+		withAsset:  _q.withAsset.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -315,17 +290,6 @@ func (_q *LabelQuery) WithAsset(opts ...func(*AssetQuery)) *LabelQuery {
 		opt(query)
 	}
 	_q.withAsset = query
-	return _q
-}
-
-// WithSnapshot tells the query-builder to eager-load the nodes that are connected to
-// the "snapshot" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *LabelQuery) WithSnapshot(opts ...func(*SnapshotQuery)) *LabelQuery {
-	query := (&SnapshotClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withSnapshot = query
 	return _q
 }
 
@@ -408,12 +372,11 @@ func (_q *LabelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Label,
 		nodes       = []*Label{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [1]bool{
 			_q.withAsset != nil,
-			_q.withSnapshot != nil,
 		}
 	)
-	if _q.withAsset != nil || _q.withSnapshot != nil {
+	if _q.withAsset != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -440,12 +403,6 @@ func (_q *LabelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Label,
 	if query := _q.withAsset; query != nil {
 		if err := _q.loadAsset(ctx, query, nodes, nil,
 			func(n *Label, e *Asset) { n.Edges.Asset = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withSnapshot; query != nil {
-		if err := _q.loadSnapshot(ctx, query, nodes, nil,
-			func(n *Label, e *Snapshot) { n.Edges.Snapshot = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -477,38 +434,6 @@ func (_q *LabelQuery) loadAsset(ctx context.Context, query *AssetQuery, nodes []
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "asset_labels" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
-func (_q *LabelQuery) loadSnapshot(ctx context.Context, query *SnapshotQuery, nodes []*Label, init func(*Label), assign func(*Label, *Snapshot)) error {
-	ids := make([]string, 0, len(nodes))
-	nodeids := make(map[string][]*Label)
-	for i := range nodes {
-		if nodes[i].snapshot_labels == nil {
-			continue
-		}
-		fk := *nodes[i].snapshot_labels
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(snapshot.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "snapshot_labels" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

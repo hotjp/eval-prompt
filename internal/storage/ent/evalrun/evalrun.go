@@ -35,8 +35,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// EdgeEvalCase holds the string denoting the eval_case edge name in mutations.
 	EdgeEvalCase = "eval_case"
-	// EdgeSnapshot holds the string denoting the snapshot edge name in mutations.
-	EdgeSnapshot = "snapshot"
 	// Table holds the table name of the evalrun in the database.
 	Table = "eval_runs"
 	// EvalCaseTable is the table that holds the eval_case relation/edge.
@@ -46,13 +44,6 @@ const (
 	EvalCaseInverseTable = "eval_cases"
 	// EvalCaseColumn is the table column denoting the eval_case relation/edge.
 	EvalCaseColumn = "eval_case_eval_runs"
-	// SnapshotTable is the table that holds the snapshot relation/edge.
-	SnapshotTable = "eval_runs"
-	// SnapshotInverseTable is the table name for the Snapshot entity.
-	// It exists in this package in order to avoid circular dependency with the "snapshot" package.
-	SnapshotInverseTable = "snapshots"
-	// SnapshotColumn is the table column denoting the snapshot relation/edge.
-	SnapshotColumn = "snapshot_eval_runs"
 )
 
 // Columns holds all SQL columns for evalrun fields.
@@ -73,7 +64,6 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"eval_case_eval_runs",
-	"snapshot_eval_runs",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -182,24 +172,10 @@ func ByEvalCaseField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newEvalCaseStep(), sql.OrderByField(field, opts...))
 	}
 }
-
-// BySnapshotField orders the results by snapshot field.
-func BySnapshotField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newSnapshotStep(), sql.OrderByField(field, opts...))
-	}
-}
 func newEvalCaseStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(EvalCaseInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, EvalCaseTable, EvalCaseColumn),
-	)
-}
-func newSnapshotStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(SnapshotInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, SnapshotTable, SnapshotColumn),
 	)
 }

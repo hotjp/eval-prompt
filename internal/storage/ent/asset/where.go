@@ -545,29 +545,6 @@ func UpdatedAtLTE(v time.Time) predicate.Asset {
 	return predicate.Asset(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
-// HasSnapshots applies the HasEdge predicate on the "snapshots" edge.
-func HasSnapshots() predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, SnapshotsTable, SnapshotsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasSnapshotsWith applies the HasEdge predicate on the "snapshots" edge with a given conditions (other predicates).
-func HasSnapshotsWith(preds ...predicate.Snapshot) predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := newSnapshotsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // HasLabels applies the HasEdge predicate on the "labels" edge.
 func HasLabels() predicate.Asset {
 	return predicate.Asset(func(s *sql.Selector) {

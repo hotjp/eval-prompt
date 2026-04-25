@@ -20,8 +20,6 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeAsset holds the string denoting the asset edge name in mutations.
 	EdgeAsset = "asset"
-	// EdgeSnapshot holds the string denoting the snapshot edge name in mutations.
-	EdgeSnapshot = "snapshot"
 	// Table holds the table name of the label in the database.
 	Table = "labels"
 	// AssetTable is the table that holds the asset relation/edge.
@@ -31,13 +29,6 @@ const (
 	AssetInverseTable = "assets"
 	// AssetColumn is the table column denoting the asset relation/edge.
 	AssetColumn = "asset_labels"
-	// SnapshotTable is the table that holds the snapshot relation/edge.
-	SnapshotTable = "labels"
-	// SnapshotInverseTable is the table name for the Snapshot entity.
-	// It exists in this package in order to avoid circular dependency with the "snapshot" package.
-	SnapshotInverseTable = "snapshots"
-	// SnapshotColumn is the table column denoting the snapshot relation/edge.
-	SnapshotColumn = "snapshot_labels"
 )
 
 // Columns holds all SQL columns for label fields.
@@ -51,7 +42,6 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"asset_labels",
-	"snapshot_labels",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -104,24 +94,10 @@ func ByAssetField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newAssetStep(), sql.OrderByField(field, opts...))
 	}
 }
-
-// BySnapshotField orders the results by snapshot field.
-func BySnapshotField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newSnapshotStep(), sql.OrderByField(field, opts...))
-	}
-}
 func newAssetStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AssetInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, AssetTable, AssetColumn),
-	)
-}
-func newSnapshotStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(SnapshotInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, SnapshotTable, SnapshotColumn),
 	)
 }

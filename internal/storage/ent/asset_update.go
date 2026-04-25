@@ -17,7 +17,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // AssetUpdate is the builder for updating Asset entities.
@@ -161,21 +160,6 @@ func (_u *AssetUpdate) SetUpdatedAt(v time.Time) *AssetUpdate {
 	return _u
 }
 
-// AddSnapshotIDs adds the "snapshots" edge to the Snapshot entity by IDs.
-func (_u *AssetUpdate) AddSnapshotIDs(ids ...string) *AssetUpdate {
-	_u.mutation.AddSnapshotIDs(ids...)
-	return _u
-}
-
-// AddSnapshots adds the "snapshots" edges to the Snapshot entity.
-func (_u *AssetUpdate) AddSnapshots(v ...*Snapshot) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddSnapshotIDs(ids...)
-}
-
 // AddLabelIDs adds the "labels" edge to the Label entity by IDs.
 func (_u *AssetUpdate) AddLabelIDs(ids ...string) *AssetUpdate {
 	_u.mutation.AddLabelIDs(ids...)
@@ -224,27 +208,6 @@ func (_u *AssetUpdate) AddAdaptations(v ...*ModelAdaptation) *AssetUpdate {
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdate) Mutation() *AssetMutation {
 	return _u.mutation
-}
-
-// ClearSnapshots clears all "snapshots" edges to the Snapshot entity.
-func (_u *AssetUpdate) ClearSnapshots() *AssetUpdate {
-	_u.mutation.ClearSnapshots()
-	return _u
-}
-
-// RemoveSnapshotIDs removes the "snapshots" edge to Snapshot entities by IDs.
-func (_u *AssetUpdate) RemoveSnapshotIDs(ids ...string) *AssetUpdate {
-	_u.mutation.RemoveSnapshotIDs(ids...)
-	return _u
-}
-
-// RemoveSnapshots removes "snapshots" edges to Snapshot entities.
-func (_u *AssetUpdate) RemoveSnapshots(v ...*Snapshot) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveSnapshotIDs(ids...)
 }
 
 // ClearLabels clears all "labels" edges to the Label entity.
@@ -425,51 +388,6 @@ func (_u *AssetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.SnapshotsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedSnapshotsIDs(); len(nodes) > 0 && !_u.mutation.SnapshotsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.LabelsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -754,21 +672,6 @@ func (_u *AssetUpdateOne) SetUpdatedAt(v time.Time) *AssetUpdateOne {
 	return _u
 }
 
-// AddSnapshotIDs adds the "snapshots" edge to the Snapshot entity by IDs.
-func (_u *AssetUpdateOne) AddSnapshotIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.AddSnapshotIDs(ids...)
-	return _u
-}
-
-// AddSnapshots adds the "snapshots" edges to the Snapshot entity.
-func (_u *AssetUpdateOne) AddSnapshots(v ...*Snapshot) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddSnapshotIDs(ids...)
-}
-
 // AddLabelIDs adds the "labels" edge to the Label entity by IDs.
 func (_u *AssetUpdateOne) AddLabelIDs(ids ...string) *AssetUpdateOne {
 	_u.mutation.AddLabelIDs(ids...)
@@ -817,27 +720,6 @@ func (_u *AssetUpdateOne) AddAdaptations(v ...*ModelAdaptation) *AssetUpdateOne 
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdateOne) Mutation() *AssetMutation {
 	return _u.mutation
-}
-
-// ClearSnapshots clears all "snapshots" edges to the Snapshot entity.
-func (_u *AssetUpdateOne) ClearSnapshots() *AssetUpdateOne {
-	_u.mutation.ClearSnapshots()
-	return _u
-}
-
-// RemoveSnapshotIDs removes the "snapshots" edge to Snapshot entities by IDs.
-func (_u *AssetUpdateOne) RemoveSnapshotIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.RemoveSnapshotIDs(ids...)
-	return _u
-}
-
-// RemoveSnapshots removes "snapshots" edges to Snapshot entities.
-func (_u *AssetUpdateOne) RemoveSnapshots(v ...*Snapshot) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveSnapshotIDs(ids...)
 }
 
 // ClearLabels clears all "labels" edges to the Label entity.
@@ -1048,51 +930,6 @@ func (_u *AssetUpdateOne) sqlSave(ctx context.Context) (_node *Asset, err error)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.SnapshotsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedSnapshotsIDs(); len(nodes) > 0 && !_u.mutation.SnapshotsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.LabelsCleared() {
 		edge := &sqlgraph.EdgeSpec{

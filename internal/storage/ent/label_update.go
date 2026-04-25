@@ -14,7 +14,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // LabelUpdate is the builder for updating Label entities.
@@ -61,17 +60,6 @@ func (_u *LabelUpdate) SetAsset(v *Asset) *LabelUpdate {
 	return _u.SetAssetID(v.ID)
 }
 
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_u *LabelUpdate) SetSnapshotID(id string) *LabelUpdate {
-	_u.mutation.SetSnapshotID(id)
-	return _u
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_u *LabelUpdate) SetSnapshot(v *Snapshot) *LabelUpdate {
-	return _u.SetSnapshotID(v.ID)
-}
-
 // Mutation returns the LabelMutation object of the builder.
 func (_u *LabelUpdate) Mutation() *LabelMutation {
 	return _u.mutation
@@ -80,12 +68,6 @@ func (_u *LabelUpdate) Mutation() *LabelMutation {
 // ClearAsset clears the "asset" edge to the Asset entity.
 func (_u *LabelUpdate) ClearAsset() *LabelUpdate {
 	_u.mutation.ClearAsset()
-	return _u
-}
-
-// ClearSnapshot clears the "snapshot" edge to the Snapshot entity.
-func (_u *LabelUpdate) ClearSnapshot() *LabelUpdate {
-	_u.mutation.ClearSnapshot()
 	return _u
 }
 
@@ -135,9 +117,6 @@ func (_u *LabelUpdate) check() error {
 	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Label.asset"`)
 	}
-	if _u.mutation.SnapshotCleared() && len(_u.mutation.SnapshotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Label.snapshot"`)
-	}
 	return nil
 }
 
@@ -181,35 +160,6 @@ func (_u *LabelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.SnapshotCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.SnapshotTable,
-			Columns: []string{label.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.SnapshotTable,
-			Columns: []string{label.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -268,17 +218,6 @@ func (_u *LabelUpdateOne) SetAsset(v *Asset) *LabelUpdateOne {
 	return _u.SetAssetID(v.ID)
 }
 
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_u *LabelUpdateOne) SetSnapshotID(id string) *LabelUpdateOne {
-	_u.mutation.SetSnapshotID(id)
-	return _u
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_u *LabelUpdateOne) SetSnapshot(v *Snapshot) *LabelUpdateOne {
-	return _u.SetSnapshotID(v.ID)
-}
-
 // Mutation returns the LabelMutation object of the builder.
 func (_u *LabelUpdateOne) Mutation() *LabelMutation {
 	return _u.mutation
@@ -287,12 +226,6 @@ func (_u *LabelUpdateOne) Mutation() *LabelMutation {
 // ClearAsset clears the "asset" edge to the Asset entity.
 func (_u *LabelUpdateOne) ClearAsset() *LabelUpdateOne {
 	_u.mutation.ClearAsset()
-	return _u
-}
-
-// ClearSnapshot clears the "snapshot" edge to the Snapshot entity.
-func (_u *LabelUpdateOne) ClearSnapshot() *LabelUpdateOne {
-	_u.mutation.ClearSnapshot()
 	return _u
 }
 
@@ -355,9 +288,6 @@ func (_u *LabelUpdateOne) check() error {
 	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Label.asset"`)
 	}
-	if _u.mutation.SnapshotCleared() && len(_u.mutation.SnapshotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Label.snapshot"`)
-	}
 	return nil
 }
 
@@ -418,35 +348,6 @@ func (_u *LabelUpdateOne) sqlSave(ctx context.Context) (_node *Label, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.SnapshotCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.SnapshotTable,
-			Columns: []string{label.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.SnapshotTable,
-			Columns: []string{label.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

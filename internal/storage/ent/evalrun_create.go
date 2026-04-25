@@ -13,7 +13,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // EvalRunCreate is the builder for creating a EvalRun entity.
@@ -158,17 +157,6 @@ func (_c *EvalRunCreate) SetEvalCase(v *EvalCase) *EvalRunCreate {
 	return _c.SetEvalCaseID(v.ID)
 }
 
-// SetSnapshotID sets the "snapshot" edge to the Snapshot entity by ID.
-func (_c *EvalRunCreate) SetSnapshotID(id string) *EvalRunCreate {
-	_c.mutation.SetSnapshotID(id)
-	return _c
-}
-
-// SetSnapshot sets the "snapshot" edge to the Snapshot entity.
-func (_c *EvalRunCreate) SetSnapshot(v *Snapshot) *EvalRunCreate {
-	return _c.SetSnapshotID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_c *EvalRunCreate) Mutation() *EvalRunMutation {
 	return _c.mutation
@@ -239,9 +227,6 @@ func (_c *EvalRunCreate) check() error {
 	}
 	if len(_c.mutation.EvalCaseIDs()) == 0 {
 		return &ValidationError{Name: "eval_case", err: errors.New(`ent: missing required edge "EvalRun.eval_case"`)}
-	}
-	if len(_c.mutation.SnapshotIDs()) == 0 {
-		return &ValidationError{Name: "snapshot", err: errors.New(`ent: missing required edge "EvalRun.snapshot"`)}
 	}
 	return nil
 }
@@ -329,23 +314,6 @@ func (_c *EvalRunCreate) createSpec() (*EvalRun, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.eval_case_eval_runs = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.SnapshotIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.SnapshotTable,
-			Columns: []string{evalrun.SnapshotColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.snapshot_eval_runs = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

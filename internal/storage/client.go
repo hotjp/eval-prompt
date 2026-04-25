@@ -92,11 +92,6 @@ func (c *Client) AssetClient() *ent.AssetClient {
 	return c.ent.Asset
 }
 
-// SnapshotClient returns the Snapshot client.
-func (c *Client) SnapshotClient() *ent.SnapshotClient {
-	return c.ent.Snapshot
-}
-
 // LabelClient returns the Label client.
 func (c *Client) LabelClient() *ent.LabelClient {
 	return c.ent.Label

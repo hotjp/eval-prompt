@@ -14,7 +14,6 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
-	"github.com/eval-prompt/internal/storage/ent/snapshot"
 )
 
 // AssetCreate is the builder for creating a Asset entity.
@@ -114,21 +113,6 @@ func (_c *AssetCreate) SetNillableUpdatedAt(v *time.Time) *AssetCreate {
 func (_c *AssetCreate) SetID(v string) *AssetCreate {
 	_c.mutation.SetID(v)
 	return _c
-}
-
-// AddSnapshotIDs adds the "snapshots" edge to the Snapshot entity by IDs.
-func (_c *AssetCreate) AddSnapshotIDs(ids ...string) *AssetCreate {
-	_c.mutation.AddSnapshotIDs(ids...)
-	return _c
-}
-
-// AddSnapshots adds the "snapshots" edges to the Snapshot entity.
-func (_c *AssetCreate) AddSnapshots(v ...*Snapshot) *AssetCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddSnapshotIDs(ids...)
 }
 
 // AddLabelIDs adds the "labels" edge to the Label entity by IDs.
@@ -348,22 +332,6 @@ func (_c *AssetCreate) createSpec() (*Asset, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if nodes := _c.mutation.SnapshotsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.SnapshotsTable,
-			Columns: []string{asset.SnapshotsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(snapshot.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.LabelsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
