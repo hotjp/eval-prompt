@@ -211,6 +211,7 @@ type RepoStatus struct {
 	Dirty       bool   `json:"dirty"`
 	ShortCommit string `json:"short_commit,omitempty"`
 	Error       string `json:"error,omitempty"`
+	OutsideHome bool   `json:"outside_home,omitempty"`
 }
 
 // GetRepoStatus handles GET /api/v1/admin/repo-status.
@@ -278,6 +279,7 @@ func (h *AdminHandler) GetRepoStatus(w http.ResponseWriter, r *http.Request) {
 				Branch:      branch,
 				Dirty:       dirty,
 				ShortCommit: shortCommit,
+				OutsideHome: isOutsideHome(currentRepoPath),
 			}
 		} else {
 			errMsg := "not a git repository"
@@ -285,9 +287,10 @@ func (h *AdminHandler) GetRepoStatus(w http.ResponseWriter, r *http.Request) {
 				errMsg = "path not found"
 			}
 			current = &RepoStatus{
-				Path:  currentRepoPath,
-				Valid: false,
-				Error: errMsg,
+				Path:        currentRepoPath,
+				Valid:       false,
+				Error:       errMsg,
+				OutsideHome: isOutsideHome(currentRepoPath),
 			}
 		}
 	}
@@ -712,6 +715,26 @@ func (h *AdminHandler) writeError(w http.ResponseWriter, status int, format stri
 		Status:  "error",
 		Message: fmt.Sprintf(format, args...),
 	})
+}
+
+func isOutsideHome(path string) bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	absHome, err := filepath.Abs(home)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absHome, absPath)
+	if err != nil {
+		return true
+	}
+	return rel == "." || strings.HasPrefix(rel, "..")
 }
 
 func sortSlice(repos []RepoInfo) {

@@ -24,6 +24,7 @@ interface RepoStatus {
   dirty?: boolean
   short_commit?: string
   error?: string
+  outside_home?: boolean
 }
 
 interface RepoEntry {
@@ -484,14 +485,22 @@ function Sidebar() {
           <Dropdown
             menu={{
               items: [
-                // Repo path header
                 {
                   key: 'current',
                   label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>Current: {repoStatus.current?.path}</span>,
                   disabled: true,
                 },
+                ...(repoStatus.current?.outside_home ? [{
+                  key: 'path-warning',
+                  label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fa8c16', fontSize: 12 }}>
+                      <WarningOutlined />
+                      <span>Path is outside ~/ — access may be restricted</span>
+                    </div>
+                  ),
+                  disabled: true,
+                }] : []),
                 { type: 'divider' as const },
-                // Repo switcher
                 ...(repoStatus.repos.length > 0 ? [
                   {
                     key: 'switch',
@@ -510,7 +519,6 @@ function Sidebar() {
                   },
                   { type: 'divider' as const },
                 ] : []),
-                // Init new repo
                 {
                   key: 'init',
                   label: 'Initialize New Repo',
@@ -518,7 +526,6 @@ function Sidebar() {
                   onClick: () => setInitModalOpen(true),
                 },
                 { type: 'divider' as const },
-                // Git operations
                 {
                   key: 'reconcile',
                   label: 'Sync Index (Reconcile)',

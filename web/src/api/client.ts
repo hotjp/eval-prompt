@@ -160,7 +160,7 @@ export const adminApi = {
     return data
   },
   getRepoStatus: async (): Promise<{
-    current?: { path: string; valid: boolean; branch?: string; dirty?: boolean; short_commit?: string; error?: string }
+    current?: { path: string; valid: boolean; branch?: string; dirty?: boolean; short_commit?: string; error?: string; outside_home?: boolean }
     repos: { path: string; status: string }[]
     is_first_use: boolean
   }> => {
