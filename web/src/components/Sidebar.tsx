@@ -495,7 +495,7 @@ function Sidebar() {
                   label: (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fa8c16', fontSize: 12 }}>
                       <WarningOutlined />
-                      <span>Path is outside ~/ — access may be restricted</span>
+                      <span>Path is not under home directory — access may be restricted</span>
                     </div>
                   ),
                   disabled: true,

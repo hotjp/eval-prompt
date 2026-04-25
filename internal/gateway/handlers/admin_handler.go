@@ -722,13 +722,13 @@ func isOutsideHome(path string) bool {
 	if err != nil {
 		return false
 	}
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return false
+		absPath, _ = filepath.Abs(path)
 	}
-	absHome, err := filepath.Abs(home)
+	absHome, err := filepath.EvalSymlinks(home)
 	if err != nil {
-		return false
+		absHome, _ = filepath.Abs(home)
 	}
 	rel, err := filepath.Rel(absHome, absPath)
 	if err != nil {
