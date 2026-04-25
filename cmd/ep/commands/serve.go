@@ -73,11 +73,33 @@ var serveCmd = &cobra.Command{
 
 		// Use first available provider as the default LLM invoker, or NoopInvoker if none
 		var llmInvoker llm.Interface = &llm.NoopInvoker{}
+		var defaultModel string
 		if len(llmProviders) > 0 {
-			for name, p := range llmProviders {
-				llmInvoker = p
-				logger.Info("using LLM provider as default", "name", name)
-				break
+			// First, look for a provider marked as default
+			for _, providerConfig := range cfg.Plugins.LLM {
+				if providerConfig.Default && providerConfig.Provider != "" {
+					if p, ok := llmProviders[providerConfig.Name]; ok {
+						llmInvoker = p
+						defaultModel = providerConfig.DefaultModel
+						logger.Info("using default LLM provider", "name", providerConfig.Name, "model", defaultModel)
+						break
+					}
+				}
+			}
+			// If no default found, use first available
+			if defaultModel == "" {
+				for name, p := range llmProviders {
+					llmInvoker = p
+					// Find the corresponding config to get default model
+					for _, providerConfig := range cfg.Plugins.LLM {
+						if providerConfig.Name == name && providerConfig.Provider != "" {
+							defaultModel = providerConfig.DefaultModel
+							break
+						}
+					}
+					logger.Info("using first available LLM provider as default", "name", name, "model", defaultModel)
+					break
+				}
 			}
 		}
 
@@ -100,6 +122,13 @@ var serveCmd = &cobra.Command{
 
 		// Create eval service (TODO: with real implementation)
 		evalService := service.NewEvalService()
+
+		// Create semantic service for LLM-based analysis
+		semanticService := service.NewSemanticService(llmInvoker, defaultModel)
+
+		// Wire semantic service into trigger and eval services
+		triggerService = triggerService.WithSemanticAnalyzer(semanticService, defaultModel)
+		evalService = evalService.WithSemanticAnalyzer(semanticService)
 
 		// Create storage checker for readyz
 		var storageChecker handlers.StorageChecker

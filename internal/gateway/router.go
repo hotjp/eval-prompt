@@ -50,7 +50,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 
 	// Create handler instances — use pre-created handlers if provided
 	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.EvalService, cfg.IndexService, logger)
-	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger)
+	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger, cfg.AdminConfig)
 	evalHandler := handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
 	triggerHandler := handlers.NewTriggerHandler(cfg.TriggerService, logger)
 	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, logger)
@@ -121,8 +121,14 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/admin/git-info", adminHandler.GetGitInfo)
 	mux.HandleFunc("GET /api/v1/admin/repo-config", adminHandler.GetRepoConfig)
 	mux.HandleFunc("PUT /api/v1/admin/repo-config", adminHandler.UpdateRepoConfig)
+	mux.HandleFunc("GET /api/v1/admin/repo-list", adminHandler.GetRepoList)
+	mux.HandleFunc("PUT /api/v1/admin/repo-switch", adminHandler.PutRepoSwitch)
+	mux.HandleFunc("GET /api/v1/admin/first-use", adminHandler.GetFirstUse)
+	mux.HandleFunc("GET /api/v1/admin/repo-status", adminHandler.GetRepoStatus)
 	mux.HandleFunc("POST /api/v1/admin/reload", adminHandler.ReloadConfig)
 	mux.HandleFunc("POST /api/v1/admin/restart", adminHandler.Restart)
+	mux.HandleFunc("POST /api/v1/admin/reconcile", adminHandler.Reconcile)
+	mux.HandleFunc("POST /api/v1/admin/git-pull", adminHandler.GitPull)
 
 	// Health check endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
