@@ -37,7 +37,7 @@ function VersionTreeView() {
     return <div>Asset not found</div>
   }
 
-  const sortedSnapshots = [...asset.snapshots].sort(
+  const sortedSnapshots = [...(asset.snapshots || [])].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 
