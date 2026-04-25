@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from 'antd'
 import Sidebar from './components/Sidebar'
@@ -15,7 +15,11 @@ import { loadTagsFromAPI } from './config/tags'
 const { Content } = Layout
 
 function App() {
+  const initRef = useRef(false)
+
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
     loadAssetTypesFromAPI()
     loadTagsFromAPI()
   }, [])

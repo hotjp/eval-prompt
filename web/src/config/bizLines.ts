@@ -23,6 +23,7 @@ const DEFAULT_BIZ_LINES: AssetTypeConfig[] = [
 ]
 
 let cachedAssetTypes: AssetTypeConfig[] | null = null
+let loadingAssetTypes = false
 
 export function getAssetTypes(): AssetTypeConfig[] {
   if (cachedAssetTypes) return cachedAssetTypes
@@ -38,6 +39,8 @@ export function getAssetTypes(): AssetTypeConfig[] {
 }
 
 export async function loadAssetTypesFromAPI(): Promise<void> {
+  if (loadingAssetTypes) return
+  loadingAssetTypes = true
   try {
     const { data } = await axios.get<{ asset_types: AssetTypeConfig[] }>('/api/v1/taxonomy')
     cachedAssetTypes = data.asset_types || DEFAULT_BIZ_LINES
@@ -47,6 +50,8 @@ export async function loadAssetTypesFromAPI(): Promise<void> {
     if (!cachedAssetTypes) {
       cachedAssetTypes = DEFAULT_BIZ_LINES
     }
+  } finally {
+    loadingAssetTypes = false
   }
 }
 

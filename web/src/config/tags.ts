@@ -24,6 +24,7 @@ const DEFAULT_TAGS: TagConfig[] = [
 ]
 
 let cachedTags: TagConfig[] | null = null
+let loadingTags = false
 
 export function getTags(): TagConfig[] {
   if (cachedTags) return cachedTags
@@ -39,6 +40,8 @@ export function getTags(): TagConfig[] {
 }
 
 export async function loadTagsFromAPI(): Promise<void> {
+  if (loadingTags) return
+  loadingTags = true
   try {
     const { data } = await axios.get<{ tags: TagConfig[] }>('/api/v1/taxonomy')
     cachedTags = data.tags || DEFAULT_TAGS
@@ -47,6 +50,8 @@ export async function loadTagsFromAPI(): Promise<void> {
     if (!cachedTags) {
       cachedTags = DEFAULT_TAGS
     }
+  } finally {
+    loadingTags = false
   }
 }
 

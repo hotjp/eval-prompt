@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Tag, Input, Button, Space, message, Spin, Row, Col, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
@@ -30,7 +30,11 @@ function AssetListView() {
   const [viewMode, setViewMode] = useState<ViewMode>('active')
   const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
 
+  const initRef = useRef(false)
+
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
     loadAssets()
   }, [])
 
