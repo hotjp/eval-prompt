@@ -14,23 +14,26 @@ import (
 
 // OpenAIProvider implements Provider for OpenAI-compatible APIs.
 type OpenAIProvider struct {
-	APIKey   string
-	Endpoint string // defaults to https://api.openai.com/v1
-	PingPath string // lightweight health check path, e.g. "/v1/models"
+	APIKey       string
+	Endpoint     string // defaults to https://api.openai.com/v1
+	PingPath     string // lightweight health check path, e.g. "/v1/models"
+	DefaultModel string // default model to use when model is not specified
 }
 
 // NewOpenAIProvider creates a new OpenAI provider.
-func NewOpenAIProvider(apiKey, endpoint, pingPath string) *OpenAIProvider {
+func NewOpenAIProvider(apiKey, endpoint, pingPath string, defaultModel ...string) *OpenAIProvider {
 	if endpoint == "" {
 		endpoint = "https://api.openai.com/v1"
 	}
-	if pingPath == "" {
-		pingPath = "/v1/models"
+	model := ""
+	if len(defaultModel) > 0 {
+		model = defaultModel[0]
 	}
 	return &OpenAIProvider{
-		APIKey:   apiKey,
-		Endpoint: endpoint,
-		PingPath: pingPath,
+		APIKey:       apiKey,
+		Endpoint:     endpoint,
+		PingPath:     pingPath,
+		DefaultModel: model,
 	}
 }
 
@@ -169,29 +172,68 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, body any) (json.RawMessa
 }
 
 // Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
-// If PingPath is empty, checks TCP connectivity to the endpoint host.
+// If PingPath is empty, does a lightweight chat completion with max_tokens=1 to verify the API works.
 func (p *OpenAIProvider) Ping(ctx context.Context) error {
-	if p.PingPath == "" {
-		return pingTCP(ctx, p.Endpoint)
+	// If PingPath is set, use it for HTTP GET check
+	if p.PingPath != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.Endpoint+p.PingPath, nil)
+		if err != nil {
+			return fmt.Errorf("openai: create ping request: %w", err)
+		}
+		if p.APIKey != "" {
+			req.Header.Set("Authorization", "Bearer "+p.APIKey)
+		}
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("openai: ping failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("openai: ping status %d", resp.StatusCode)
+		}
+		return nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.Endpoint+p.PingPath, nil)
+	// PingPath is empty: do a lightweight chat completion to verify API works
+	// This is more reliable for "openai-compatible" providers that may not have /v1/models
+	if p.DefaultModel == "" {
+		return errors.New("openai: default_model is required for chat completion ping")
+	}
+	model := p.DefaultModel
+	body := openaiChatRequest{
+		Model: model,
+		Messages: []msg{
+			{Role: "user", Content: "ping"},
+		},
+		Temperature: 0,
+		MaxTokens:   1, // Minimal tokens to verify API works
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("openai: marshal ping request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.Endpoint+"/chat/completions", bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("openai: create ping request: %w", err)
 	}
-	if p.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+p.APIKey)
-	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("openai: ping failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("openai: ping status %d", resp.StatusCode)
+		return fmt.Errorf("openai: ping status %d body: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
 }

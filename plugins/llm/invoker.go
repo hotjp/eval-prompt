@@ -40,8 +40,8 @@ type Provider interface {
 // NewProvider creates a new LLM provider based on the given config.
 func NewProvider(cfg config.LLMProviderConfig) (Interface, error) {
 	switch cfg.Provider {
-	case "openai":
-		return NewOpenAIProvider(cfg.APIKey, cfg.Endpoint, cfg.PingPath), nil
+	case "openai", "openai-compatible":
+		return NewOpenAIProvider(cfg.APIKey, cfg.Endpoint, cfg.PingPath, cfg.DefaultModel), nil
 	case "claude":
 		return NewClaudeProvider(cfg.APIKey, cfg.Endpoint, cfg.PingPath)
 	case "ollama":
