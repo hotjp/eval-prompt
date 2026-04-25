@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -109,10 +110,48 @@ func (s *TriggerService) MatchTrigger(ctx context.Context, input string, top int
 		}
 	}
 
-	// Step 3: SemanticAnalyzer (future - not implemented yet)
-	// if s.semanticAnalyzer != nil && len(matches) < top {
-	//     // Use semantic analysis for enhanced matching
-	// }
+	// Step 3: Semantic re-ranking when results are insufficient
+	if s.semanticAnalyzer != nil && len(matches) < top {
+		// Get all assets for semantic scoring
+		allAssets, err := s.indexer.Search(ctx, "", SearchFilters{})
+		if err == nil {
+			var scored []struct {
+				asset AssetSummary
+				score float64
+			}
+			for _, asset := range allAssets {
+				req := AnalyzeContentRequest{
+					Content:     input,
+					Description: asset.Description,
+				}
+				result, err := s.semanticAnalyzer.AnalyzeContent(ctx, req)
+				if err == nil && result != nil {
+					scored = append(scored, struct {
+						asset AssetSummary
+						score float64
+					}{asset, result.Score.Overall})
+				}
+			}
+			// Sort by score descending
+			sort.Slice(scored, func(i, j int) bool {
+				return scored[i].score > scored[j].score
+			})
+			// Add top candidates not already matched
+			for _, candidate := range scored {
+				if len(matches) >= top {
+					break
+				}
+				if !containsAssetID(matches, candidate.asset.ID) {
+					matches = append(matches, &MatchedPrompt{
+						AssetID:     candidate.asset.ID,
+						Name:        candidate.asset.Name,
+						Description: candidate.asset.Description,
+						Relevance:   candidate.score,
+					})
+				}
+			}
+		}
+	}
 
 	// Limit to top results
 	if len(matches) > top {

@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,25 +12,135 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eval-prompt/internal/config"
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 )
 
 // AssetHandler handles asset CRUD API endpoints.
 type AssetHandler struct {
-	indexer     service.AssetIndexer
-	fileManager service.AssetFileManager
-	logger      *slog.Logger
+	indexer          service.AssetIndexer
+	fileManager      service.AssetFileManager
+	semanticAnalyzer service.SemanticAnalyzer
+	model            string
+	logger           *slog.Logger
+	config           *config.Config
 }
 
 // NewAssetHandler creates a new AssetHandler.
-func NewAssetHandler(indexer service.AssetIndexer, fileManager service.AssetFileManager, logger *slog.Logger) *AssetHandler {
+func NewAssetHandler(indexer service.AssetIndexer, fileManager service.AssetFileManager, logger *slog.Logger, cfg *config.Config) *AssetHandler {
 	return &AssetHandler{
 		indexer:     indexer,
 		fileManager: fileManager,
 		logger:      logger,
+		config:      cfg,
 	}
+}
+
+// WithSemanticAnalyzer sets the semantic analyzer for trigger auto-generation.
+func (h *AssetHandler) WithSemanticAnalyzer(sa service.SemanticAnalyzer, model string) *AssetHandler {
+	h.semanticAnalyzer = sa
+	h.model = model
+	return h
+}
+
+// getCurrentRepoPath returns the current repository path.
+// It checks config.PromptAssets.RepoPath first, then falls back to lock file's current repo.
+func (h *AssetHandler) getCurrentRepoPath() string {
+	if h.config != nil && h.config.PromptAssets.RepoPath != "" {
+		return h.config.PromptAssets.RepoPath
+	}
+	l, err := lock.ReadLock()
+	if err != nil {
+		return ""
+	}
+	return l.GetCurrent()
+}
+
+// generateTriggers analyzes content and updates triggers in frontmatter.
+// Returns the generated triggers or nil if generation failed/skipped.
+func (h *AssetHandler) generateTriggers(ctx context.Context, id, content string) ([]domain.TriggerEntry, error) {
+	if h.semanticAnalyzer == nil {
+		return nil, nil
+	}
+
+	// Get existing frontmatter for description and biz_line
+	fm, err := h.fileManager.GetFrontmatter(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get frontmatter: %w", err)
+	}
+
+	// Analyze content
+	result, err := h.semanticAnalyzer.AnalyzeContent(ctx, service.AnalyzeContentRequest{
+		Content:     content,
+		Description: fm.Description,
+		BizLine:     fm.BizLine,
+	})
+	if err != nil || result == nil {
+		return nil, err
+	}
+
+	if len(result.Triggers) == 0 {
+		return nil, nil
+	}
+
+	// Convert service.TriggerEntry to domain.TriggerEntry
+	incoming := make([]domain.TriggerEntry, len(result.Triggers))
+	for i, t := range result.Triggers {
+		incoming[i] = domain.TriggerEntry{
+			Pattern:    t.Pattern,
+			Examples:   t.Examples,
+			Confidence: t.Confidence,
+		}
+	}
+
+	// Merge with existing triggers (keep higher confidence)
+	merged := mergeTriggers(fm.Triggers, incoming)
+
+	// Update frontmatter with merged triggers
+	_, err = h.fileManager.UpdateFrontmatter(ctx, id, func(frontmatter *domain.FrontMatter) error {
+		frontmatter.Triggers = merged
+		return nil
+	}, fmt.Sprintf("Update triggers for %s", id))
+	if err != nil {
+		return nil, fmt.Errorf("update frontmatter: %w", err)
+	}
+
+	return merged, nil
+}
+
+// mergeTriggers merges new triggers with existing ones, keeping higher confidence.
+// If a pattern already exists with higher confidence, it is kept.
+func mergeTriggers(existing, incoming []domain.TriggerEntry) []domain.TriggerEntry {
+	if len(incoming) == 0 {
+		return existing
+	}
+	if len(existing) == 0 {
+		return incoming
+	}
+
+	// Build a map of pattern -> TriggerEntry for existing
+	merged := make(map[string]domain.TriggerEntry)
+	for _, t := range existing {
+		merged[t.Pattern] = t
+	}
+
+	// Merge incoming, keeping higher confidence
+	for _, t := range incoming {
+		existing, ok := merged[t.Pattern]
+		if !ok || t.Confidence > existing.Confidence {
+			merged[t.Pattern] = t
+		}
+	}
+
+	// Convert back to slice
+	result := make([]domain.TriggerEntry, 0, len(merged))
+	for _, t := range merged {
+		result = append(result, t)
+	}
+	return result
 }
 
 // AssetResponse represents the API response for an asset.
@@ -76,8 +187,9 @@ func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 
 	filters := service.SearchFilters{
-		BizLine: bizLine,
-		State:   state,
+		RepoPath: h.getCurrentRepoPath(),
+		BizLine:  bizLine,
+		State:    state,
 	}
 	if tag != "" {
 		filters.Tags = []string{tag}
@@ -209,6 +321,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		BizLine:     req.BizLine,
 		Tags:        req.Tags,
 		State:       "created",
+		RepoPath:    h.getCurrentRepoPath(),
 	}
 
 	if err := h.indexer.Save(ctx, asset); err != nil {
@@ -435,6 +548,14 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 	}
 
 	h.logger.Info("asset content saved", "asset_id", id, "commit", hash, "layer", "L5")
+
+	// Trigger auto-generation: analyze content and update triggers in frontmatter
+	if h.semanticAnalyzer != nil {
+		triggers, err := h.generateTriggers(ctx, id, req.Content)
+		if err == nil && len(triggers) > 0 {
+			h.logger.Info("triggers auto-generated", "asset_id", id, "count", len(triggers), "layer", "L5")
+		}
+	}
 
 	// Preference-Applied: return=representation
 	w.Header().Set("Preference-Applied", "return=representation")

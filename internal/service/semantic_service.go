@@ -81,12 +81,8 @@ Respond with ONLY the JSON object.`, req.Content, req.Description, req.BizLine)
 	// Parse JSON response
 	var result AnalyzeContentResult
 	if err := json.Unmarshal([]byte(resp.Content), &result); err != nil {
-		// Return basic result if parsing fails
-		return &AnalyzeContentResult{
-			Triggers: []TriggerEntry{},
-			Issues:   []ContentIssue{},
-			Score:    ContentScore{Overall: 50, Clarity: 50, Completeness: 50},
-		}, nil
+		// Parse failed - return nil so caller skips (don't return fake data)
+		return nil, nil
 	}
 
 	return &result, nil
@@ -129,12 +125,8 @@ Respond with ONLY the JSON object.`, req.OldVersion, req.OldContent, req.NewVers
 	// Parse JSON response
 	var result ExplainDiffResult
 	if err := json.Unmarshal([]byte(resp.Content), &result); err != nil {
-		// Return basic result if parsing fails
-		return &ExplainDiffResult{
-			Summary: "Failed to parse LLM response",
-			Changes: []SemanticChange{},
-			Impact:  "Unknown",
-		}, nil
+		// Parse failed - return nil so caller skips
+		return nil, nil
 	}
 
 	return &result, nil

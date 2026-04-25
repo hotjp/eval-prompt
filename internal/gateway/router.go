@@ -10,6 +10,7 @@ import (
 	"github.com/eval-prompt/internal/gateway/handlers"
 	"github.com/eval-prompt/internal/gateway/middleware"
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/plugins/llm"
 
 	_ "github.com/eval-prompt/docs" // swagger docs
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -28,8 +29,10 @@ type RouterConfig struct {
 	RestartFunc       func() // Function to call for graceful restart
 	StorageClient    handlers.StorageChecker
 	LLMInvoker        *handlers.LLMCheckerAdapter
+	LLMInterface     llm.Interface
 	ConfigManager     service.ConfigManager
 	GitBridge         service.GitBridger
+	SemanticAnalyzer  service.SemanticAnalyzer
 	// Pre-created handlers (optional — if provided, router uses them; otherwise creates its own)
 	AdminHandler      *handlers.AdminHandler
 	LLMConfigHandler  *handlers.LLMConfigHandler
@@ -51,7 +54,16 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	// Create handler instances — use pre-created handlers if provided
 	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.EvalService, cfg.IndexService, logger)
 	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger, cfg.AdminConfig)
+	if cfg.SemanticAnalyzer != nil {
+		assetHandler = assetHandler.WithSemanticAnalyzer(cfg.SemanticAnalyzer, "")
+	}
 	evalHandler := handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
+	if cfg.SemanticAnalyzer != nil {
+		evalHandler.SetSemanticAnalyzer(cfg.SemanticAnalyzer)
+	}
+	if cfg.LLMInterface != nil {
+		evalHandler.SetLLMInvoker(cfg.LLMInterface)
+	}
 	triggerHandler := handlers.NewTriggerHandler(cfg.TriggerService, logger)
 	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, logger)
 
@@ -100,6 +112,10 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/evals/{id}/diagnose", evalHandler.DiagnoseEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}/report", evalHandler.GetEvalReport)
 	mux.HandleFunc("POST /api/v1/evals/compare", evalHandler.CompareEval)
+	mux.HandleFunc("POST /api/v1/eval/diff", evalHandler.DiffEval)
+
+	// Rewrite API
+	mux.HandleFunc("POST /api/v1/rewrite", evalHandler.Rewrite)
 
 	// Trigger API routes
 	mux.HandleFunc("POST /api/v1/trigger/match", triggerHandler.MatchTrigger)

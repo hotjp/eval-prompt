@@ -6,24 +6,39 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/plugins/llm"
 )
 
 // EvalHandler handles evaluation API endpoints.
 type EvalHandler struct {
-	evalService service.EvalServiceer
-	indexer    service.AssetIndexer
-	logger      *slog.Logger
+	evalService       service.EvalServiceer
+	indexer           service.AssetIndexer
+	logger            *slog.Logger
+	semanticAnalyzer  service.SemanticAnalyzer
+	llmInvoker       llm.Interface
 }
 
 // NewEvalHandler creates a new EvalHandler.
 func NewEvalHandler(evalService service.EvalServiceer, indexer service.AssetIndexer, logger *slog.Logger) *EvalHandler {
 	return &EvalHandler{
 		evalService: evalService,
-		indexer:    indexer,
+		indexer:     indexer,
 		logger:      logger,
 	}
+}
+
+// SetSemanticAnalyzer sets the semantic analyzer for diff operations.
+func (h *EvalHandler) SetSemanticAnalyzer(sa service.SemanticAnalyzer) {
+	h.semanticAnalyzer = sa
+}
+
+// SetLLMInvoker sets the LLM invoker for rewrite operations.
+func (h *EvalHandler) SetLLMInvoker(invoker llm.Interface) {
+	h.llmInvoker = invoker
 }
 
 // RunEvalRequest represents the request body for running an eval.
@@ -31,13 +46,18 @@ type RunEvalRequest struct {
 	AssetID         string   `json:"asset_id"`
 	SnapshotVersion string   `json:"snapshot_version"`
 	EvalCaseIDs     []string `json:"eval_case_ids,omitempty"`
+	Mode            string   `json:"mode,omitempty"`            // single, batch, matrix
+	RunsPerCase     int      `json:"runs_per_case,omitempty"`  // for matrix mode
+	Concurrency     int      `json:"concurrency,omitempty"`     // number of workers
+	Model           string   `json:"model,omitempty"`           // override model
+	Temperature     float64  `json:"temperature,omitempty"`     // override temperature
 }
 
 // RunEvalResponse represents the response for running an eval.
 type RunEvalResponse struct {
-	RunID   string `json:"run_id"`
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	ExecutionID string `json:"execution_id"`
+	Status     string `json:"status"`
+	Message    string `json:"message,omitempty"`
 }
 
 // RunEval handles POST /api/v1/evals/run.
@@ -70,7 +90,19 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 		req.SnapshotVersion = "latest"
 	}
 
-	run, err := h.evalService.RunEval(ctx, req.AssetID, req.SnapshotVersion, req.EvalCaseIDs)
+	// Convert handler request to service request
+	svcReq := &service.RunEvalRequest{
+		AssetID:         req.AssetID,
+		SnapshotVersion: req.SnapshotVersion,
+		EvalCaseIDs:     req.EvalCaseIDs,
+		Mode:            domain.ExecutionMode(req.Mode),
+		RunsPerCase:     req.RunsPerCase,
+		Concurrency:     req.Concurrency,
+		Model:           req.Model,
+		Temperature:     req.Temperature,
+	}
+
+	execution, err := h.evalService.RunEval(ctx, svcReq)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "eval run failed: %v", err)
 		return
@@ -82,12 +114,12 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 		// Non-fatal: eval still succeeded, index will be stale
 	}
 
-	h.logger.Info("eval run started", "asset_id", req.AssetID, "run_id", run.ID, "layer", "L5")
+	h.logger.Info("eval execution started", "asset_id", req.AssetID, "execution_id", execution.ID, "layer", "L5")
 
 	h.writeJSON(w, http.StatusAccepted, RunEvalResponse{
-		RunID:   run.ID,
-		Status:  string(run.Status),
-		Message: "eval run started",
+		ExecutionID: execution.ID,
+		Status:     string(execution.Status),
+		Message:    "eval execution started",
 	})
 }
 
@@ -254,6 +286,192 @@ func (h *EvalHandler) ListEvalRuns(w http.ResponseWriter, r *http.Request) {
 		"runs":  runs,
 		"total": len(runs),
 	})
+}
+
+// GetExecution handles GET /api/v1/evals/executions/{id}.
+//
+//	@Summary Get eval execution by ID
+//	@Description Get a single eval execution by its ID
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Eval Execution ID"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 404 {object} map[string]interface{}
+//	@Router /api/v1/evals/executions/{id} [get]
+func (h *EvalHandler) GetExecution(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	execution, err := h.evalService.GetExecution(ctx, id)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "eval execution not found: %s", id)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, execution)
+}
+
+// CancelExecution handles POST /api/v1/evals/executions/{id}/cancel.
+//
+//	@Summary Cancel eval execution
+//	@Description Cancel a running eval execution
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Eval Execution ID"
+//	@Success 200 {object} map[string]interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals/executions/{id}/cancel [post]
+func (h *EvalHandler) CancelExecution(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	if err := h.evalService.CancelExecution(ctx, id); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to cancel eval execution: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"execution_id": id,
+		"status":       "cancelled",
+		"message":       "eval execution cancelled",
+	})
+}
+
+// DiffEvalRequest represents the request body for diff evaluation.
+type DiffEvalRequest struct {
+	OldContent string `json:"old_content"`
+	NewContent string `json:"new_content"`
+	OldVersion string `json:"old_version"`
+	NewVersion string `json:"new_version"`
+}
+
+// DiffEval handles POST /api/v1/eval/diff.
+//
+//	@Summary Explain diff between versions
+//	@Description Use semantic analysis to explain the differences between two versions of content
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param request body DiffEvalRequest true "Diff request"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 503 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/eval/diff [post]
+func (h *EvalHandler) DiffEval(w http.ResponseWriter, r *http.Request) {
+	if h.semanticAnalyzer == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "semantic analyzer not configured")
+		return
+	}
+
+	var req DiffEvalRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request: %v", err)
+		return
+	}
+
+	result, err := h.semanticAnalyzer.ExplainDiff(r.Context(), service.ExplainDiffRequest{
+		OldContent: req.OldContent,
+		NewContent: req.NewContent,
+		OldVersion: req.OldVersion,
+		NewVersion: req.NewVersion,
+	})
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "explain diff failed: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, result)
+}
+
+// RewriteRequest represents a rewrite request.
+type RewriteRequest struct {
+	Content     string `json:"content"`
+	Instruction string `json:"instruction"`
+}
+
+// Rewrite handles POST /api/v1/rewrite.
+func (h *EvalHandler) Rewrite(w http.ResponseWriter, r *http.Request) {
+	if h.llmInvoker == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "LLM not configured")
+		return
+	}
+
+	var req RewriteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request: %v", err)
+		return
+	}
+
+	if req.Content == "" {
+		h.writeError(w, http.StatusBadRequest, "content is required")
+		return
+	}
+
+	// Build rewrite prompt - instruct LLM to return ONLY the rewritten text
+	prompt := fmt.Sprintf(`Rewrite the following text according to the instruction.
+Do not include any markdown formatting, no code blocks, no think tags, no explanations.
+Just output the rewritten text directly.
+
+Instruction: %s
+
+Original text:
+%s
+
+Rewritten text:`, req.Instruction, req.Content)
+
+	resp, err := h.llmInvoker.Invoke(r.Context(), prompt, "", 0.3)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "rewrite failed: %v", err)
+		return
+	}
+
+	// Clean the response: remove <think> tags, markdown code blocks, and trim
+	rewritten := cleanRewriteResponse(resp.Content)
+
+	h.writeJSON(w, http.StatusOK, map[string]string{"rewritten": rewritten})
+}
+
+// cleanRewriteResponse removes think tags, markdown formatting, and trims whitespace.
+func cleanRewriteResponse(s string) string {
+	// Remove <think> tags and content
+	s = strings.ReplaceAll(s, "<think>", "")
+	s = strings.ReplaceAll(s, "</think>", "")
+
+	// Remove markdown code block markers
+	s = strings.ReplaceAll(s, "```", "")
+
+	// Remove bold/italic markers
+	s = strings.ReplaceAll(s, "**", "")
+	s = strings.ReplaceAll(s, "*", "")
+	s = strings.ReplaceAll(s, "_", "")
+
+	// Remove headers but preserve content
+	s = strings.ReplaceAll(s, "# ", "")
+	s = strings.ReplaceAll(s, "## ", "")
+	s = strings.ReplaceAll(s, "### ", "")
+
+	// Remove leading dashes in markdown lists
+	s = strings.ReplaceAll(s, "- ", "")
+
+	// Trim whitespace but preserve newlines
+	s = strings.TrimSpace(s)
+
+	return s
 }
 
 // writeJSON writes a JSON response.
