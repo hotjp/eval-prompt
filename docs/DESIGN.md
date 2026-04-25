@@ -1311,4 +1311,49 @@ rubric:
 
 ---
 
+## 附录：Tag 分类规范
+
+### Tag 维度
+
+| 维度 | 用途 | 示例 |
+|------|------|------|
+| **类型** | 区分 prompt 类型 | `agent`, `skill`, `workflow`, `system` |
+| **业务线** | 按业务领域分类 | `payment`, `auth`, `search` |
+| **模型** | 针对的模型 | `gpt-4o`, `claude-3`, `ollama` |
+| **场景** | 使用场景 | `internal`, `external`, `prod`, `dev` |
+
+### 常用 Tag 组合
+
+```yaml
+# Agent Prompt
+tags: [agent, code-review, gpt-4o]
+
+# Skill Prompt
+tags: [skill, translation, claude-3]
+
+# Workflow Prompt
+tags: [workflow, multi-step, gpt-4o]
+
+# System Prompt
+tags: [system, jailbreak-detection, internal]
+
+# Production Ready
+tags: [prod, agent, code-review, gpt-4o]
+```
+
+### 搜索示例
+
+```bash
+# 搜索所有 agent 类型
+ep asset list --tags agent
+
+# 搜索 gpt-4o 相关
+ep asset list --tags gpt-4o
+
+# 组合搜索
+ep asset list --tags agent,gpt-4o
+```
+
+---
+
 **文档结束**
