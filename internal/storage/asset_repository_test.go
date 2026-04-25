@@ -278,3 +278,50 @@ func TestAssetRepository_UpdateState(t *testing.T) {
 		t.Errorf("expected state %q, got %q", domain.AssetStateEvaluated, got.State)
 	}
 }
+
+func TestAssetRepository_GetByName(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file::memory:?_fk=1&_journal_mode=WAL")
+	defer client.Close()
+
+	repo := NewAssetRepository(&Client{ent: client})
+	ctx := context.Background()
+
+	asset := &domain.Asset{
+		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
+		Name:        "UniqueAssetName",
+		Description: "Test get by name",
+		BizLine:     "test",
+		Tags:        []string{"test"},
+		ContentHash: "hash123",
+		FilePath:    "/prompts/by-name.md",
+		State:       domain.AssetStateCreated,
+	}
+	err := repo.Create(ctx, asset)
+	if err != nil {
+		t.Fatalf("failed to create asset: %v", err)
+	}
+
+	got, err := repo.GetByName(ctx, "UniqueAssetName")
+	if err != nil {
+		t.Fatalf("failed to get asset by name: %v", err)
+	}
+	if got.ID.String() != asset.ID.String() {
+		t.Errorf("expected ID %q, got %q", asset.ID.String(), got.ID.String())
+	}
+	if got.Name != asset.Name {
+		t.Errorf("expected name %q, got %q", asset.Name, got.Name)
+	}
+}
+
+func TestAssetRepository_GetByName_NotFound(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file::memory:?_fk=1&_journal_mode=WAL")
+	defer client.Close()
+
+	repo := NewAssetRepository(&Client{ent: client})
+	ctx := context.Background()
+
+	_, err := repo.GetByName(ctx, "NonExistentAsset")
+	if err == nil {
+		t.Error("expected error when getting non-existent asset by name")
+	}
+}

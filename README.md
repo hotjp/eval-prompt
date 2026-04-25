@@ -147,16 +147,6 @@ curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
 iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
 ```
 
-**Binaries:**
-
-| File | OS | Arch |
-|------|----|------|
-| `ep-darwin-arm64` | macOS | Apple Silicon |
-| `ep-darwin-amd64` | macOS | Intel |
-| `ep-linux-arm64` | Linux | ARM64 |
-| `ep-linux-amd64` | Linux | x86_64 |
-| `ep-windows-amd64.exe` | Windows | x86_64 |
-
 **Requirements:**
 - macOS: Xcode Command Line Tools
 - Linux: gcc + SQLite dev libraries

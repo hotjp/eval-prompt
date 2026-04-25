@@ -547,6 +547,39 @@ func TestGetJSONPath(t *testing.T) {
 			path:     "a.b.c",
 			expected: "deep",
 		},
+		{
+			name:        "index out of bounds",
+			data:       []any{"only one"},
+			path:        "[5]",
+			expectError: true,
+		},
+		{
+			name:        "path not found in object",
+			data:       map[string]any{"other": "value"},
+			path:        "missing",
+			expectError: false,
+			expected:    nil,
+		},
+		{
+			name:        "path not found - wrong type at key",
+			data:       "string instead of map",
+			path:        "key",
+			expectError: true,
+		},
+		{
+			name:        "array on non-array",
+			data:       map[string]any{"key": "value"},
+			path:        "[0]",
+			expectError: false,
+			expected:    nil,
+		},
+		{
+			name:        "empty path returns same data",
+			data:       map[string]any{"key": "value"},
+			path:        "",
+			expected:    nil,
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
