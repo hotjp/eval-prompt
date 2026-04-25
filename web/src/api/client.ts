@@ -5,6 +5,10 @@ const api = axios.create({
   timeout: 10000,
 })
 
+const noPrefixApi = axios.create({
+  timeout: 10000,
+})
+
 export interface AssetSummary {
   id: string
   name: string
@@ -12,6 +16,7 @@ export interface AssetSummary {
   biz_line: string
   tags: string[]
   state: string
+  latest_score?: number
 }
 
 export interface AssetDetail extends AssetSummary {
@@ -61,6 +66,53 @@ export interface CompareResult {
   passed_delta: number
 }
 
+export interface HealthStatus {
+  status: string
+  checks?: Record<string, { status: string; message?: string; providers?: Record<string, { status: string; latency_ms?: number; message?: string }> }>
+}
+
+export interface GitInfo {
+  branch: string
+  dirty: boolean
+  short_commit: string
+  remote: string
+}
+
+export interface LLMConfig {
+  name: string
+  provider: string
+  api_key: string
+  endpoint?: string
+  default_model: string
+}
+
+export interface RepoConfig {
+  repo_path: string
+  assets_dir: string
+  evals_dir: string
+}
+
+export const healthApi = {
+  check: async (): Promise<HealthStatus> => {
+    const { data } = await noPrefixApi.get('/readyz')
+    return data
+  },
+}
+
+export const adminApi = {
+  gitInfo: async (): Promise<GitInfo> => {
+    const { data } = await api.get('/admin/git-info')
+    return data
+  },
+  getRepoConfig: async (): Promise<RepoConfig> => {
+    const { data } = await api.get('/admin/repo-config')
+    return data
+  },
+  saveRepoConfig: async (config: RepoConfig): Promise<void> => {
+    await api.put('/admin/repo-config', config)
+  },
+}
+
 export const assetApi = {
   list: async (filters?: { biz_line?: string; tag?: string }): Promise<AssetSummary[]> => {
     const params = new URLSearchParams()
@@ -75,7 +127,7 @@ export const assetApi = {
     return data
   },
 
-  create: async (asset: { id: string; name: string; description?: string }): Promise<void> => {
+  create: async (asset: { id: string; name: string; description?: string; biz_line?: string; tags?: string[]; content?: string }): Promise<void> => {
     await api.post('/assets', asset)
   },
 
@@ -85,6 +137,24 @@ export const assetApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/assets/${id}`)
+  },
+
+  archive: async (id: string): Promise<void> => {
+    await api.post(`/assets/${id}/archive`)
+  },
+
+  restore: async (id: string): Promise<void> => {
+    await api.post(`/assets/${id}/restore`)
+  },
+
+  getContent: async (id: string): Promise<{ id: string; content: string; content_hash: string; updated_at: string }> => {
+    const { data } = await api.get(`/assets/${id}/content`)
+    return data
+  },
+
+  saveContent: async (id: string, content: string, commitMessage?: string, contentHash?: string): Promise<{ id: string; content: string; commit: string; content_hash: string; updated_at: string }> => {
+    const { data } = await api.put(`/assets/${id}/content`, { content, commit_message: commitMessage, content_hash: contentHash })
+    return data
   },
 }
 
@@ -142,6 +212,17 @@ export const triggerApi = {
   inject: async (prompt: string, variables: Record<string, string>): Promise<{ result: string }> => {
     const { data } = await api.post('/trigger/inject', { prompt, variables })
     return data
+  },
+}
+
+export const llmConfigApi = {
+  get: async (): Promise<LLMConfig[]> => {
+    const { data } = await api.get('/llm-config')
+    return data
+  },
+
+  save: async (configs: LLMConfig[]): Promise<void> => {
+    await api.put('/llm-config', configs)
   },
 }
 
