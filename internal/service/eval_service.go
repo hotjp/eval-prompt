@@ -523,11 +523,17 @@ func (s *EvalService) CompareEval(ctx context.Context, assetID string, v1, v2 st
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshot v1: %w", err)
 	}
+	if snap1 == nil {
+		return nil, fmt.Errorf("snapshot v1 not found")
+	}
 
 	// Get snapshot for v2
 	snap2, err := s.snapshotRepo.GetByAssetIDAndVersion(ctx, assetID, v2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshot v2: %w", err)
+	}
+	if snap2 == nil {
+		return nil, fmt.Errorf("snapshot v2 not found")
 	}
 
 	// Get eval runs for v1
@@ -611,7 +617,7 @@ func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalRe
 
 	// Get snapshot to get version and asset ID
 	snapshot, err := s.snapshotRepo.GetByID(ctx, run.SnapshotID.String())
-	if err == nil {
+	if err == nil && snapshot != nil {
 		report.AssetID = snapshot.AssetID.String()
 		report.SnapshotVersion = snapshot.Version
 	}

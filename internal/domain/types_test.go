@@ -433,3 +433,47 @@ func TestValidateLength(t *testing.T) {
 		})
 	}
 }
+
+func TestLock(t *testing.T) {
+	lock := NewLock()
+	require.NotNil(t, lock)
+
+	lock.Lock()
+	lock.Unlock()
+}
+
+func TestLayer_String(t *testing.T) {
+	tests := []struct {
+		layer Layer
+		want  string
+	}{
+		{Layer1, "L1"},
+		{Layer2, "L2"},
+		{Layer3, "L3"},
+		{Layer4, "L4"},
+		{Layer5, "L5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.layer.String())
+		})
+	}
+}
+
+func TestErrorCode_Layer(t *testing.T) {
+	code := ErrorCode{Layer: Layer2, Sequence: 201}
+	require.Equal(t, Layer2, code.Layer)
+	require.Equal(t, 201, code.Sequence)
+}
+
+func TestParseErrorCode_InvalidSequences(t *testing.T) {
+	_, err := ParseErrorCode("L2abc")
+	require.Error(t, err)
+
+	// L2000 parses successfully as Layer 2, Sequence 0 (valid since seq 0 is ErrDomainBase)
+	code, err := ParseErrorCode("L2000")
+	require.NoError(t, err)
+	require.Equal(t, Layer2, code.Layer)
+	require.Equal(t, 0, code.Sequence)
+}

@@ -77,6 +77,34 @@ func TestDomainError(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, err.HTTPStatus())
 	})
 
+	t.Run("HTTPStatus for Layer1", func(t *testing.T) {
+		// L1 always returns 500
+		err := DomainError{Code: ErrorCode{Layer: Layer1, Sequence: 1}}
+		require.Equal(t, http.StatusInternalServerError, err.HTTPStatus())
+	})
+
+	t.Run("HTTPStatus for Layer4", func(t *testing.T) {
+		// 600 = bad request
+		require.Equal(t, http.StatusBadRequest, NewDomainError(ErrorCode{Layer: Layer4, Sequence: 600}, "").HTTPStatus())
+		// 601, 602 = not found
+		require.Equal(t, http.StatusNotFound, NewDomainError(ErrorCode{Layer: Layer4, Sequence: 601}, "").HTTPStatus())
+		require.Equal(t, http.StatusNotFound, NewDomainError(ErrorCode{Layer: Layer4, Sequence: 602}, "").HTTPStatus())
+		// Default L4 = 500
+		require.Equal(t, http.StatusInternalServerError, NewDomainError(ErrorCode{Layer: Layer4, Sequence: 700}, "").HTTPStatus())
+	})
+
+	t.Run("HTTPStatus for Layer5", func(t *testing.T) {
+		// L5 always returns 400
+		err := DomainError{Code: ErrorCode{Layer: Layer5, Sequence: 800}}
+		require.Equal(t, http.StatusBadRequest, err.HTTPStatus())
+	})
+
+	t.Run("HTTPStatus for unknown layer", func(t *testing.T) {
+		// Unknown layer defaults to 500
+		err := DomainError{Code: ErrorCode{Layer: Layer(99), Sequence: 999}}
+		require.Equal(t, http.StatusInternalServerError, err.HTTPStatus())
+	})
+
 	t.Run("IsNotFound", func(t *testing.T) {
 		// L2 errors don't return 404, so IsNotFound is false for L2 domain errors
 		require.False(t, NewDomainError(ErrEntityNotFound, "").IsNotFound())

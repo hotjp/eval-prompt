@@ -202,3 +202,61 @@ func TestValidateResults(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestNewEvalCaseWithID(t *testing.T) {
+	specificID := ID{value: "01ARZ3NDEKTSV4RRFFQ69G5FAV"}
+	assetID := ID{value: "01ARZ3NDEKTSV4RRFFQ69G5FBB"}
+	rubric := Rubric{MaxScore: 100, Checks: []RubricCheck{{ID: "c1", Weight: 10}}}
+
+	ec := NewEvalCaseWithID(specificID, assetID, "Test", "prompt", true, "output", rubric)
+
+	require.Equal(t, specificID, ec.ID)
+	require.Equal(t, assetID, ec.AssetID)
+	require.Equal(t, "Test", ec.Name)
+	require.Equal(t, "prompt", ec.Prompt)
+	require.True(t, ec.ShouldTrigger)
+	require.Equal(t, "output", ec.ExpectedOutput)
+	require.Equal(t, int64(0), ec.Version)
+}
+
+func TestCalculateScore_EdgeCases(t *testing.T) {
+	t.Run("zero total weight returns zero", func(t *testing.T) {
+		rubric := Rubric{
+			MaxScore: 100,
+			Checks:   []RubricCheck{},
+		}
+		results := []RubricCheckResult{}
+		score := CalculateScore(rubric, results)
+		require.Equal(t, 0, score)
+	})
+
+	t.Run("zero weight checks still scale correctly", func(t *testing.T) {
+		rubric := Rubric{
+			MaxScore: 100,
+			Checks: []RubricCheck{
+				{ID: "c1", Weight: 0},
+				{ID: "c2", Weight: 50},
+			},
+		}
+		results := []RubricCheckResult{
+			{CheckID: "c1", Passed: true},
+			{CheckID: "c2", Passed: true},
+		}
+		score := CalculateScore(rubric, results)
+		require.Equal(t, 100, score)
+	})
+}
+
+func TestNewRubricCheckResult(t *testing.T) {
+	result := NewRubricCheckResult("check1", true, 10, "details")
+
+	require.Equal(t, "check1", result.CheckID)
+	require.True(t, result.Passed)
+	require.Equal(t, 10, result.Score)
+	require.Equal(t, "details", result.Details)
+}
+
+func TestNewRubricCheckResult_EmptyDetails(t *testing.T) {
+	result := NewRubricCheckResult("check1", false, 0, "")
+	require.Equal(t, "", result.Details)
+}

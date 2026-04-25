@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -196,4 +197,176 @@ func TestStateMachine_ValidEvents(t *testing.T) {
 	require.Len(t, events, 2)
 	require.Contains(t, events, EventType("event1"))
 	require.Contains(t, events, EventType("event2"))
+}
+
+func TestStateMachine_States(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B", "C"})
+	states := sm.States()
+	require.Len(t, states, 3)
+	require.Contains(t, states, State("A"))
+	require.Contains(t, states, State("B"))
+	require.Contains(t, states, State("C"))
+}
+
+func TestStateMachine_Transitions(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B", "C"})
+	_ = sm.AddTransition("A", "B", "event1")
+
+	transitions := sm.Transitions()
+	require.Len(t, transitions, 1)
+	require.Equal(t, State("A"), transitions[0].From)
+	require.Equal(t, State("B"), transitions[0].To)
+	require.Equal(t, EventType("event1"), transitions[0].Event)
+}
+
+func TestAssetStateMachine_CanPromote(t *testing.T) {
+	asm, _ := NewAssetStateMachine()
+
+	// Cannot promote from CREATED
+	require.False(t, asm.CanPromote())
+
+	// Transition to EVALUATED
+	_ = asm.Transition(AssetStateEvaluating, EventEvalStarted, nil)
+	_ = asm.Transition(AssetStateEvaluated, EventEvalCompleted, nil)
+
+	// Can promote from EVALUATED
+	require.True(t, asm.CanPromote())
+}
+
+func TestAssetStateMachine_CanArchive(t *testing.T) {
+	asm, _ := NewAssetStateMachine()
+
+	// Can archive from CREATED
+	require.True(t, asm.CanArchive())
+}
+
+func TestRecordAction(t *testing.T) {
+	var recordedFrom, recordedTo State
+	var recordedEvent EventType
+
+	record := func(from, to State, event EventType) {
+		recordedFrom = from
+		recordedTo = to
+		recordedEvent = event
+	}
+
+	action := RecordAction(record)
+	err := action(State("A"), State("B"), EventType("test"), nil)
+	require.NoError(t, err)
+	require.Equal(t, State("A"), recordedFrom)
+	require.Equal(t, State("B"), recordedTo)
+	require.Equal(t, EventType("test"), recordedEvent)
+}
+
+func TestNewAggregateStateMachine(t *testing.T) {
+	type fromToEvent struct {
+		from, to State
+		event    EventType
+	}
+	var lastTransition fromToEvent
+
+	onTransition := func(from, to State, event EventType) {
+		lastTransition = fromToEvent{from, to, event}
+	}
+
+	states := []State{"A", "B", "C"}
+	asm, err := NewAggregateStateMachine("TestAgg", states, onTransition)
+	require.NoError(t, err)
+	require.Equal(t, State("A"), asm.CurrentState())
+
+	_ = asm.AddTransition("A", "B", EventType("ev1"))
+	err = asm.Transition("B", EventType("ev1"), nil)
+	require.NoError(t, err)
+	require.Equal(t, State("B"), asm.CurrentState())
+	require.Equal(t, State("A"), lastTransition.from)
+	require.Equal(t, State("B"), lastTransition.to)
+}
+
+func TestAggregateStateMachine_Transition(t *testing.T) {
+	asm, _ := NewAggregateStateMachine("TestAgg", []State{"A", "B"}, nil)
+	_ = asm.AddTransition("A", "B", EventType("ev1"))
+
+	err := asm.Transition("B", EventType("ev1"), nil)
+	require.NoError(t, err)
+	require.Equal(t, State("B"), asm.CurrentState())
+}
+
+func TestTransitionHistory_Record(t *testing.T) {
+	th := &TransitionHistory{}
+	th.Record(State("A"), State("B"), EventType("ev1"), 1)
+
+	records := th.Transitions()
+	require.Len(t, records, 1)
+	require.Equal(t, State("A"), records[0].From)
+	require.Equal(t, State("B"), records[0].To)
+	require.Equal(t, EventType("ev1"), records[0].Event)
+	require.Equal(t, int64(1), records[0].Version)
+	require.NotZero(t, records[0].At)
+}
+
+func TestTransitionHistory_MultipleRecords(t *testing.T) {
+	th := &TransitionHistory{}
+	th.Record(State("A"), State("B"), EventType("ev1"), 1)
+	th.Record(State("B"), State("C"), EventType("ev2"), 2)
+
+	records := th.Transitions()
+	require.Len(t, records, 2)
+}
+
+func TestStateMachine_AddTransition_DuplicateEventDiffState(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B", "C"})
+	_ = sm.AddTransition("A", "B", EventType("ev1"))
+	// Same event, different to-state is allowed
+	err := sm.AddTransition("A", "C", EventType("ev1"))
+	require.NoError(t, err)
+}
+
+func TestStateMachine_TransitionTo_InvalidTransition(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B", "C"})
+	_ = sm.AddTransition("A", "B", EventType("ev1"))
+
+	// Try invalid transition from B to C with ev1
+	err := sm.transitionTo(State("B"), State("C"), EventType("ev1"), nil)
+	require.Error(t, err)
+}
+
+func TestStateMachine_TransitionTo_ActionError(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B"}, WithAction("A", "B", EventType("ev1"), func(from, to State, event EventType, ctx interface{}) error {
+		return fmt.Errorf("action failed")
+	}))
+	_ = sm.AddTransition("A", "B", EventType("ev1"))
+
+	err := sm.Transition("B", EventType("ev1"), nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "action failed")
+}
+
+func TestStateMachine_TransitionTo_GuardError(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B"}, WithGuard("A", "B", EventType("ev1"), func(from, to State, event EventType, ctx interface{}) (bool, error) {
+		return false, fmt.Errorf("guard blocked")
+	}))
+	_ = sm.AddTransition("A", "B", EventType("ev1"))
+
+	err := sm.Transition("B", EventType("ev1"), nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "guard blocked")
+}
+
+func TestStateMachine_VersionIncrements(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B", "C"})
+	_ = sm.AddTransition("A", "B", EventType("ev1"))
+	_ = sm.AddTransition("B", "C", EventType("ev2"))
+
+	require.Equal(t, int64(0), sm.Version())
+	_ = sm.Transition("B", EventType("ev1"), nil)
+	require.Equal(t, int64(1), sm.Version())
+	_ = sm.Transition("C", EventType("ev2"), nil)
+	require.Equal(t, int64(2), sm.Version())
+}
+
+func TestStateMachine_ValidEvents_Empty(t *testing.T) {
+	sm, _ := NewStateMachine("test", []State{"A", "B"})
+	// No transitions added
+	events := sm.ValidEvents()
+	require.Empty(t, events)
 }
