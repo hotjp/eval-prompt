@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -26,6 +29,8 @@
     "@types/js-yaml": "^4.0.9",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0"
   }
 }
