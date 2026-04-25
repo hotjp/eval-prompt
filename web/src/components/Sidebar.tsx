@@ -607,7 +607,7 @@ function Sidebar() {
       confirmLoading={initLoading}
     >
       <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
-        Enter the path to a directory. It will be created and initialized as a Git repository if it doesn't exist.
+        Directory path — recommended to be under your home directory. Will be created as Git repo if needed.
       </div>
       <Input
         placeholder="$HOME/path/to/repo"
