@@ -2,12 +2,16 @@ package commands
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/search"
@@ -129,32 +133,98 @@ var assetCreateCmd = &cobra.Command{
 		id, _ := cmd.Flags().GetString("id")
 		name, _ := cmd.Flags().GetString("name")
 		file, _ := cmd.Flags().GetString("file")
+		contentFlag, _ := cmd.Flags().GetString("content")
 		bizLine, _ := cmd.Flags().GetString("biz-line")
 
-		if id == "" || name == "" {
-			return fmt.Errorf("id 和 name 是必需的")
+		if name == "" {
+			return fmt.Errorf("name 是必需的")
 		}
 
-		indexer := getIndexer()
-
-		asset := service.Asset{
-			ID:      id,
-			Name:    name,
-			State:   "created",
-			BizLine: bizLine,
+		// --content and --file are mutually exclusive
+		if contentFlag != "" && file != "" {
+			return fmt.Errorf("--content 和 --file 不能同时使用")
 		}
 
-		// Read file content if provided
-		if file != "" {
-			content, err := os.ReadFile(file)
+		// Determine content source: --content > --file > stdin
+		var content string
+		if contentFlag != "" {
+			content = contentFlag
+		} else if file != "" {
+			fileContent, err := os.ReadFile(file)
 			if err != nil {
 				return fmt.Errorf("读取文件失败: %w", err)
 			}
-			asset.Description = string(content)
+			content = string(fileContent)
+		} else {
+			// Try reading from stdin
+			stat, _ := os.Stdin.Stat()
+			if (stat.Mode() & os.ModeCharDevice) == 0 {
+				stdinContent, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("读取 stdin 失败: %w", err)
+				}
+				content = string(stdinContent)
+			}
+			if content == "" {
+				return fmt.Errorf("必须提供 --content、--file 或 stdin 输入")
+			}
 		}
 
+		// Generate ID if not provided
+		if id == "" {
+			id = domain.NewULID()
+		}
+
+		// Validate ID format if provided
+		if !domain.IsValidULID(id) {
+			return fmt.Errorf("id 必须是有效的 ULID 格式")
+		}
+
+		// Compute content hash
+		hash := sha256.Sum256([]byte(content))
+		contentHash := hex.EncodeToString(hash[:])
+
+		// Ensure prompts directory exists
+		promptsDir := "prompts"
+		if err := os.MkdirAll(promptsDir, 0755); err != nil {
+			return fmt.Errorf("创建 prompts 目录失败: %w", err)
+		}
+
+		// Write asset file
+		filePath := filepath.Join(promptsDir, id+".md")
+		fm := &domain.FrontMatter{
+			ID:          id,
+			Name:        name,
+			ContentHash: contentHash,
+			State:       "created",
+		}
+		markdown, err := yamlutil.FormatMarkdown(fm, content)
+		if err != nil {
+			return fmt.Errorf("格式化 markdown 失败: %w", err)
+		}
+		if err := os.WriteFile(filePath, []byte(markdown), 0644); err != nil {
+			return fmt.Errorf("写入文件失败: %w", err)
+		}
+
+		// Save to indexer
+		indexer := getIndexer()
+		asset := service.Asset{
+			ID:          id,
+			Name:        name,
+			Description: content,
+			BizLine:     bizLine,
+			ContentHash: contentHash,
+			FilePath:    filePath,
+			State:       "created",
+		}
 		if err := indexer.Save(context.Background(), asset); err != nil {
 			return fmt.Errorf("保存资产失败: %w", err)
+		}
+
+		// Call Reconcile to update index
+		if _, err := indexer.Reconcile(context.Background()); err != nil {
+			// Log but don't fail
+			fmt.Fprintf(os.Stderr, "警告: Reconcile 失败: %v\n", err)
 		}
 
 		fmt.Printf("资产已创建: %s\n", id)
@@ -383,9 +453,10 @@ var assetDemoteCmd = &cobra.Command{
 }
 
 func init() {
-	assetCreateCmd.Flags().String("id", "", "资产 ID")
-	assetCreateCmd.Flags().String("name", "", "资产名称")
+	assetCreateCmd.Flags().String("id", "", "资产 ID (可选，默认自动生成 ULID)")
+	assetCreateCmd.Flags().String("name", "", "资产名称 (必需)")
 	assetCreateCmd.Flags().String("file", "", "资产文件路径")
+	assetCreateCmd.Flags().String("content", "", "资产内容 (支持 stdin)")
 	assetCreateCmd.Flags().String("biz-line", "", "业务线")
 
 	assetListCmd.Flags().String("biz-line", "", "按业务线过滤")
