@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Card, Select, Row, Col, Statistic, Tag, Table, message, Button, Space } from 'antd'
-import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from '@ant-design/icons'
-import { assetApi, evalApi } from '../api/client'
+import { Card, Select, Row, Col, Statistic, Tag, Table, message, Button, Space, Modal } from 'antd'
+import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined, DiffOutlined } from '@ant-design/icons'
+import { assetApi, evalApi, llmApi } from '../api/client'
 import type { AssetSummary, AssetDetail, CompareResult, Snapshot } from '../api/client'
 
 function CompareView() {
@@ -13,6 +13,9 @@ function CompareView() {
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [assetLoading, setAssetLoading] = useState(false)
+  const [semanticDiffResult, setSemanticDiffResult] = useState<{ summary: string; changes: string; impact: string } | null>(null)
+  const [semanticDiffLoading, setSemanticDiffLoading] = useState(false)
+  const [showSemanticDiffModal, setShowSemanticDiffModal] = useState(false)
 
   const loadAssets = async () => {
     setAssetLoading(true)
@@ -61,6 +64,36 @@ function CompareView() {
       message.error('Compare failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSemanticDiff = async () => {
+    if (!selectedAsset || !version1 || !version2) {
+      message.warning('Please select asset and both versions')
+      return
+    }
+    if (version1 === version2) {
+      message.warning('Please select two different versions')
+      return
+    }
+    if (!compareResult?.diff_output) {
+      message.warning('Please run Compare first to get the git diff')
+      return
+    }
+    setSemanticDiffLoading(true)
+    try {
+      // Use git diff as old_content; semantic diff will analyze the textual changes
+      const result = await llmApi.diff(compareResult.diff_output, '', version1, version2)
+      setSemanticDiffResult(result)
+      setShowSemanticDiffModal(true)
+    } catch (err: any) {
+      if (err?.response?.status === 503) {
+        message.warning('请先在设置中配置 LLM')
+      } else {
+        message.error('Semantic diff failed')
+      }
+    } finally {
+      setSemanticDiffLoading(false)
     }
   }
 
@@ -114,6 +147,14 @@ function CompareView() {
               disabled={!selectedAsset || versionOptions.length < 2}
             >
               Compare
+            </Button>
+            <Button
+              icon={<DiffOutlined />}
+              onClick={handleSemanticDiff}
+              loading={semanticDiffLoading}
+              disabled={!selectedAsset || versionOptions.length < 2}
+            >
+              语义 Diff
             </Button>
           </Space>
           {versionOptions.length === 0 && selectedAsset && (
@@ -203,6 +244,28 @@ function CompareView() {
           </Card>
         )}
       </Space>
+
+      <Modal
+        title="Semantic Diff"
+        open={showSemanticDiffModal}
+        onCancel={() => setShowSemanticDiffModal(false)}
+        footer={null}
+        width={600}
+      >
+        {semanticDiffResult && (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Card size="small" title="Summary">
+              <p>{semanticDiffResult.summary}</p>
+            </Card>
+            <Card size="small" title="Changes">
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{semanticDiffResult.changes}</pre>
+            </Card>
+            <Card size="small" title="Impact">
+              <p>{semanticDiffResult.impact}</p>
+            </Card>
+          </Space>
+        )}
+      </Modal>
     </div>
   )
 }

@@ -64,6 +64,7 @@ export interface CompareResult {
   version2: string
   score_delta: number
   passed_delta: number
+  diff_output?: string
 }
 
 export interface HealthStatus {
