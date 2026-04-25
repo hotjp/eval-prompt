@@ -13,31 +13,16 @@ var (
 		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
 		{Name: "name", Type: field.TypeString, Size: 100},
 		{Name: "description", Type: field.TypeString, Size: 2147483647},
-		{Name: "biz_line", Type: field.TypeString, Nullable: true, Size: 64},
 		{Name: "tags", Type: field.TypeJSON, Nullable: true},
-		{Name: "content_hash", Type: field.TypeString, Size: 64},
+		{Name: "content_hash", Type: field.TypeString, Size: 128},
 		{Name: "file_path", Type: field.TypeString, Size: 512},
 		{Name: "state", Type: field.TypeEnum, Enums: []string{"created", "evaluating", "evaluated", "promoted", "archived"}, Default: "created"},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// AssetsTable holds the schema information for the "assets" table.
 	AssetsTable = &schema.Table{
 		Name:       "assets",
 		Columns:    AssetsColumns,
 		PrimaryKey: []*schema.Column{AssetsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "asset_biz_line",
-				Unique:  false,
-				Columns: []*schema.Column{AssetsColumns[3]},
-			},
-			{
-				Name:    "asset_state",
-				Unique:  false,
-				Columns: []*schema.Column{AssetsColumns[7]},
-			},
-		},
 	}
 	// AuditLogsColumns holds the columns for the "audit_logs" table.
 	AuditLogsColumns = []*schema.Column{
@@ -75,21 +60,12 @@ var (
 		{Name: "expected_output", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "rubric", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "asset_eval_cases", Type: field.TypeString, Size: 128},
 	}
 	// EvalCasesTable holds the schema information for the "eval_cases" table.
 	EvalCasesTable = &schema.Table{
 		Name:       "eval_cases",
 		Columns:    EvalCasesColumns,
 		PrimaryKey: []*schema.Column{EvalCasesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "eval_cases_assets_eval_cases",
-				Columns:    []*schema.Column{EvalCasesColumns[7]},
-				RefColumns: []*schema.Column{AssetsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "evalcase_name",
@@ -110,21 +86,12 @@ var (
 		{Name: "token_output", Type: field.TypeInt, Nullable: true},
 		{Name: "duration_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "eval_case_eval_runs", Type: field.TypeString, Size: 128},
 	}
 	// EvalRunsTable holds the schema information for the "eval_runs" table.
 	EvalRunsTable = &schema.Table{
 		Name:       "eval_runs",
 		Columns:    EvalRunsColumns,
 		PrimaryKey: []*schema.Column{EvalRunsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "eval_runs_eval_cases_eval_runs",
-				Columns:    []*schema.Column{EvalRunsColumns[10]},
-				RefColumns: []*schema.Column{EvalCasesColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "evalrun_status",
@@ -138,21 +105,12 @@ var (
 		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
 		{Name: "name", Type: field.TypeString, Size: 32},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "asset_labels", Type: field.TypeString, Size: 128},
 	}
 	// LabelsTable holds the schema information for the "labels" table.
 	LabelsTable = &schema.Table{
 		Name:       "labels",
 		Columns:    LabelsColumns,
 		PrimaryKey: []*schema.Column{LabelsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "labels_assets_labels",
-				Columns:    []*schema.Column{LabelsColumns[3]},
-				RefColumns: []*schema.Column{AssetsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "label_name",
@@ -173,21 +131,12 @@ var (
 		{Name: "eval_score", Type: field.TypeFloat64, Nullable: true},
 		{Name: "eval_run_id", Type: field.TypeString, Nullable: true, Size: 128},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "asset_adaptations", Type: field.TypeString, Nullable: true, Size: 128},
 	}
 	// ModelAdaptationsTable holds the schema information for the "model_adaptations" table.
 	ModelAdaptationsTable = &schema.Table{
 		Name:       "model_adaptations",
 		Columns:    ModelAdaptationsColumns,
 		PrimaryKey: []*schema.Column{ModelAdaptationsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "model_adaptations_assets_adaptations",
-				Columns:    []*schema.Column{ModelAdaptationsColumns[10]},
-				RefColumns: []*schema.Column{AssetsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "modeladaptation_source_model",
@@ -245,8 +194,4 @@ var (
 )
 
 func init() {
-	EvalCasesTable.ForeignKeys[0].RefTable = AssetsTable
-	EvalRunsTable.ForeignKeys[0].RefTable = EvalCasesTable
-	LabelsTable.ForeignKeys[0].RefTable = AssetsTable
-	ModelAdaptationsTable.ForeignKeys[0].RefTable = AssetsTable
 }

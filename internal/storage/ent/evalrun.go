@@ -10,7 +10,6 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
@@ -37,32 +36,8 @@ type EvalRun struct {
 	// DurationMs holds the value of the "duration_ms" field.
 	DurationMs int `json:"duration_ms,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the EvalRunQuery when eager-loading is set.
-	Edges               EvalRunEdges `json:"edges"`
-	eval_case_eval_runs *string
-	selectValues        sql.SelectValues
-}
-
-// EvalRunEdges holds the relations/edges for other nodes in the graph.
-type EvalRunEdges struct {
-	// EvalCase holds the value of the eval_case edge.
-	EvalCase *EvalCase `json:"eval_case,omitempty"`
-	// loadedTypes holds the information for reporting if a
-	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
-}
-
-// EvalCaseOrErr returns the EvalCase value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e EvalRunEdges) EvalCaseOrErr() (*EvalCase, error) {
-	if e.EvalCase != nil {
-		return e.EvalCase, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: evalcase.Label}
-	}
-	return nil, &NotLoadedError{edge: "eval_case"}
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -80,8 +55,6 @@ func (*EvalRun) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case evalrun.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case evalrun.ForeignKeys[0]: // eval_case_eval_runs
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -159,13 +132,6 @@ func (_m *EvalRun) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
 			}
-		case evalrun.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field eval_case_eval_runs", values[i])
-			} else if value.Valid {
-				_m.eval_case_eval_runs = new(string)
-				*_m.eval_case_eval_runs = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -177,11 +143,6 @@ func (_m *EvalRun) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *EvalRun) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QueryEvalCase queries the "eval_case" edge of the EvalRun entity.
-func (_m *EvalRun) QueryEvalCase() *EvalCaseQuery {
-	return NewEvalRunClient(_m.config).QueryEvalCase(_m)
 }
 
 // Update returns a builder for updating this EvalRun.

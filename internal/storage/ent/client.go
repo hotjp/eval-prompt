@@ -14,7 +14,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/auditlog"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
@@ -363,54 +362,6 @@ func (c *AssetClient) GetX(ctx context.Context, id string) *Asset {
 	return obj
 }
 
-// QueryLabels queries the labels edge of a Asset.
-func (c *AssetClient) QueryLabels(_m *Asset) *LabelQuery {
-	query := (&LabelClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, id),
-			sqlgraph.To(label.Table, label.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.LabelsTable, asset.LabelsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryEvalCases queries the eval_cases edge of a Asset.
-func (c *AssetClient) QueryEvalCases(_m *Asset) *EvalCaseQuery {
-	query := (&EvalCaseClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, id),
-			sqlgraph.To(evalcase.Table, evalcase.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.EvalCasesTable, asset.EvalCasesColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryAdaptations queries the adaptations edge of a Asset.
-func (c *AssetClient) QueryAdaptations(_m *Asset) *ModelAdaptationQuery {
-	query := (&ModelAdaptationClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, id),
-			sqlgraph.To(modeladaptation.Table, modeladaptation.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.AdaptationsTable, asset.AdaptationsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *AssetClient) Hooks() []Hook {
 	return c.hooks.Asset
@@ -677,38 +628,6 @@ func (c *EvalCaseClient) GetX(ctx context.Context, id string) *EvalCase {
 	return obj
 }
 
-// QueryAsset queries the asset edge of a EvalCase.
-func (c *EvalCaseClient) QueryAsset(_m *EvalCase) *AssetQuery {
-	query := (&AssetClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalcase.Table, evalcase.FieldID, id),
-			sqlgraph.To(asset.Table, asset.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, evalcase.AssetTable, evalcase.AssetColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryEvalRuns queries the eval_runs edge of a EvalCase.
-func (c *EvalCaseClient) QueryEvalRuns(_m *EvalCase) *EvalRunQuery {
-	query := (&EvalRunClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalcase.Table, evalcase.FieldID, id),
-			sqlgraph.To(evalrun.Table, evalrun.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, evalcase.EvalRunsTable, evalcase.EvalRunsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *EvalCaseClient) Hooks() []Hook {
 	return c.hooks.EvalCase
@@ -842,22 +761,6 @@ func (c *EvalRunClient) GetX(ctx context.Context, id string) *EvalRun {
 	return obj
 }
 
-// QueryEvalCase queries the eval_case edge of a EvalRun.
-func (c *EvalRunClient) QueryEvalCase(_m *EvalRun) *EvalCaseQuery {
-	query := (&EvalCaseClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalrun.Table, evalrun.FieldID, id),
-			sqlgraph.To(evalcase.Table, evalcase.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, evalrun.EvalCaseTable, evalrun.EvalCaseColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *EvalRunClient) Hooks() []Hook {
 	return c.hooks.EvalRun
@@ -989,22 +892,6 @@ func (c *LabelClient) GetX(ctx context.Context, id string) *Label {
 		panic(err)
 	}
 	return obj
-}
-
-// QueryAsset queries the asset edge of a Label.
-func (c *LabelClient) QueryAsset(_m *Label) *AssetQuery {
-	query := (&AssetClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(label.Table, label.FieldID, id),
-			sqlgraph.To(asset.Table, asset.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, label.AssetTable, label.AssetColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
 }
 
 // Hooks returns the client hooks.

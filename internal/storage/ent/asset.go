@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -22,8 +21,6 @@ type Asset struct {
 	Name string `json:"name,omitempty"`
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
-	// BizLine holds the value of the "biz_line" field.
-	BizLine string `json:"biz_line,omitempty"`
 	// Tags holds the value of the "tags" field.
 	Tags []string `json:"tags,omitempty"`
 	// ContentHash holds the value of the "content_hash" field.
@@ -31,55 +28,8 @@ type Asset struct {
 	// FilePath holds the value of the "file_path" field.
 	FilePath string `json:"file_path,omitempty"`
 	// State holds the value of the "state" field.
-	State asset.State `json:"state,omitempty"`
-	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the AssetQuery when eager-loading is set.
-	Edges        AssetEdges `json:"edges"`
+	State        asset.State `json:"state,omitempty"`
 	selectValues sql.SelectValues
-}
-
-// AssetEdges holds the relations/edges for other nodes in the graph.
-type AssetEdges struct {
-	// Labels holds the value of the labels edge.
-	Labels []*Label `json:"labels,omitempty"`
-	// EvalCases holds the value of the eval_cases edge.
-	EvalCases []*EvalCase `json:"eval_cases,omitempty"`
-	// Adaptations holds the value of the adaptations edge.
-	Adaptations []*ModelAdaptation `json:"adaptations,omitempty"`
-	// loadedTypes holds the information for reporting if a
-	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
-}
-
-// LabelsOrErr returns the Labels value or an error if the edge
-// was not loaded in eager-loading.
-func (e AssetEdges) LabelsOrErr() ([]*Label, error) {
-	if e.loadedTypes[0] {
-		return e.Labels, nil
-	}
-	return nil, &NotLoadedError{edge: "labels"}
-}
-
-// EvalCasesOrErr returns the EvalCases value or an error if the edge
-// was not loaded in eager-loading.
-func (e AssetEdges) EvalCasesOrErr() ([]*EvalCase, error) {
-	if e.loadedTypes[1] {
-		return e.EvalCases, nil
-	}
-	return nil, &NotLoadedError{edge: "eval_cases"}
-}
-
-// AdaptationsOrErr returns the Adaptations value or an error if the edge
-// was not loaded in eager-loading.
-func (e AssetEdges) AdaptationsOrErr() ([]*ModelAdaptation, error) {
-	if e.loadedTypes[2] {
-		return e.Adaptations, nil
-	}
-	return nil, &NotLoadedError{edge: "adaptations"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -89,10 +39,8 @@ func (*Asset) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case asset.FieldTags:
 			values[i] = new([]byte)
-		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldBizLine, asset.FieldContentHash, asset.FieldFilePath, asset.FieldState:
+		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldContentHash, asset.FieldFilePath, asset.FieldState:
 			values[i] = new(sql.NullString)
-		case asset.FieldCreatedAt, asset.FieldUpdatedAt:
-			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -126,12 +74,6 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Description = value.String
 			}
-		case asset.FieldBizLine:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field biz_line", values[i])
-			} else if value.Valid {
-				_m.BizLine = value.String
-			}
 		case asset.FieldTags:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field tags", values[i])
@@ -158,18 +100,6 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.State = asset.State(value.String)
 			}
-		case asset.FieldCreatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field created_at", values[i])
-			} else if value.Valid {
-				_m.CreatedAt = value.Time
-			}
-		case asset.FieldUpdatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
-			} else if value.Valid {
-				_m.UpdatedAt = value.Time
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -181,21 +111,6 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Asset) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QueryLabels queries the "labels" edge of the Asset entity.
-func (_m *Asset) QueryLabels() *LabelQuery {
-	return NewAssetClient(_m.config).QueryLabels(_m)
-}
-
-// QueryEvalCases queries the "eval_cases" edge of the Asset entity.
-func (_m *Asset) QueryEvalCases() *EvalCaseQuery {
-	return NewAssetClient(_m.config).QueryEvalCases(_m)
-}
-
-// QueryAdaptations queries the "adaptations" edge of the Asset entity.
-func (_m *Asset) QueryAdaptations() *ModelAdaptationQuery {
-	return NewAssetClient(_m.config).QueryAdaptations(_m)
 }
 
 // Update returns a builder for updating this Asset.
@@ -227,9 +142,6 @@ func (_m *Asset) String() string {
 	builder.WriteString("description=")
 	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
-	builder.WriteString("biz_line=")
-	builder.WriteString(_m.BizLine)
-	builder.WriteString(", ")
 	builder.WriteString("tags=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Tags))
 	builder.WriteString(", ")
@@ -241,12 +153,6 @@ func (_m *Asset) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.State))
-	builder.WriteString(", ")
-	builder.WriteString("created_at=")
-	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("updated_at=")
-	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

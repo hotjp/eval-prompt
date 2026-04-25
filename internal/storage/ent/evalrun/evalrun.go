@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -33,17 +32,8 @@ const (
 	FieldDurationMs = "duration_ms"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
-	// EdgeEvalCase holds the string denoting the eval_case edge name in mutations.
-	EdgeEvalCase = "eval_case"
 	// Table holds the table name of the evalrun in the database.
 	Table = "eval_runs"
-	// EvalCaseTable is the table that holds the eval_case relation/edge.
-	EvalCaseTable = "eval_runs"
-	// EvalCaseInverseTable is the table name for the EvalCase entity.
-	// It exists in this package in order to avoid circular dependency with the "evalcase" package.
-	EvalCaseInverseTable = "eval_cases"
-	// EvalCaseColumn is the table column denoting the eval_case relation/edge.
-	EvalCaseColumn = "eval_case_eval_runs"
 )
 
 // Columns holds all SQL columns for evalrun fields.
@@ -60,21 +50,10 @@ var Columns = []string{
 	FieldCreatedAt,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the "eval_runs"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"eval_case_eval_runs",
-}
-
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -164,18 +143,4 @@ func ByDurationMs(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
-}
-
-// ByEvalCaseField orders the results by eval_case field.
-func ByEvalCaseField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEvalCaseStep(), sql.OrderByField(field, opts...))
-	}
-}
-func newEvalCaseStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EvalCaseInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, EvalCaseTable, EvalCaseColumn),
-	)
 }

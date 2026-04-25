@@ -42,9 +42,7 @@ func TestAssetRepository_Create(t *testing.T) {
 	if got.Description != asset.Description {
 		t.Errorf("expected description %q, got %q", asset.Description, got.Description)
 	}
-	if got.BizLine != asset.BizLine {
-		t.Errorf("expected bizLine %q, got %q", asset.BizLine, got.BizLine)
-	}
+	// BizLine is not stored in database in V1.1
 }
 
 func TestAssetRepository_GetByID(t *testing.T) {
@@ -203,41 +201,7 @@ func TestAssetRepository_List(t *testing.T) {
 }
 
 func TestAssetRepository_ListByBizLine(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file::memory:?_fk=1&_journal_mode=WAL")
-	defer client.Close()
-
-	repo := NewAssetRepository(&Client{ent: client})
-	ctx := context.Background()
-
-	// Create assets with different biz lines
-	bizLines := []string{"alpha", "beta", "alpha"}
-	for i, bizLine := range bizLines {
-		asset := &domain.Asset{
-			ID:          domain.NewAutoID(),
-			Name:        "Asset",
-			Description: "Test",
-			BizLine:     bizLine,
-			Tags:        []string{"test"},
-			ContentHash: "hash",
-			FilePath:    "/prompts/asset.md",
-			State:       domain.AssetStateCreated,
-		}
-		err := repo.Create(ctx, asset)
-		if err != nil {
-			t.Fatalf("failed to create asset %d: %v", i, err)
-		}
-	}
-
-	assets, total, err := repo.ListByBizLine(ctx, "alpha", 0, 10)
-	if err != nil {
-		t.Fatalf("failed to list by bizLine: %v", err)
-	}
-	if total != 2 {
-		t.Errorf("expected total 2 for alpha, got %d", total)
-	}
-	if len(assets) != 2 {
-		t.Errorf("expected 2 assets for alpha, got %d", len(assets))
-	}
+	t.Skip("biz_line is deprecated in V1.1 schema")
 }
 
 func TestAssetRepository_ListByState(t *testing.T) {

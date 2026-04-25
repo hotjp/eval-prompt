@@ -10,7 +10,6 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
@@ -31,43 +30,8 @@ type EvalCase struct {
 	// Rubric holds the value of the "rubric" field.
 	Rubric schema.Rubric `json:"rubric,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the EvalCaseQuery when eager-loading is set.
-	Edges            EvalCaseEdges `json:"edges"`
-	asset_eval_cases *string
-	selectValues     sql.SelectValues
-}
-
-// EvalCaseEdges holds the relations/edges for other nodes in the graph.
-type EvalCaseEdges struct {
-	// Asset holds the value of the asset edge.
-	Asset *Asset `json:"asset,omitempty"`
-	// EvalRuns holds the value of the eval_runs edge.
-	EvalRuns []*EvalRun `json:"eval_runs,omitempty"`
-	// loadedTypes holds the information for reporting if a
-	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
-}
-
-// AssetOrErr returns the Asset value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e EvalCaseEdges) AssetOrErr() (*Asset, error) {
-	if e.Asset != nil {
-		return e.Asset, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: asset.Label}
-	}
-	return nil, &NotLoadedError{edge: "asset"}
-}
-
-// EvalRunsOrErr returns the EvalRuns value or an error if the edge
-// was not loaded in eager-loading.
-func (e EvalCaseEdges) EvalRunsOrErr() ([]*EvalRun, error) {
-	if e.loadedTypes[1] {
-		return e.EvalRuns, nil
-	}
-	return nil, &NotLoadedError{edge: "eval_runs"}
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -83,8 +47,6 @@ func (*EvalCase) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case evalcase.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case evalcase.ForeignKeys[0]: // asset_eval_cases
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -144,13 +106,6 @@ func (_m *EvalCase) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
 			}
-		case evalcase.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field asset_eval_cases", values[i])
-			} else if value.Valid {
-				_m.asset_eval_cases = new(string)
-				*_m.asset_eval_cases = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -162,16 +117,6 @@ func (_m *EvalCase) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *EvalCase) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QueryAsset queries the "asset" edge of the EvalCase entity.
-func (_m *EvalCase) QueryAsset() *AssetQuery {
-	return NewEvalCaseClient(_m.config).QueryAsset(_m)
-}
-
-// QueryEvalRuns queries the "eval_runs" edge of the EvalCase entity.
-func (_m *EvalCase) QueryEvalRuns() *EvalRunQuery {
-	return NewEvalCaseClient(_m.config).QueryEvalRuns(_m)
 }
 
 // Update returns a builder for updating this EvalCase.

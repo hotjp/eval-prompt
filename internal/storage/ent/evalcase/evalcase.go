@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -26,26 +25,8 @@ const (
 	FieldRubric = "rubric"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
-	// EdgeAsset holds the string denoting the asset edge name in mutations.
-	EdgeAsset = "asset"
-	// EdgeEvalRuns holds the string denoting the eval_runs edge name in mutations.
-	EdgeEvalRuns = "eval_runs"
 	// Table holds the table name of the evalcase in the database.
 	Table = "eval_cases"
-	// AssetTable is the table that holds the asset relation/edge.
-	AssetTable = "eval_cases"
-	// AssetInverseTable is the table name for the Asset entity.
-	// It exists in this package in order to avoid circular dependency with the "asset" package.
-	AssetInverseTable = "assets"
-	// AssetColumn is the table column denoting the asset relation/edge.
-	AssetColumn = "asset_eval_cases"
-	// EvalRunsTable is the table that holds the eval_runs relation/edge.
-	EvalRunsTable = "eval_runs"
-	// EvalRunsInverseTable is the table name for the EvalRun entity.
-	// It exists in this package in order to avoid circular dependency with the "evalrun" package.
-	EvalRunsInverseTable = "eval_runs"
-	// EvalRunsColumn is the table column denoting the eval_runs relation/edge.
-	EvalRunsColumn = "eval_case_eval_runs"
 )
 
 // Columns holds all SQL columns for evalcase fields.
@@ -59,21 +40,10 @@ var Columns = []string{
 	FieldCreatedAt,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the "eval_cases"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"asset_eval_cases",
-}
-
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -124,39 +94,4 @@ func ByExpectedOutput(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
-}
-
-// ByAssetField orders the results by asset field.
-func ByAssetField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAssetStep(), sql.OrderByField(field, opts...))
-	}
-}
-
-// ByEvalRunsCount orders the results by eval_runs count.
-func ByEvalRunsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newEvalRunsStep(), opts...)
-	}
-}
-
-// ByEvalRuns orders the results by eval_runs terms.
-func ByEvalRuns(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEvalRunsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-func newAssetStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AssetInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, AssetTable, AssetColumn),
-	)
-}
-func newEvalRunsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EvalRunsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, EvalRunsTable, EvalRunsColumn),
-	)
 }

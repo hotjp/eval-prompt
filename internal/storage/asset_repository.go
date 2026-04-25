@@ -25,13 +25,10 @@ func (r *AssetRepository) Create(ctx context.Context, a *domain.Asset) error {
 		SetID(a.ID.String()).
 		SetName(a.Name).
 		SetDescription(a.Description).
-		SetBizLine(a.BizLine).
 		SetTags(a.Tags).
 		SetContentHash(a.ContentHash).
 		SetFilePath(a.FilePath).
 		SetState(r.stateToEnt(a.State)).
-		SetCreatedAt(a.CreatedAt).
-		SetUpdatedAt(a.UpdatedAt).
 		Save(ctx)
 	return err
 }
@@ -50,12 +47,10 @@ func (r *AssetRepository) Update(ctx context.Context, a *domain.Asset) error {
 	_, err := r.client.ent.Asset.UpdateOneID(a.ID.String()).
 		SetName(a.Name).
 		SetDescription(a.Description).
-		SetBizLine(a.BizLine).
 		SetTags(a.Tags).
 		SetContentHash(a.ContentHash).
 		SetFilePath(a.FilePath).
 		SetState(r.stateToEnt(a.State)).
-		SetUpdatedAt(a.UpdatedAt).
 		Save(ctx)
 	return err
 }
@@ -76,29 +71,6 @@ func (r *AssetRepository) List(ctx context.Context, offset, limit int) ([]*domai
 	}
 
 	total, err := r.client.ent.Asset.Query().Count(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	assets := make([]*domain.Asset, len(entAssets))
-	for i, entAsset := range entAssets {
-		assets[i] = r.toDomainAsset(entAsset)
-	}
-	return assets, total, nil
-}
-
-// ListByBizLine retrieves assets by business line.
-func (r *AssetRepository) ListByBizLine(ctx context.Context, bizLine string, offset, limit int) ([]*domain.Asset, int, error) {
-	entAssets, err := r.client.ent.Asset.Query().
-		Where(asset.BizLine(bizLine)).
-		Offset(offset).
-		Limit(limit).
-		All(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	total, err := r.client.ent.Asset.Query().Where(asset.BizLine(bizLine)).Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -134,35 +106,16 @@ func (r *AssetRepository) ListByState(ctx context.Context, state domain.State, o
 	return assets, total, nil
 }
 
-// toEntAsset converts a domain Asset to an ent Asset.
-func (r *AssetRepository) toEntAsset(a *domain.Asset) *ent.Asset {
-	return &ent.Asset{
-		ID:          a.ID.String(),
-		Name:        a.Name,
-		Description: a.Description,
-		BizLine:     a.BizLine,
-		Tags:        a.Tags,
-		ContentHash: a.ContentHash,
-		FilePath:    a.FilePath,
-		State:       r.stateToEnt(a.State),
-		CreatedAt:   a.CreatedAt,
-		UpdatedAt:   a.UpdatedAt,
-	}
-}
-
 // toDomainAsset converts an ent Asset to a domain Asset.
 func (r *AssetRepository) toDomainAsset(e *ent.Asset) *domain.Asset {
 	return &domain.Asset{
 		ID:          domain.MustNewID(e.ID),
 		Name:        e.Name,
 		Description: e.Description,
-		BizLine:     e.BizLine,
 		Tags:        e.Tags,
 		ContentHash: e.ContentHash,
 		FilePath:    e.FilePath,
 		State:       r.stateFromEnt(e.State),
-		CreatedAt:   e.CreatedAt,
-		UpdatedAt:   e.UpdatedAt,
 		Version:     0, // ent doesn't track version the same way
 	}
 }

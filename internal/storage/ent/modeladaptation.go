@@ -35,9 +35,8 @@ type ModelAdaptation struct {
 	// EvalRunID holds the value of the "eval_run_id" field.
 	EvalRunID string `json:"eval_run_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt         time.Time `json:"created_at,omitempty"`
-	asset_adaptations *string
-	selectValues      sql.SelectValues
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -53,8 +52,6 @@ func (*ModelAdaptation) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case modeladaptation.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case modeladaptation.ForeignKeys[0]: // asset_adaptations
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -133,13 +130,6 @@ func (_m *ModelAdaptation) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
-			}
-		case modeladaptation.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field asset_adaptations", values[i])
-			} else if value.Valid {
-				_m.asset_adaptations = new(string)
-				*_m.asset_adaptations = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

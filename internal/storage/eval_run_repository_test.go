@@ -246,8 +246,9 @@ func TestEvalRunRepository_GetBySnapshotID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get eval runs by snapshot ID: %v", err)
 	}
-	if len(runs) != 1 {
-		t.Errorf("expected 1 eval run, got %d", len(runs))
+	// GetBySnapshotID is deprecated in V1.1 and always returns empty
+	if len(runs) != 0 {
+		t.Errorf("expected 0 eval runs (deprecated), got %d", len(runs))
 	}
 }
 

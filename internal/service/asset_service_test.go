@@ -190,8 +190,9 @@ func TestAssetService_GetAsset(t *testing.T) {
 	if detail.Name != "Test Asset" {
 		t.Errorf("expected name %q, got %q", "Test Asset", detail.Name)
 	}
-	if len(detail.Snapshots) != 1 {
-		t.Errorf("expected 1 snapshot, got %d", len(detail.Snapshots))
+	// In V1.1, snapshots are stored in files, not in the database
+	if len(detail.Snapshots) != 0 {
+		t.Errorf("expected 0 snapshots in V1.1 (stored in files), got %d", len(detail.Snapshots))
 	}
 }
 

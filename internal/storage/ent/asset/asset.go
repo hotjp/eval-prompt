@@ -4,10 +4,8 @@ package asset
 
 import (
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -19,8 +17,6 @@ const (
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
-	// FieldBizLine holds the string denoting the biz_line field in the database.
-	FieldBizLine = "biz_line"
 	// FieldTags holds the string denoting the tags field in the database.
 	FieldTags = "tags"
 	// FieldContentHash holds the string denoting the content_hash field in the database.
@@ -29,39 +25,8 @@ const (
 	FieldFilePath = "file_path"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
-	// FieldCreatedAt holds the string denoting the created_at field in the database.
-	FieldCreatedAt = "created_at"
-	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
-	FieldUpdatedAt = "updated_at"
-	// EdgeLabels holds the string denoting the labels edge name in mutations.
-	EdgeLabels = "labels"
-	// EdgeEvalCases holds the string denoting the eval_cases edge name in mutations.
-	EdgeEvalCases = "eval_cases"
-	// EdgeAdaptations holds the string denoting the adaptations edge name in mutations.
-	EdgeAdaptations = "adaptations"
 	// Table holds the table name of the asset in the database.
 	Table = "assets"
-	// LabelsTable is the table that holds the labels relation/edge.
-	LabelsTable = "labels"
-	// LabelsInverseTable is the table name for the Label entity.
-	// It exists in this package in order to avoid circular dependency with the "label" package.
-	LabelsInverseTable = "labels"
-	// LabelsColumn is the table column denoting the labels relation/edge.
-	LabelsColumn = "asset_labels"
-	// EvalCasesTable is the table that holds the eval_cases relation/edge.
-	EvalCasesTable = "eval_cases"
-	// EvalCasesInverseTable is the table name for the EvalCase entity.
-	// It exists in this package in order to avoid circular dependency with the "evalcase" package.
-	EvalCasesInverseTable = "eval_cases"
-	// EvalCasesColumn is the table column denoting the eval_cases relation/edge.
-	EvalCasesColumn = "asset_eval_cases"
-	// AdaptationsTable is the table that holds the adaptations relation/edge.
-	AdaptationsTable = "model_adaptations"
-	// AdaptationsInverseTable is the table name for the ModelAdaptation entity.
-	// It exists in this package in order to avoid circular dependency with the "modeladaptation" package.
-	AdaptationsInverseTable = "model_adaptations"
-	// AdaptationsColumn is the table column denoting the adaptations relation/edge.
-	AdaptationsColumn = "asset_adaptations"
 )
 
 // Columns holds all SQL columns for asset fields.
@@ -69,13 +34,10 @@ var Columns = []string{
 	FieldID,
 	FieldName,
 	FieldDescription,
-	FieldBizLine,
 	FieldTags,
 	FieldContentHash,
 	FieldFilePath,
 	FieldState,
-	FieldCreatedAt,
-	FieldUpdatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -91,18 +53,10 @@ func ValidColumn(column string) bool {
 var (
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
-	// BizLineValidator is a validator for the "biz_line" field. It is called by the builders before save.
-	BizLineValidator func(string) error
 	// ContentHashValidator is a validator for the "content_hash" field. It is called by the builders before save.
 	ContentHashValidator func(string) error
 	// FilePathValidator is a validator for the "file_path" field. It is called by the builders before save.
 	FilePathValidator func(string) error
-	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
-	DefaultCreatedAt func() time.Time
-	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
-	DefaultUpdatedAt func() time.Time
-	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
-	UpdateDefaultUpdatedAt func() time.Time
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -154,11 +108,6 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
 }
 
-// ByBizLine orders the results by the biz_line field.
-func ByBizLine(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBizLine, opts...).ToFunc()
-}
-
 // ByContentHash orders the results by the content_hash field.
 func ByContentHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContentHash, opts...).ToFunc()
@@ -172,77 +121,4 @@ func ByFilePath(opts ...sql.OrderTermOption) OrderOption {
 // ByState orders the results by the state field.
 func ByState(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldState, opts...).ToFunc()
-}
-
-// ByCreatedAt orders the results by the created_at field.
-func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
-}
-
-// ByUpdatedAt orders the results by the updated_at field.
-func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
-}
-
-// ByLabelsCount orders the results by labels count.
-func ByLabelsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newLabelsStep(), opts...)
-	}
-}
-
-// ByLabels orders the results by labels terms.
-func ByLabels(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newLabelsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
-// ByEvalCasesCount orders the results by eval_cases count.
-func ByEvalCasesCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newEvalCasesStep(), opts...)
-	}
-}
-
-// ByEvalCases orders the results by eval_cases terms.
-func ByEvalCases(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEvalCasesStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
-// ByAdaptationsCount orders the results by adaptations count.
-func ByAdaptationsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newAdaptationsStep(), opts...)
-	}
-}
-
-// ByAdaptations orders the results by adaptations terms.
-func ByAdaptations(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAdaptationsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-func newLabelsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(LabelsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, LabelsTable, LabelsColumn),
-	)
-}
-func newEvalCasesStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EvalCasesInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, EvalCasesTable, EvalCasesColumn),
-	)
-}
-func newAdaptationsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AdaptationsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, AdaptationsTable, AdaptationsColumn),
-	)
 }

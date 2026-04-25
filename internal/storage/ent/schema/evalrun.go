@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"entgo.io/ent"
-	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 )
@@ -32,9 +31,7 @@ func (EvalRun) Fields() []ent.Field {
 
 // Edges of the EvalRun.
 func (EvalRun) Edges() []ent.Edge {
-	return []ent.Edge{
-		edge.From("eval_case", EvalCase.Type).Ref("eval_runs").Unique().Required(),
-	}
+	return nil
 }
 
 // Indexes of the EvalRun.

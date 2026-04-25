@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
 )
 
@@ -88,12 +89,13 @@ func (m *MockTriggerService) InjectVariables(ctx context.Context, prompt string,
 
 // MockEvalService is a mock implementation of service.EvalServiceer.
 type MockEvalService struct {
-	RunEvalFunc       func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error)
-	GetEvalRunFunc    func(ctx context.Context, runID string) (*service.EvalRun, error)
-	ListEvalRunsFunc  func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
-	CompareEvalFunc   func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
-	GenerateReportFunc func(ctx context.Context, runID string) (*service.EvalReport, error)
-	DiagnoseEvalFunc  func(ctx context.Context, runID string) (*service.Diagnosis, error)
+	RunEvalFunc        func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error)
+	GetEvalRunFunc     func(ctx context.Context, runID string) (*service.EvalRun, error)
+	ListEvalRunsFunc   func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
+	ListEvalCasesFunc  func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
+	CompareEvalFunc    func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
+	GenerateReportFunc  func(ctx context.Context, runID string) (*service.EvalReport, error)
+	DiagnoseEvalFunc   func(ctx context.Context, runID string) (*service.Diagnosis, error)
 }
 
 func (m *MockEvalService) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error) {
@@ -121,6 +123,13 @@ func (m *MockEvalService) GetEvalRun(ctx context.Context, runID string) (*servic
 func (m *MockEvalService) ListEvalRuns(ctx context.Context, assetID string) ([]*service.EvalRun, error) {
 	if m.ListEvalRunsFunc != nil {
 		return m.ListEvalRunsFunc(ctx, assetID)
+	}
+	return nil, nil
+}
+
+func (m *MockEvalService) ListEvalCases(ctx context.Context, assetID string) ([]*domain.EvalCase, error) {
+	if m.ListEvalCasesFunc != nil {
+		return m.ListEvalCasesFunc(ctx, assetID)
 	}
 	return nil, nil
 }

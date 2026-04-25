@@ -39,12 +39,8 @@ func init() {
 			return nil
 		}
 	}()
-	// assetDescBizLine is the schema descriptor for biz_line field.
-	assetDescBizLine := assetFields[3].Descriptor()
-	// asset.BizLineValidator is a validator for the "biz_line" field. It is called by the builders before save.
-	asset.BizLineValidator = assetDescBizLine.Validators[0].(func(string) error)
 	// assetDescContentHash is the schema descriptor for content_hash field.
-	assetDescContentHash := assetFields[5].Descriptor()
+	assetDescContentHash := assetFields[4].Descriptor()
 	// asset.ContentHashValidator is a validator for the "content_hash" field. It is called by the builders before save.
 	asset.ContentHashValidator = func() func(string) error {
 		validators := assetDescContentHash.Validators
@@ -62,7 +58,7 @@ func init() {
 		}
 	}()
 	// assetDescFilePath is the schema descriptor for file_path field.
-	assetDescFilePath := assetFields[6].Descriptor()
+	assetDescFilePath := assetFields[5].Descriptor()
 	// asset.FilePathValidator is a validator for the "file_path" field. It is called by the builders before save.
 	asset.FilePathValidator = func() func(string) error {
 		validators := assetDescFilePath.Validators
@@ -79,16 +75,6 @@ func init() {
 			return nil
 		}
 	}()
-	// assetDescCreatedAt is the schema descriptor for created_at field.
-	assetDescCreatedAt := assetFields[8].Descriptor()
-	// asset.DefaultCreatedAt holds the default value on creation for the created_at field.
-	asset.DefaultCreatedAt = assetDescCreatedAt.Default.(func() time.Time)
-	// assetDescUpdatedAt is the schema descriptor for updated_at field.
-	assetDescUpdatedAt := assetFields[9].Descriptor()
-	// asset.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	asset.DefaultUpdatedAt = assetDescUpdatedAt.Default.(func() time.Time)
-	// asset.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	asset.UpdateDefaultUpdatedAt = assetDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// assetDescID is the schema descriptor for id field.
 	assetDescID := assetFields[0].Descriptor()
 	// asset.IDValidator is a validator for the "id" field. It is called by the builders before save.

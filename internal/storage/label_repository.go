@@ -6,11 +6,11 @@ import (
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/storage/ent"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 )
 
 // LabelRepository provides repository operations for Label entities.
+// Deprecated: Labels are stored in .md files, not in database.
 type LabelRepository struct {
 	client *Client
 }
@@ -20,13 +20,15 @@ func NewLabelRepository(client *Client) *LabelRepository {
 	return &LabelRepository{client: client}
 }
 
-// SetLabel creates or updates a label for an asset pointing to a snapshot.
-// Deprecated: Snapshot is no longer used. Labels now point directly to asset versions via file_path.
+// SetLabel creates or updates a label for an asset.
+// Deprecated: Labels are stored in .md files.
 func (r *LabelRepository) SetLabel(ctx context.Context, assetID, snapshotID domain.ID, name string) error {
+	if r.client == nil {
+		return nil
+	}
 	// Check if label already exists
 	existing, err := r.client.ent.Label.Query().
 		Where(
-			label.HasAssetWith(asset.IDEQ(assetID.String())),
 			label.Name(name),
 		).
 		Limit(1).
@@ -37,14 +39,12 @@ func (r *LabelRepository) SetLabel(ctx context.Context, assetID, snapshotID doma
 	}
 
 	if len(existing) > 0 {
-		// Update existing label (snapshotID is no longer stored)
 		return nil
 	}
 
 	// Create new label
 	_, err = r.client.ent.Label.Create().
 		SetID(domain.NewAutoID().String()).
-		SetAssetID(assetID.String()).
 		SetName(name).
 		Save(ctx)
 	return err
@@ -52,9 +52,11 @@ func (r *LabelRepository) SetLabel(ctx context.Context, assetID, snapshotID doma
 
 // UnsetLabel removes a label.
 func (r *LabelRepository) UnsetLabel(ctx context.Context, assetID domain.ID, name string) error {
+	if r.client == nil {
+		return nil
+	}
 	_, err := r.client.ent.Label.Delete().
 		Where(
-			label.HasAssetWith(asset.IDEQ(assetID.String())),
 			label.Name(name),
 		).
 		Exec(ctx)
@@ -62,26 +64,31 @@ func (r *LabelRepository) UnsetLabel(ctx context.Context, assetID domain.ID, nam
 }
 
 // GetLabelsByAssetID retrieves all labels for an asset.
+// Deprecated: Labels are stored in .md files.
 func (r *LabelRepository) GetLabelsByAssetID(ctx context.Context, assetID string) ([]*domain.Label, error) {
-	entLabels, err := r.client.ent.Label.Query().
-		Where(label.HasAssetWith(asset.IDEQ(assetID))).
-		All(ctx)
+	if r.client == nil {
+		return nil, nil
+	}
+	entLabels, err := r.client.ent.Label.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	labels := make([]*domain.Label, len(entLabels))
-	for i, entLabel := range entLabels {
-		labels[i] = r.toDomainLabel(entLabel)
+	labels := make([]*domain.Label, 0)
+	for _, entLabel := range entLabels {
+		labels = append(labels, r.toDomainLabel(entLabel))
 	}
 	return labels, nil
 }
 
 // GetByName retrieves a label by asset ID and name.
+// Deprecated: Labels are stored in .md files.
 func (r *LabelRepository) GetByName(ctx context.Context, assetID string, name string) (*domain.Label, error) {
+	if r.client == nil {
+		return nil, nil
+	}
 	entLabels, err := r.client.ent.Label.Query().
 		Where(
-			label.HasAssetWith(asset.IDEQ(assetID)),
 			label.Name(name),
 		).
 		Limit(1).
@@ -97,20 +104,17 @@ func (r *LabelRepository) GetByName(ctx context.Context, assetID string, name st
 
 // Delete deletes a label.
 func (r *LabelRepository) Delete(ctx context.Context, id string) error {
+	if r.client == nil {
+		return nil
+	}
 	return r.client.ent.Label.DeleteOneID(id).Exec(ctx)
 }
 
 // toDomainLabel converts an ent Label to a domain Label.
 func (r *LabelRepository) toDomainLabel(e *ent.Label) *domain.Label {
-	assetID := domain.ID{}
-	if e.Edges.Asset != nil {
-		assetID = domain.MustNewID(e.Edges.Asset.ID)
-	}
-
 	return &domain.Label{
-		ID:         domain.MustNewID(e.ID),
-		AssetID:    assetID,
-		Name:       e.Name,
-		UpdatedAt:  e.UpdatedAt,
+		ID:        domain.MustNewID(e.ID),
+		Name:      e.Name,
+		UpdatedAt: e.UpdatedAt,
 	}
 }

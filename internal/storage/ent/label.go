@@ -9,7 +9,6 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 )
 
@@ -21,32 +20,8 @@ type Label struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the LabelQuery when eager-loading is set.
-	Edges        LabelEdges `json:"edges"`
-	asset_labels *string
+	UpdatedAt    time.Time `json:"updated_at,omitempty"`
 	selectValues sql.SelectValues
-}
-
-// LabelEdges holds the relations/edges for other nodes in the graph.
-type LabelEdges struct {
-	// Asset holds the value of the asset edge.
-	Asset *Asset `json:"asset,omitempty"`
-	// loadedTypes holds the information for reporting if a
-	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
-}
-
-// AssetOrErr returns the Asset value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e LabelEdges) AssetOrErr() (*Asset, error) {
-	if e.Asset != nil {
-		return e.Asset, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: asset.Label}
-	}
-	return nil, &NotLoadedError{edge: "asset"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -58,8 +33,6 @@ func (*Label) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case label.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case label.ForeignKeys[0]: // asset_labels
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -93,13 +66,6 @@ func (_m *Label) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
-		case label.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field asset_labels", values[i])
-			} else if value.Valid {
-				_m.asset_labels = new(string)
-				*_m.asset_labels = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -111,11 +77,6 @@ func (_m *Label) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Label) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QueryAsset queries the "asset" edge of the Label entity.
-func (_m *Label) QueryAsset() *AssetQuery {
-	return NewLabelClient(_m.config).QueryAsset(_m)
 }
 
 // Update returns a builder for updating this Label.

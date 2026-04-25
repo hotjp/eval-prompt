@@ -5,12 +5,12 @@ import (
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/storage/ent"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
 
 // EvalRunRepository provides repository operations for EvalRun entities.
+// Deprecated: EvalRun is stored in .md files, not in database.
 type EvalRunRepository struct {
 	client *Client
 }
@@ -21,7 +21,11 @@ func NewEvalRunRepository(client *Client) *EvalRunRepository {
 }
 
 // Create creates a new eval run in the database.
+// Deprecated: EvalRun is stored in .md files.
 func (r *EvalRunRepository) Create(ctx context.Context, e *domain.EvalRun) error {
+	if r.client == nil {
+		return nil
+	}
 	entRubricDetails := make([]schema.RubricCheckResult, len(e.RubricDetails))
 	for i, rd := range e.RubricDetails {
 		entRubricDetails[i] = schema.RubricCheckResult{
@@ -34,7 +38,6 @@ func (r *EvalRunRepository) Create(ctx context.Context, e *domain.EvalRun) error
 
 	_, err := r.client.ent.EvalRun.Create().
 		SetID(e.ID.String()).
-		SetEvalCaseID(e.EvalCaseID.String()).
 		SetStatus(r.statusToEnt(e.Status)).
 		SetDeterministicScore(e.DeterministicScore).
 		SetRubricScore(e.RubricScore).
@@ -50,6 +53,9 @@ func (r *EvalRunRepository) Create(ctx context.Context, e *domain.EvalRun) error
 
 // GetByID retrieves an eval run by its ID.
 func (r *EvalRunRepository) GetByID(ctx context.Context, id string) (*domain.EvalRun, error) {
+	if r.client == nil {
+		return nil, nil
+	}
 	entRun, err := r.client.ent.EvalRun.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -58,17 +64,19 @@ func (r *EvalRunRepository) GetByID(ctx context.Context, id string) (*domain.Eva
 }
 
 // GetByEvalCaseID retrieves all eval runs for an eval case.
+// Deprecated: EvalRun is stored in .md files.
 func (r *EvalRunRepository) GetByEvalCaseID(ctx context.Context, evalCaseID string) ([]*domain.EvalRun, error) {
-	entRuns, err := r.client.ent.EvalRun.Query().
-		Where(evalrun.HasEvalCaseWith(evalcase.IDEQ(evalCaseID))).
-		All(ctx)
+	if r.client == nil {
+		return nil, nil
+	}
+	entRuns, err := r.client.ent.EvalRun.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	runs := make([]*domain.EvalRun, len(entRuns))
-	for i, entRun := range entRuns {
-		runs[i] = r.toDomainEvalRun(entRun)
+	runs := make([]*domain.EvalRun, 0)
+	for _, entRun := range entRuns {
+		runs = append(runs, r.toDomainEvalRun(entRun))
 	}
 	return runs, nil
 }
@@ -81,6 +89,9 @@ func (r *EvalRunRepository) GetBySnapshotID(ctx context.Context, snapshotID stri
 
 // List retrieves eval runs with pagination.
 func (r *EvalRunRepository) List(ctx context.Context, offset, limit int) ([]*domain.EvalRun, int, error) {
+	if r.client == nil {
+		return nil, 0, nil
+	}
 	entRuns, err := r.client.ent.EvalRun.Query().
 		Offset(offset).
 		Limit(limit).
@@ -103,6 +114,9 @@ func (r *EvalRunRepository) List(ctx context.Context, offset, limit int) ([]*dom
 
 // ListByStatus retrieves eval runs by status.
 func (r *EvalRunRepository) ListByStatus(ctx context.Context, status domain.EvalRunStatus, offset, limit int) ([]*domain.EvalRun, int, error) {
+	if r.client == nil {
+		return nil, 0, nil
+	}
 	entStatus := r.statusToEnt(status)
 	entRuns, err := r.client.ent.EvalRun.Query().
 		Where(evalrun.StatusEQ(entStatus)).
@@ -127,6 +141,9 @@ func (r *EvalRunRepository) ListByStatus(ctx context.Context, status domain.Eval
 
 // Update updates an existing eval run.
 func (r *EvalRunRepository) Update(ctx context.Context, e *domain.EvalRun) error {
+	if r.client == nil {
+		return nil
+	}
 	entRubricDetails := make([]schema.RubricCheckResult, len(e.RubricDetails))
 	for i, rd := range e.RubricDetails {
 		entRubricDetails[i] = schema.RubricCheckResult{
@@ -152,6 +169,9 @@ func (r *EvalRunRepository) Update(ctx context.Context, e *domain.EvalRun) error
 
 // UpdateStatus updates only the status of an eval run.
 func (r *EvalRunRepository) UpdateStatus(ctx context.Context, id string, status domain.EvalRunStatus) error {
+	if r.client == nil {
+		return nil
+	}
 	_, err := r.client.ent.EvalRun.UpdateOneID(id).
 		SetStatus(r.statusToEnt(status)).
 		Save(ctx)
@@ -160,16 +180,14 @@ func (r *EvalRunRepository) UpdateStatus(ctx context.Context, id string, status 
 
 // Delete deletes an eval run by its ID.
 func (r *EvalRunRepository) Delete(ctx context.Context, id string) error {
+	if r.client == nil {
+		return nil
+	}
 	return r.client.ent.EvalRun.DeleteOneID(id).Exec(ctx)
 }
 
 // toDomainEvalRun converts an ent EvalRun to a domain EvalRun.
 func (r *EvalRunRepository) toDomainEvalRun(e *ent.EvalRun) *domain.EvalRun {
-	evalCaseID := domain.ID{}
-	if e.Edges.EvalCase != nil {
-		evalCaseID = domain.MustNewID(e.Edges.EvalCase.ID)
-	}
-
 	rubricDetails := make([]domain.RubricCheckResult, len(e.RubricDetails))
 	for i, rd := range e.RubricDetails {
 		rubricDetails[i] = domain.RubricCheckResult{
@@ -182,7 +200,6 @@ func (r *EvalRunRepository) toDomainEvalRun(e *ent.EvalRun) *domain.EvalRun {
 
 	return &domain.EvalRun{
 		ID:                 domain.MustNewID(e.ID),
-		EvalCaseID:         evalCaseID,
 		Status:             r.statusFromEnt(e.Status),
 		DeterministicScore: e.DeterministicScore,
 		RubricScore:        e.RubricScore,

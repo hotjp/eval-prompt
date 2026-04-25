@@ -3,10 +3,7 @@
 package asset
 
 import (
-	"time"
-
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
 
@@ -75,11 +72,6 @@ func Description(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldDescription, v))
 }
 
-// BizLine applies equality check predicate on the "biz_line" field. It's identical to BizLineEQ.
-func BizLine(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldBizLine, v))
-}
-
 // ContentHash applies equality check predicate on the "content_hash" field. It's identical to ContentHashEQ.
 func ContentHash(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldContentHash, v))
@@ -88,16 +80,6 @@ func ContentHash(v string) predicate.Asset {
 // FilePath applies equality check predicate on the "file_path" field. It's identical to FilePathEQ.
 func FilePath(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldFilePath, v))
-}
-
-// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
-func CreatedAt(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
-func UpdatedAt(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -228,81 +210,6 @@ func DescriptionEqualFold(v string) predicate.Asset {
 // DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
 func DescriptionContainsFold(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldContainsFold(FieldDescription, v))
-}
-
-// BizLineEQ applies the EQ predicate on the "biz_line" field.
-func BizLineEQ(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldBizLine, v))
-}
-
-// BizLineNEQ applies the NEQ predicate on the "biz_line" field.
-func BizLineNEQ(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldNEQ(FieldBizLine, v))
-}
-
-// BizLineIn applies the In predicate on the "biz_line" field.
-func BizLineIn(vs ...string) predicate.Asset {
-	return predicate.Asset(sql.FieldIn(FieldBizLine, vs...))
-}
-
-// BizLineNotIn applies the NotIn predicate on the "biz_line" field.
-func BizLineNotIn(vs ...string) predicate.Asset {
-	return predicate.Asset(sql.FieldNotIn(FieldBizLine, vs...))
-}
-
-// BizLineGT applies the GT predicate on the "biz_line" field.
-func BizLineGT(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldGT(FieldBizLine, v))
-}
-
-// BizLineGTE applies the GTE predicate on the "biz_line" field.
-func BizLineGTE(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldGTE(FieldBizLine, v))
-}
-
-// BizLineLT applies the LT predicate on the "biz_line" field.
-func BizLineLT(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldLT(FieldBizLine, v))
-}
-
-// BizLineLTE applies the LTE predicate on the "biz_line" field.
-func BizLineLTE(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldLTE(FieldBizLine, v))
-}
-
-// BizLineContains applies the Contains predicate on the "biz_line" field.
-func BizLineContains(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldContains(FieldBizLine, v))
-}
-
-// BizLineHasPrefix applies the HasPrefix predicate on the "biz_line" field.
-func BizLineHasPrefix(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldHasPrefix(FieldBizLine, v))
-}
-
-// BizLineHasSuffix applies the HasSuffix predicate on the "biz_line" field.
-func BizLineHasSuffix(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldHasSuffix(FieldBizLine, v))
-}
-
-// BizLineIsNil applies the IsNil predicate on the "biz_line" field.
-func BizLineIsNil() predicate.Asset {
-	return predicate.Asset(sql.FieldIsNull(FieldBizLine))
-}
-
-// BizLineNotNil applies the NotNil predicate on the "biz_line" field.
-func BizLineNotNil() predicate.Asset {
-	return predicate.Asset(sql.FieldNotNull(FieldBizLine))
-}
-
-// BizLineEqualFold applies the EqualFold predicate on the "biz_line" field.
-func BizLineEqualFold(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldEqualFold(FieldBizLine, v))
-}
-
-// BizLineContainsFold applies the ContainsFold predicate on the "biz_line" field.
-func BizLineContainsFold(v string) predicate.Asset {
-	return predicate.Asset(sql.FieldContainsFold(FieldBizLine, v))
 }
 
 // TagsIsNil applies the IsNil predicate on the "tags" field.
@@ -463,155 +370,6 @@ func StateIn(vs ...State) predicate.Asset {
 // StateNotIn applies the NotIn predicate on the "state" field.
 func StateNotIn(vs ...State) predicate.Asset {
 	return predicate.Asset(sql.FieldNotIn(FieldState, vs...))
-}
-
-// CreatedAtEQ applies the EQ predicate on the "created_at" field.
-func CreatedAtEQ(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
-func CreatedAtNEQ(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldNEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtIn applies the In predicate on the "created_at" field.
-func CreatedAtIn(vs ...time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
-func CreatedAtNotIn(vs ...time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldNotIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtGT applies the GT predicate on the "created_at" field.
-func CreatedAtGT(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldGT(FieldCreatedAt, v))
-}
-
-// CreatedAtGTE applies the GTE predicate on the "created_at" field.
-func CreatedAtGTE(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldGTE(FieldCreatedAt, v))
-}
-
-// CreatedAtLT applies the LT predicate on the "created_at" field.
-func CreatedAtLT(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldLT(FieldCreatedAt, v))
-}
-
-// CreatedAtLTE applies the LTE predicate on the "created_at" field.
-func CreatedAtLTE(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldLTE(FieldCreatedAt, v))
-}
-
-// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
-func UpdatedAtEQ(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldEQ(FieldUpdatedAt, v))
-}
-
-// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
-func UpdatedAtNEQ(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldNEQ(FieldUpdatedAt, v))
-}
-
-// UpdatedAtIn applies the In predicate on the "updated_at" field.
-func UpdatedAtIn(vs ...time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldIn(FieldUpdatedAt, vs...))
-}
-
-// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
-func UpdatedAtNotIn(vs ...time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldNotIn(FieldUpdatedAt, vs...))
-}
-
-// UpdatedAtGT applies the GT predicate on the "updated_at" field.
-func UpdatedAtGT(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldGT(FieldUpdatedAt, v))
-}
-
-// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
-func UpdatedAtGTE(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldGTE(FieldUpdatedAt, v))
-}
-
-// UpdatedAtLT applies the LT predicate on the "updated_at" field.
-func UpdatedAtLT(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldLT(FieldUpdatedAt, v))
-}
-
-// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
-func UpdatedAtLTE(v time.Time) predicate.Asset {
-	return predicate.Asset(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// HasLabels applies the HasEdge predicate on the "labels" edge.
-func HasLabels() predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, LabelsTable, LabelsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasLabelsWith applies the HasEdge predicate on the "labels" edge with a given conditions (other predicates).
-func HasLabelsWith(preds ...predicate.Label) predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := newLabelsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasEvalCases applies the HasEdge predicate on the "eval_cases" edge.
-func HasEvalCases() predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, EvalCasesTable, EvalCasesColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasEvalCasesWith applies the HasEdge predicate on the "eval_cases" edge with a given conditions (other predicates).
-func HasEvalCasesWith(preds ...predicate.EvalCase) predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := newEvalCasesStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasAdaptations applies the HasEdge predicate on the "adaptations" edge.
-func HasAdaptations() predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, AdaptationsTable, AdaptationsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasAdaptationsWith applies the HasEdge predicate on the "adaptations" edge with a given conditions (other predicates).
-func HasAdaptationsWith(preds ...predicate.ModelAdaptation) predicate.Asset {
-	return predicate.Asset(func(s *sql.Selector) {
-		step := newAdaptationsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
 }
 
 // And groups predicates with the AND operator between them.

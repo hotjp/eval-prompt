@@ -373,9 +373,7 @@ func (s *AssetService) ListAssets(ctx context.Context, req *ListAssetsRequest) (
 	var total int
 	var err error
 
-	if req.BizLine != "" {
-		assets, total, err = s.assetRepo.ListByBizLine(ctx, req.BizLine, req.Offset, req.Limit)
-	} else if req.State != "" {
+	if req.State != "" {
 		state := domain.State(req.State)
 		assets, total, err = s.assetRepo.ListByState(ctx, state, req.Offset, req.Limit)
 	} else {

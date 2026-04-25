@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
 
@@ -353,52 +352,6 @@ func CreatedAtLT(v time.Time) predicate.EvalCase {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.EvalCase {
 	return predicate.EvalCase(sql.FieldLTE(FieldCreatedAt, v))
-}
-
-// HasAsset applies the HasEdge predicate on the "asset" edge.
-func HasAsset() predicate.EvalCase {
-	return predicate.EvalCase(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, AssetTable, AssetColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasAssetWith applies the HasEdge predicate on the "asset" edge with a given conditions (other predicates).
-func HasAssetWith(preds ...predicate.Asset) predicate.EvalCase {
-	return predicate.EvalCase(func(s *sql.Selector) {
-		step := newAssetStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasEvalRuns applies the HasEdge predicate on the "eval_runs" edge.
-func HasEvalRuns() predicate.EvalCase {
-	return predicate.EvalCase(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, EvalRunsTable, EvalRunsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasEvalRunsWith applies the HasEdge predicate on the "eval_runs" edge with a given conditions (other predicates).
-func HasEvalRunsWith(preds ...predicate.EvalRun) predicate.EvalCase {
-	return predicate.EvalCase(func(s *sql.Selector) {
-		step := newEvalRunsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
 }
 
 // And groups predicates with the AND operator between them.

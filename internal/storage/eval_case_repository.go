@@ -5,12 +5,11 @@ import (
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/storage/ent"
-	"github.com/eval-prompt/internal/storage/ent/asset"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
 
 // EvalCaseRepository provides repository operations for EvalCase entities.
+// Deprecated: EvalCase is stored in .md files, not in database.
 type EvalCaseRepository struct {
 	client *Client
 }
@@ -21,7 +20,11 @@ func NewEvalCaseRepository(client *Client) *EvalCaseRepository {
 }
 
 // Create creates a new eval case in the database.
+// Deprecated: EvalCase is stored in .md files.
 func (r *EvalCaseRepository) Create(ctx context.Context, e *domain.EvalCase) error {
+	if r.client == nil {
+		return nil
+	}
 	entRubric := schema.Rubric{
 		MaxScore: e.Rubric.MaxScore,
 		Checks:   make([]schema.RubricCheck, len(e.Rubric.Checks)),
@@ -36,7 +39,6 @@ func (r *EvalCaseRepository) Create(ctx context.Context, e *domain.EvalCase) err
 
 	_, err := r.client.ent.EvalCase.Create().
 		SetID(e.ID.String()).
-		SetAssetID(e.AssetID.String()).
 		SetName(e.Name).
 		SetPrompt(e.Prompt).
 		SetShouldTrigger(e.ShouldTrigger).
@@ -49,6 +51,9 @@ func (r *EvalCaseRepository) Create(ctx context.Context, e *domain.EvalCase) err
 
 // GetByID retrieves an eval case by its ID.
 func (r *EvalCaseRepository) GetByID(ctx context.Context, id string) (*domain.EvalCase, error) {
+	if r.client == nil {
+		return nil, nil
+	}
 	entCase, err := r.client.ent.EvalCase.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -57,23 +62,29 @@ func (r *EvalCaseRepository) GetByID(ctx context.Context, id string) (*domain.Ev
 }
 
 // GetByAssetID retrieves all eval cases for an asset.
+// Deprecated: EvalCase is stored in .md files.
 func (r *EvalCaseRepository) GetByAssetID(ctx context.Context, assetID string) ([]*domain.EvalCase, error) {
+	if r.client == nil {
+		return nil, nil
+	}
 	entCases, err := r.client.ent.EvalCase.Query().
-		Where(evalcase.HasAssetWith(asset.IDEQ(assetID))).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	cases := make([]*domain.EvalCase, len(entCases))
-	for i, entCase := range entCases {
-		cases[i] = r.toDomainEvalCase(entCase)
+	cases := make([]*domain.EvalCase, 0)
+	for _, entCase := range entCases {
+		cases = append(cases, r.toDomainEvalCase(entCase))
 	}
 	return cases, nil
 }
 
 // List retrieves eval cases with pagination.
 func (r *EvalCaseRepository) List(ctx context.Context, offset, limit int) ([]*domain.EvalCase, int, error) {
+	if r.client == nil {
+		return nil, 0, nil
+	}
 	entCases, err := r.client.ent.EvalCase.Query().
 		Offset(offset).
 		Limit(limit).
@@ -96,6 +107,9 @@ func (r *EvalCaseRepository) List(ctx context.Context, offset, limit int) ([]*do
 
 // Update updates an existing eval case.
 func (r *EvalCaseRepository) Update(ctx context.Context, e *domain.EvalCase) error {
+	if r.client == nil {
+		return nil
+	}
 	entRubric := schema.Rubric{
 		MaxScore: e.Rubric.MaxScore,
 		Checks:   make([]schema.RubricCheck, len(e.Rubric.Checks)),
@@ -120,16 +134,14 @@ func (r *EvalCaseRepository) Update(ctx context.Context, e *domain.EvalCase) err
 
 // Delete deletes an eval case by its ID.
 func (r *EvalCaseRepository) Delete(ctx context.Context, id string) error {
+	if r.client == nil {
+		return nil
+	}
 	return r.client.ent.EvalCase.DeleteOneID(id).Exec(ctx)
 }
 
 // toDomainEvalCase converts an ent EvalCase to a domain EvalCase.
 func (r *EvalCaseRepository) toDomainEvalCase(e *ent.EvalCase) *domain.EvalCase {
-	assetID := domain.ID{}
-	if e.Edges.Asset != nil {
-		assetID = domain.MustNewID(e.Edges.Asset.ID)
-	}
-
 	rubric := domain.Rubric{
 		MaxScore: e.Rubric.MaxScore,
 		Checks:   make([]domain.RubricCheck, len(e.Rubric.Checks)),
@@ -144,7 +156,6 @@ func (r *EvalCaseRepository) toDomainEvalCase(e *ent.EvalCase) *domain.EvalCase 
 
 	return &domain.EvalCase{
 		ID:             domain.MustNewID(e.ID),
-		AssetID:        assetID,
 		Name:           e.Name,
 		Prompt:         e.Prompt,
 		ShouldTrigger:  e.ShouldTrigger,
@@ -153,4 +164,10 @@ func (r *EvalCaseRepository) toDomainEvalCase(e *ent.EvalCase) *domain.EvalCase 
 		CreatedAt:      e.CreatedAt,
 		Version:        0,
 	}
+}
+
+// toEntEvalCase converts a domain EvalCase to an ent EvalCase.
+// Deprecated: EvalCase is stored in .md files.
+func (r *EvalCaseRepository) toEntEvalCase(e *domain.EvalCase) *ent.EvalCase {
+	return nil
 }

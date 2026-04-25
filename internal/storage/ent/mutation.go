@@ -43,32 +43,20 @@ const (
 // AssetMutation represents an operation that mutates the Asset nodes in the graph.
 type AssetMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *string
-	name               *string
-	description        *string
-	biz_line           *string
-	tags               *[]string
-	appendtags         []string
-	content_hash       *string
-	file_path          *string
-	state              *asset.State
-	created_at         *time.Time
-	updated_at         *time.Time
-	clearedFields      map[string]struct{}
-	labels             map[string]struct{}
-	removedlabels      map[string]struct{}
-	clearedlabels      bool
-	eval_cases         map[string]struct{}
-	removedeval_cases  map[string]struct{}
-	clearedeval_cases  bool
-	adaptations        map[string]struct{}
-	removedadaptations map[string]struct{}
-	clearedadaptations bool
-	done               bool
-	oldValue           func(context.Context) (*Asset, error)
-	predicates         []predicate.Asset
+	op            Op
+	typ           string
+	id            *string
+	name          *string
+	description   *string
+	tags          *[]string
+	appendtags    []string
+	content_hash  *string
+	file_path     *string
+	state         *asset.State
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Asset, error)
+	predicates    []predicate.Asset
 }
 
 var _ ent.Mutation = (*AssetMutation)(nil)
@@ -247,55 +235,6 @@ func (m *AssetMutation) ResetDescription() {
 	m.description = nil
 }
 
-// SetBizLine sets the "biz_line" field.
-func (m *AssetMutation) SetBizLine(s string) {
-	m.biz_line = &s
-}
-
-// BizLine returns the value of the "biz_line" field in the mutation.
-func (m *AssetMutation) BizLine() (r string, exists bool) {
-	v := m.biz_line
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldBizLine returns the old "biz_line" field's value of the Asset entity.
-// If the Asset object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AssetMutation) OldBizLine(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldBizLine is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldBizLine requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldBizLine: %w", err)
-	}
-	return oldValue.BizLine, nil
-}
-
-// ClearBizLine clears the value of the "biz_line" field.
-func (m *AssetMutation) ClearBizLine() {
-	m.biz_line = nil
-	m.clearedFields[asset.FieldBizLine] = struct{}{}
-}
-
-// BizLineCleared returns if the "biz_line" field was cleared in this mutation.
-func (m *AssetMutation) BizLineCleared() bool {
-	_, ok := m.clearedFields[asset.FieldBizLine]
-	return ok
-}
-
-// ResetBizLine resets all changes to the "biz_line" field.
-func (m *AssetMutation) ResetBizLine() {
-	m.biz_line = nil
-	delete(m.clearedFields, asset.FieldBizLine)
-}
-
 // SetTags sets the "tags" field.
 func (m *AssetMutation) SetTags(s []string) {
 	m.tags = &s
@@ -469,240 +408,6 @@ func (m *AssetMutation) ResetState() {
 	m.state = nil
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (m *AssetMutation) SetCreatedAt(t time.Time) {
-	m.created_at = &t
-}
-
-// CreatedAt returns the value of the "created_at" field in the mutation.
-func (m *AssetMutation) CreatedAt() (r time.Time, exists bool) {
-	v := m.created_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCreatedAt returns the old "created_at" field's value of the Asset entity.
-// If the Asset object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AssetMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
-	}
-	return oldValue.CreatedAt, nil
-}
-
-// ResetCreatedAt resets all changes to the "created_at" field.
-func (m *AssetMutation) ResetCreatedAt() {
-	m.created_at = nil
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (m *AssetMutation) SetUpdatedAt(t time.Time) {
-	m.updated_at = &t
-}
-
-// UpdatedAt returns the value of the "updated_at" field in the mutation.
-func (m *AssetMutation) UpdatedAt() (r time.Time, exists bool) {
-	v := m.updated_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUpdatedAt returns the old "updated_at" field's value of the Asset entity.
-// If the Asset object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AssetMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
-	}
-	return oldValue.UpdatedAt, nil
-}
-
-// ResetUpdatedAt resets all changes to the "updated_at" field.
-func (m *AssetMutation) ResetUpdatedAt() {
-	m.updated_at = nil
-}
-
-// AddLabelIDs adds the "labels" edge to the Label entity by ids.
-func (m *AssetMutation) AddLabelIDs(ids ...string) {
-	if m.labels == nil {
-		m.labels = make(map[string]struct{})
-	}
-	for i := range ids {
-		m.labels[ids[i]] = struct{}{}
-	}
-}
-
-// ClearLabels clears the "labels" edge to the Label entity.
-func (m *AssetMutation) ClearLabels() {
-	m.clearedlabels = true
-}
-
-// LabelsCleared reports if the "labels" edge to the Label entity was cleared.
-func (m *AssetMutation) LabelsCleared() bool {
-	return m.clearedlabels
-}
-
-// RemoveLabelIDs removes the "labels" edge to the Label entity by IDs.
-func (m *AssetMutation) RemoveLabelIDs(ids ...string) {
-	if m.removedlabels == nil {
-		m.removedlabels = make(map[string]struct{})
-	}
-	for i := range ids {
-		delete(m.labels, ids[i])
-		m.removedlabels[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedLabels returns the removed IDs of the "labels" edge to the Label entity.
-func (m *AssetMutation) RemovedLabelsIDs() (ids []string) {
-	for id := range m.removedlabels {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// LabelsIDs returns the "labels" edge IDs in the mutation.
-func (m *AssetMutation) LabelsIDs() (ids []string) {
-	for id := range m.labels {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetLabels resets all changes to the "labels" edge.
-func (m *AssetMutation) ResetLabels() {
-	m.labels = nil
-	m.clearedlabels = false
-	m.removedlabels = nil
-}
-
-// AddEvalCaseIDs adds the "eval_cases" edge to the EvalCase entity by ids.
-func (m *AssetMutation) AddEvalCaseIDs(ids ...string) {
-	if m.eval_cases == nil {
-		m.eval_cases = make(map[string]struct{})
-	}
-	for i := range ids {
-		m.eval_cases[ids[i]] = struct{}{}
-	}
-}
-
-// ClearEvalCases clears the "eval_cases" edge to the EvalCase entity.
-func (m *AssetMutation) ClearEvalCases() {
-	m.clearedeval_cases = true
-}
-
-// EvalCasesCleared reports if the "eval_cases" edge to the EvalCase entity was cleared.
-func (m *AssetMutation) EvalCasesCleared() bool {
-	return m.clearedeval_cases
-}
-
-// RemoveEvalCaseIDs removes the "eval_cases" edge to the EvalCase entity by IDs.
-func (m *AssetMutation) RemoveEvalCaseIDs(ids ...string) {
-	if m.removedeval_cases == nil {
-		m.removedeval_cases = make(map[string]struct{})
-	}
-	for i := range ids {
-		delete(m.eval_cases, ids[i])
-		m.removedeval_cases[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedEvalCases returns the removed IDs of the "eval_cases" edge to the EvalCase entity.
-func (m *AssetMutation) RemovedEvalCasesIDs() (ids []string) {
-	for id := range m.removedeval_cases {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// EvalCasesIDs returns the "eval_cases" edge IDs in the mutation.
-func (m *AssetMutation) EvalCasesIDs() (ids []string) {
-	for id := range m.eval_cases {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetEvalCases resets all changes to the "eval_cases" edge.
-func (m *AssetMutation) ResetEvalCases() {
-	m.eval_cases = nil
-	m.clearedeval_cases = false
-	m.removedeval_cases = nil
-}
-
-// AddAdaptationIDs adds the "adaptations" edge to the ModelAdaptation entity by ids.
-func (m *AssetMutation) AddAdaptationIDs(ids ...string) {
-	if m.adaptations == nil {
-		m.adaptations = make(map[string]struct{})
-	}
-	for i := range ids {
-		m.adaptations[ids[i]] = struct{}{}
-	}
-}
-
-// ClearAdaptations clears the "adaptations" edge to the ModelAdaptation entity.
-func (m *AssetMutation) ClearAdaptations() {
-	m.clearedadaptations = true
-}
-
-// AdaptationsCleared reports if the "adaptations" edge to the ModelAdaptation entity was cleared.
-func (m *AssetMutation) AdaptationsCleared() bool {
-	return m.clearedadaptations
-}
-
-// RemoveAdaptationIDs removes the "adaptations" edge to the ModelAdaptation entity by IDs.
-func (m *AssetMutation) RemoveAdaptationIDs(ids ...string) {
-	if m.removedadaptations == nil {
-		m.removedadaptations = make(map[string]struct{})
-	}
-	for i := range ids {
-		delete(m.adaptations, ids[i])
-		m.removedadaptations[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedAdaptations returns the removed IDs of the "adaptations" edge to the ModelAdaptation entity.
-func (m *AssetMutation) RemovedAdaptationsIDs() (ids []string) {
-	for id := range m.removedadaptations {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// AdaptationsIDs returns the "adaptations" edge IDs in the mutation.
-func (m *AssetMutation) AdaptationsIDs() (ids []string) {
-	for id := range m.adaptations {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetAdaptations resets all changes to the "adaptations" edge.
-func (m *AssetMutation) ResetAdaptations() {
-	m.adaptations = nil
-	m.clearedadaptations = false
-	m.removedadaptations = nil
-}
-
 // Where appends a list predicates to the AssetMutation builder.
 func (m *AssetMutation) Where(ps ...predicate.Asset) {
 	m.predicates = append(m.predicates, ps...)
@@ -737,15 +442,12 @@ func (m *AssetMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AssetMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 6)
 	if m.name != nil {
 		fields = append(fields, asset.FieldName)
 	}
 	if m.description != nil {
 		fields = append(fields, asset.FieldDescription)
-	}
-	if m.biz_line != nil {
-		fields = append(fields, asset.FieldBizLine)
 	}
 	if m.tags != nil {
 		fields = append(fields, asset.FieldTags)
@@ -759,12 +461,6 @@ func (m *AssetMutation) Fields() []string {
 	if m.state != nil {
 		fields = append(fields, asset.FieldState)
 	}
-	if m.created_at != nil {
-		fields = append(fields, asset.FieldCreatedAt)
-	}
-	if m.updated_at != nil {
-		fields = append(fields, asset.FieldUpdatedAt)
-	}
 	return fields
 }
 
@@ -777,8 +473,6 @@ func (m *AssetMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case asset.FieldDescription:
 		return m.Description()
-	case asset.FieldBizLine:
-		return m.BizLine()
 	case asset.FieldTags:
 		return m.Tags()
 	case asset.FieldContentHash:
@@ -787,10 +481,6 @@ func (m *AssetMutation) Field(name string) (ent.Value, bool) {
 		return m.FilePath()
 	case asset.FieldState:
 		return m.State()
-	case asset.FieldCreatedAt:
-		return m.CreatedAt()
-	case asset.FieldUpdatedAt:
-		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -804,8 +494,6 @@ func (m *AssetMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldName(ctx)
 	case asset.FieldDescription:
 		return m.OldDescription(ctx)
-	case asset.FieldBizLine:
-		return m.OldBizLine(ctx)
 	case asset.FieldTags:
 		return m.OldTags(ctx)
 	case asset.FieldContentHash:
@@ -814,10 +502,6 @@ func (m *AssetMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldFilePath(ctx)
 	case asset.FieldState:
 		return m.OldState(ctx)
-	case asset.FieldCreatedAt:
-		return m.OldCreatedAt(ctx)
-	case asset.FieldUpdatedAt:
-		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Asset field %s", name)
 }
@@ -840,13 +524,6 @@ func (m *AssetMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDescription(v)
-		return nil
-	case asset.FieldBizLine:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetBizLine(v)
 		return nil
 	case asset.FieldTags:
 		v, ok := value.([]string)
@@ -875,20 +552,6 @@ func (m *AssetMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetState(v)
-		return nil
-	case asset.FieldCreatedAt:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCreatedAt(v)
-		return nil
-	case asset.FieldUpdatedAt:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Asset field %s", name)
@@ -920,9 +583,6 @@ func (m *AssetMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *AssetMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(asset.FieldBizLine) {
-		fields = append(fields, asset.FieldBizLine)
-	}
 	if m.FieldCleared(asset.FieldTags) {
 		fields = append(fields, asset.FieldTags)
 	}
@@ -940,9 +600,6 @@ func (m *AssetMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *AssetMutation) ClearField(name string) error {
 	switch name {
-	case asset.FieldBizLine:
-		m.ClearBizLine()
-		return nil
 	case asset.FieldTags:
 		m.ClearTags()
 		return nil
@@ -960,9 +617,6 @@ func (m *AssetMutation) ResetField(name string) error {
 	case asset.FieldDescription:
 		m.ResetDescription()
 		return nil
-	case asset.FieldBizLine:
-		m.ResetBizLine()
-		return nil
 	case asset.FieldTags:
 		m.ResetTags()
 		return nil
@@ -975,149 +629,55 @@ func (m *AssetMutation) ResetField(name string) error {
 	case asset.FieldState:
 		m.ResetState()
 		return nil
-	case asset.FieldCreatedAt:
-		m.ResetCreatedAt()
-		return nil
-	case asset.FieldUpdatedAt:
-		m.ResetUpdatedAt()
-		return nil
 	}
 	return fmt.Errorf("unknown Asset field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AssetMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
-	if m.labels != nil {
-		edges = append(edges, asset.EdgeLabels)
-	}
-	if m.eval_cases != nil {
-		edges = append(edges, asset.EdgeEvalCases)
-	}
-	if m.adaptations != nil {
-		edges = append(edges, asset.EdgeAdaptations)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *AssetMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case asset.EdgeLabels:
-		ids := make([]ent.Value, 0, len(m.labels))
-		for id := range m.labels {
-			ids = append(ids, id)
-		}
-		return ids
-	case asset.EdgeEvalCases:
-		ids := make([]ent.Value, 0, len(m.eval_cases))
-		for id := range m.eval_cases {
-			ids = append(ids, id)
-		}
-		return ids
-	case asset.EdgeAdaptations:
-		ids := make([]ent.Value, 0, len(m.adaptations))
-		for id := range m.adaptations {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AssetMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
-	if m.removedlabels != nil {
-		edges = append(edges, asset.EdgeLabels)
-	}
-	if m.removedeval_cases != nil {
-		edges = append(edges, asset.EdgeEvalCases)
-	}
-	if m.removedadaptations != nil {
-		edges = append(edges, asset.EdgeAdaptations)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *AssetMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case asset.EdgeLabels:
-		ids := make([]ent.Value, 0, len(m.removedlabels))
-		for id := range m.removedlabels {
-			ids = append(ids, id)
-		}
-		return ids
-	case asset.EdgeEvalCases:
-		ids := make([]ent.Value, 0, len(m.removedeval_cases))
-		for id := range m.removedeval_cases {
-			ids = append(ids, id)
-		}
-		return ids
-	case asset.EdgeAdaptations:
-		ids := make([]ent.Value, 0, len(m.removedadaptations))
-		for id := range m.removedadaptations {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AssetMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
-	if m.clearedlabels {
-		edges = append(edges, asset.EdgeLabels)
-	}
-	if m.clearedeval_cases {
-		edges = append(edges, asset.EdgeEvalCases)
-	}
-	if m.clearedadaptations {
-		edges = append(edges, asset.EdgeAdaptations)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *AssetMutation) EdgeCleared(name string) bool {
-	switch name {
-	case asset.EdgeLabels:
-		return m.clearedlabels
-	case asset.EdgeEvalCases:
-		return m.clearedeval_cases
-	case asset.EdgeAdaptations:
-		return m.clearedadaptations
-	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *AssetMutation) ClearEdge(name string) error {
-	switch name {
-	}
 	return fmt.Errorf("unknown Asset unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *AssetMutation) ResetEdge(name string) error {
-	switch name {
-	case asset.EdgeLabels:
-		m.ResetLabels()
-		return nil
-	case asset.EdgeEvalCases:
-		m.ResetEvalCases()
-		return nil
-	case asset.EdgeAdaptations:
-		m.ResetAdaptations()
-		return nil
-	}
 	return fmt.Errorf("unknown Asset edge %s", name)
 }
 
@@ -1732,24 +1292,19 @@ func (m *AuditLogMutation) ResetEdge(name string) error {
 // EvalCaseMutation represents an operation that mutates the EvalCase nodes in the graph.
 type EvalCaseMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *string
-	name             *string
-	prompt           *string
-	should_trigger   *bool
-	expected_output  *string
-	rubric           *schema.Rubric
-	created_at       *time.Time
-	clearedFields    map[string]struct{}
-	asset            *string
-	clearedasset     bool
-	eval_runs        map[string]struct{}
-	removedeval_runs map[string]struct{}
-	clearedeval_runs bool
-	done             bool
-	oldValue         func(context.Context) (*EvalCase, error)
-	predicates       []predicate.EvalCase
+	op              Op
+	typ             string
+	id              *string
+	name            *string
+	prompt          *string
+	should_trigger  *bool
+	expected_output *string
+	rubric          *schema.Rubric
+	created_at      *time.Time
+	clearedFields   map[string]struct{}
+	done            bool
+	oldValue        func(context.Context) (*EvalCase, error)
+	predicates      []predicate.EvalCase
 }
 
 var _ ent.Mutation = (*EvalCaseMutation)(nil)
@@ -2098,99 +1653,6 @@ func (m *EvalCaseMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by id.
-func (m *EvalCaseMutation) SetAssetID(id string) {
-	m.asset = &id
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (m *EvalCaseMutation) ClearAsset() {
-	m.clearedasset = true
-}
-
-// AssetCleared reports if the "asset" edge to the Asset entity was cleared.
-func (m *EvalCaseMutation) AssetCleared() bool {
-	return m.clearedasset
-}
-
-// AssetID returns the "asset" edge ID in the mutation.
-func (m *EvalCaseMutation) AssetID() (id string, exists bool) {
-	if m.asset != nil {
-		return *m.asset, true
-	}
-	return
-}
-
-// AssetIDs returns the "asset" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// AssetID instead. It exists only for internal usage by the builders.
-func (m *EvalCaseMutation) AssetIDs() (ids []string) {
-	if id := m.asset; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetAsset resets all changes to the "asset" edge.
-func (m *EvalCaseMutation) ResetAsset() {
-	m.asset = nil
-	m.clearedasset = false
-}
-
-// AddEvalRunIDs adds the "eval_runs" edge to the EvalRun entity by ids.
-func (m *EvalCaseMutation) AddEvalRunIDs(ids ...string) {
-	if m.eval_runs == nil {
-		m.eval_runs = make(map[string]struct{})
-	}
-	for i := range ids {
-		m.eval_runs[ids[i]] = struct{}{}
-	}
-}
-
-// ClearEvalRuns clears the "eval_runs" edge to the EvalRun entity.
-func (m *EvalCaseMutation) ClearEvalRuns() {
-	m.clearedeval_runs = true
-}
-
-// EvalRunsCleared reports if the "eval_runs" edge to the EvalRun entity was cleared.
-func (m *EvalCaseMutation) EvalRunsCleared() bool {
-	return m.clearedeval_runs
-}
-
-// RemoveEvalRunIDs removes the "eval_runs" edge to the EvalRun entity by IDs.
-func (m *EvalCaseMutation) RemoveEvalRunIDs(ids ...string) {
-	if m.removedeval_runs == nil {
-		m.removedeval_runs = make(map[string]struct{})
-	}
-	for i := range ids {
-		delete(m.eval_runs, ids[i])
-		m.removedeval_runs[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedEvalRuns returns the removed IDs of the "eval_runs" edge to the EvalRun entity.
-func (m *EvalCaseMutation) RemovedEvalRunsIDs() (ids []string) {
-	for id := range m.removedeval_runs {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// EvalRunsIDs returns the "eval_runs" edge IDs in the mutation.
-func (m *EvalCaseMutation) EvalRunsIDs() (ids []string) {
-	for id := range m.eval_runs {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetEvalRuns resets all changes to the "eval_runs" edge.
-func (m *EvalCaseMutation) ResetEvalRuns() {
-	m.eval_runs = nil
-	m.clearedeval_runs = false
-	m.removedeval_runs = nil
-}
-
 // Where appends a list predicates to the EvalCaseMutation builder.
 func (m *EvalCaseMutation) Where(ps ...predicate.EvalCase) {
 	m.predicates = append(m.predicates, ps...)
@@ -2424,103 +1886,49 @@ func (m *EvalCaseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *EvalCaseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.asset != nil {
-		edges = append(edges, evalcase.EdgeAsset)
-	}
-	if m.eval_runs != nil {
-		edges = append(edges, evalcase.EdgeEvalRuns)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *EvalCaseMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case evalcase.EdgeAsset:
-		if id := m.asset; id != nil {
-			return []ent.Value{*id}
-		}
-	case evalcase.EdgeEvalRuns:
-		ids := make([]ent.Value, 0, len(m.eval_runs))
-		for id := range m.eval_runs {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *EvalCaseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.removedeval_runs != nil {
-		edges = append(edges, evalcase.EdgeEvalRuns)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *EvalCaseMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case evalcase.EdgeEvalRuns:
-		ids := make([]ent.Value, 0, len(m.removedeval_runs))
-		for id := range m.removedeval_runs {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *EvalCaseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.clearedasset {
-		edges = append(edges, evalcase.EdgeAsset)
-	}
-	if m.clearedeval_runs {
-		edges = append(edges, evalcase.EdgeEvalRuns)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *EvalCaseMutation) EdgeCleared(name string) bool {
-	switch name {
-	case evalcase.EdgeAsset:
-		return m.clearedasset
-	case evalcase.EdgeEvalRuns:
-		return m.clearedeval_runs
-	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *EvalCaseMutation) ClearEdge(name string) error {
-	switch name {
-	case evalcase.EdgeAsset:
-		m.ClearAsset()
-		return nil
-	}
 	return fmt.Errorf("unknown EvalCase unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *EvalCaseMutation) ResetEdge(name string) error {
-	switch name {
-	case evalcase.EdgeAsset:
-		m.ResetAsset()
-		return nil
-	case evalcase.EdgeEvalRuns:
-		m.ResetEvalRuns()
-		return nil
-	}
 	return fmt.Errorf("unknown EvalCase edge %s", name)
 }
 
@@ -2546,8 +1954,6 @@ type EvalRunMutation struct {
 	addduration_ms         *int
 	created_at             *time.Time
 	clearedFields          map[string]struct{}
-	eval_case              *string
-	clearedeval_case       bool
 	done                   bool
 	oldValue               func(context.Context) (*EvalRun, error)
 	predicates             []predicate.EvalRun
@@ -3193,45 +2599,6 @@ func (m *EvalRunMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// SetEvalCaseID sets the "eval_case" edge to the EvalCase entity by id.
-func (m *EvalRunMutation) SetEvalCaseID(id string) {
-	m.eval_case = &id
-}
-
-// ClearEvalCase clears the "eval_case" edge to the EvalCase entity.
-func (m *EvalRunMutation) ClearEvalCase() {
-	m.clearedeval_case = true
-}
-
-// EvalCaseCleared reports if the "eval_case" edge to the EvalCase entity was cleared.
-func (m *EvalRunMutation) EvalCaseCleared() bool {
-	return m.clearedeval_case
-}
-
-// EvalCaseID returns the "eval_case" edge ID in the mutation.
-func (m *EvalRunMutation) EvalCaseID() (id string, exists bool) {
-	if m.eval_case != nil {
-		return *m.eval_case, true
-	}
-	return
-}
-
-// EvalCaseIDs returns the "eval_case" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// EvalCaseID instead. It exists only for internal usage by the builders.
-func (m *EvalRunMutation) EvalCaseIDs() (ids []string) {
-	if id := m.eval_case; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetEvalCase resets all changes to the "eval_case" edge.
-func (m *EvalRunMutation) ResetEvalCase() {
-	m.eval_case = nil
-	m.clearedeval_case = false
-}
-
 // Where appends a list predicates to the EvalRunMutation builder.
 func (m *EvalRunMutation) Where(ps ...predicate.EvalRun) {
 	m.predicates = append(m.predicates, ps...)
@@ -3609,28 +2976,19 @@ func (m *EvalRunMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *EvalRunMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.eval_case != nil {
-		edges = append(edges, evalrun.EdgeEvalCase)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *EvalRunMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case evalrun.EdgeEvalCase:
-		if id := m.eval_case; id != nil {
-			return []ent.Value{*id}
-		}
-	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *EvalRunMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 0)
 	return edges
 }
 
@@ -3642,42 +3000,25 @@ func (m *EvalRunMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *EvalRunMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.clearedeval_case {
-		edges = append(edges, evalrun.EdgeEvalCase)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *EvalRunMutation) EdgeCleared(name string) bool {
-	switch name {
-	case evalrun.EdgeEvalCase:
-		return m.clearedeval_case
-	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *EvalRunMutation) ClearEdge(name string) error {
-	switch name {
-	case evalrun.EdgeEvalCase:
-		m.ClearEvalCase()
-		return nil
-	}
 	return fmt.Errorf("unknown EvalRun unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *EvalRunMutation) ResetEdge(name string) error {
-	switch name {
-	case evalrun.EdgeEvalCase:
-		m.ResetEvalCase()
-		return nil
-	}
 	return fmt.Errorf("unknown EvalRun edge %s", name)
 }
 
@@ -3690,8 +3031,6 @@ type LabelMutation struct {
 	name          *string
 	updated_at    *time.Time
 	clearedFields map[string]struct{}
-	asset         *string
-	clearedasset  bool
 	done          bool
 	oldValue      func(context.Context) (*Label, error)
 	predicates    []predicate.Label
@@ -3873,45 +3212,6 @@ func (m *LabelMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by id.
-func (m *LabelMutation) SetAssetID(id string) {
-	m.asset = &id
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (m *LabelMutation) ClearAsset() {
-	m.clearedasset = true
-}
-
-// AssetCleared reports if the "asset" edge to the Asset entity was cleared.
-func (m *LabelMutation) AssetCleared() bool {
-	return m.clearedasset
-}
-
-// AssetID returns the "asset" edge ID in the mutation.
-func (m *LabelMutation) AssetID() (id string, exists bool) {
-	if m.asset != nil {
-		return *m.asset, true
-	}
-	return
-}
-
-// AssetIDs returns the "asset" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// AssetID instead. It exists only for internal usage by the builders.
-func (m *LabelMutation) AssetIDs() (ids []string) {
-	if id := m.asset; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetAsset resets all changes to the "asset" edge.
-func (m *LabelMutation) ResetAsset() {
-	m.asset = nil
-	m.clearedasset = false
-}
-
 // Where appends a list predicates to the LabelMutation builder.
 func (m *LabelMutation) Where(ps ...predicate.Label) {
 	m.predicates = append(m.predicates, ps...)
@@ -4062,28 +3362,19 @@ func (m *LabelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *LabelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.asset != nil {
-		edges = append(edges, label.EdgeAsset)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *LabelMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case label.EdgeAsset:
-		if id := m.asset; id != nil {
-			return []ent.Value{*id}
-		}
-	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *LabelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 0)
 	return edges
 }
 
@@ -4095,42 +3386,25 @@ func (m *LabelMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *LabelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.clearedasset {
-		edges = append(edges, label.EdgeAsset)
-	}
+	edges := make([]string, 0, 0)
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *LabelMutation) EdgeCleared(name string) bool {
-	switch name {
-	case label.EdgeAsset:
-		return m.clearedasset
-	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *LabelMutation) ClearEdge(name string) error {
-	switch name {
-	case label.EdgeAsset:
-		m.ClearAsset()
-		return nil
-	}
 	return fmt.Errorf("unknown Label unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *LabelMutation) ResetEdge(name string) error {
-	switch name {
-	case label.EdgeAsset:
-		m.ResetAsset()
-		return nil
-	}
 	return fmt.Errorf("unknown Label edge %s", name)
 }
 
