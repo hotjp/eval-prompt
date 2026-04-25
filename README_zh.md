@@ -1,174 +1,174 @@
-# vibe-go
+# eval-prompt
 
 中文 | **[English](README.md)**
 
-Go 生产框架脚手架。
+团队级 Prompt 资产管理工具。单个 Go 二进制文件，自带 Web UI，支持 CLI 和 MCP 协议 — 专为 AI Agent 读写、版本化管理、评测 Prompt 设计。
 
-> **专为 AI Agent 和 Vibe Coding 设计。**
-> vibe-go 从第一天起就为自主 Agent 写代码的时代而生。
-> 它提供 AI 需要却不具备的东西 — 架构约束，
-> 让 AI 产出的代码是生产级品质，而不只是"能编译通过"。
+## 给 AI Agent 用
 
-## 是什么
+你可以通过以下方式与 eval-prompt 交互：
+- **MCP 协议** — 作为 MCP client 连接，程序化读写 Prompt
+- **CLI** — `ep asset create`、`ep eval run` 等命令
+- **Web UI** — 人类友好界面 http://127.0.0.1:18080
 
-vibe-go 是一个可编译、可部署的 Go 后端框架脚手架，提供 5 层分层架构和插件倒置机制。fork 后填入业务逻辑即可产出生产级服务。
-
-## 技术栈
-
-| 类别 | 选型 | 用途 |
-|---|---|---|
-| API | `connect-go` | gRPC + HTTP 双模 |
-| ORM | `ent` (pgx) | 类型安全查询、代码生成 |
-| 配置 | `koanf` | YAML + 环境变量，显式依赖注入 |
-| 日志 | `log/slog` | 结构化 JSON，标准库 |
-| ID | `oklog/ulid` | 全局唯一、按时间排序 |
-| 缓存 | `go-redis/v9` | 缓存、事件流、分布式锁 |
-| 可观测性 | OpenTelemetry + Prometheus | 链路追踪、Metrics |
-| 数据库迁移 | `golang-migrate` | 版本化 SQL 迁移 |
-| 测试 | testify + gomock + testcontainers + miniredis | 单元 / 集成 / E2E |
-
-## 架构
+### 你与 eval-prompt 的协作流程
 
 ```
-L5-Gateway → L3-Authz → L4-Service → L2-Domain → L1-Storage
+1. 创建 Prompt:      ep asset create my-prompt
+2. 编写内容:         ep asset update my-prompt
+3. 创建版本:         ep snapshot create my-prompt
+4. 运行评测:         ep eval run my-prompt
+5. 分数达标:         ep snapshot create my-prompt  # 新版本
+6. 重复 4-5 直到满意
 ```
 
-- 核心层定义接口，插件层实现接口
-- 核心层禁止 import 插件层具体实现
-- L2-Domain 零外部依赖
+### Prompt 文件格式
 
-```
-cmd/server/main.go           # 入口，依赖注入组装
-internal/
-  gateway/                   # L5: Connect handler, 中间件
-  authz/                     # L3: 权限校验
-  service/                   # L4: 业务编排（含 interfaces.go）
-  domain/                    # L2: 领域核心（零外部依赖）
-  storage/                   # L1: Ent + PostgreSQL + Redis
-plugins/                     # 插件实现
-api/{package}/v1/            # Protobuf 定义
-```
+Prompt 是 Markdown 文件，带 YAML front matter：
 
-## 任务管理：LRA（强烈推荐）
+```yaml
+---
+id: code-review
+name: Code Review Prompt
+version: v1.0.0
+state: active
+tags: [go, review]
+eval_history:
+  - run_id: run-001
+    score: 85
+    model: gpt-4o
+    date: 2026-04-25
+labels:
+  - name: prod
+    snapshot: v1.0.0
+---
+# Prompt 内容
 
-vibe-go 的任务拆分和执行流程围绕 [LRA (Long-Running Agent)](https://hotjp.github.io/long-run-agent/) 设计。LRA 是专为 AI Agent 多轮迭代开发的任务管理工具，提供任务认领、质量门控、状态流转等能力。
-
-LRA 是可选的，你完全可以用自己的任务管理方式。但我们强烈推荐搭配使用：
-
-- 任务定义自带五段式上下文（目标/契约/依赖/约定/验收），agent 开箱即用
-- 原子认领 + 锁机制，多 agent 并行不冲突
-- Constitution 质量门控，确保每个 task 达标后才算完成
-- 与 `TASK-BREAKDOWN.md` 的拆分方法论无缝衔接
-
-**安装：**
-
-```bash
-# 检查是否已安装
-lra --version
-
-# 安装
-pip install long-run-agent
+你是 Go 代码评审专家...
 ```
 
-**了解更多：** [文档主页](https://hotjp.github.io/long-run-agent/) | [GitHub](https://github.com/hotjp/long-run-agent)
+### Agent 视角的架构
+
+```
+prompts/*.md  ←  你的 Prompt 文件（Git 版本控制）
+     ↓
+SQLite 索引   ←  快速搜索：id, name, tags, content_hash
+     ↓
+  MCP / CLI  ←  你访问 Prompt 的方式
+```
+
+**核心原则**：`.md` 文件是事实来源，不是数据库。始终编辑文件，不要直接操作数据库。
 
 ## 快速开始
 
 ```bash
-# 1. Fork 并重命名
-# 2. 填写 CLAUDE.md（Project、Description、LRA profile）
-# 3. 按业务域拆分任务
-# 4. 开始开发
+# 1. 安装
+curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+
+# 2. 初始化项目
+ep init ./my-prompts
+cd ./my-prompts
+
+# 3. 启动服务
+ep serve
+# 浏览器打开 http://127.0.0.1:18080
+
+# 4. 创建第一个 Prompt
+ep asset create my-first-prompt
+ep asset update my-first-prompt  # 编辑内容
+
+# 5. 创建版本并评测
+ep snapshot create my-first-prompt
+ep eval run my-first-prompt
 ```
 
-## Agent 指南
+## 命令参考
 
-按以下顺序阅读文档。每个文档职责单一，不需要提前全部扫一遍。
+### 资产管理
 
-```
-CLAUDE.md               ← 架构约束与编码规则（始终加载）
-    ↓
-docs/TASK-BREAKDOWN.md  ← 选取任务 → 获取自包含的五段式上下文
-    ↓                         （无需阅读其他文档，除非任务引用了它们）
-docs/DESIGN.md          ← 业务细节：实体、API proto、DDL、流程
-docs/architecture.md    ← 技术细节：配置、日志、遥测、测试
-```
-
-### Agent 工作流
-
-```
-lra ready                              # 查看可认领任务
-lra claim <id>                         # 原子认领
-lra show <id>                          # 查看任务详情
-    ↓
-阅读 TASK-BREAKDOWN.md §TaskID         # 自包含上下文（目标/契约/依赖/约定/验收）
-    ↓
-实现 → 测试 → 提交
-    ↓
-lra set <id> completed
-lra check <id>                         # 运行 Constitution 质量门控
-lra set <id> truly_completed           # 完成
-```
-
-### 任务依赖图
-
-```
-Phase 0:  T00 → T01 ∥ T02 ∥ T03 → T04 → T05
-Phase 1:  T01 → T10 ∥ T12;  T10 → T11 ∥ T13
-Phase 2:  T05 → T20∥T30∥T40∥T50∥T60          (Domain，可并行)
-               → T21∥T31∥T41∥T51∥T61          (Storage，各自 Domain 完成后)
-               → T22∥T32∥T42∥T53∥T62          (Service，各自 Storage 完成后)
-Phase 5:  T05 → T70 ∥ T71                     (插件，可并行)
-Phase 6:  T61+T52+T70+T71 → T80               (AutoTag 跨模块编排)
-Phase 7:  全部 → T90 → T91 → T92 → T93        (Gateway + Authz + 组装)
-```
-
-## 文档
-
-| 文档 | 用途 | 何时阅读 |
-|---|---|---|
-| [CLAUDE.md](CLAUDE.md) | 架构约束、编码规则 | 始终（自动加载） |
-| [docs/TASK-BREAKDOWN.md](docs/TASK-BREAKDOWN.md) | 任务定义（含完整上下文） | 每个任务开始前 |
-| [docs/DESIGN.md](docs/DESIGN.md) | 业务设计（实体、API、DDL、流程） | 任务引用业务细节时 |
-| [docs/architecture.md](docs/architecture.md) | 技术规范（配置、日志、遥测、测试） | 任务引用技术细节时 |
-| [docs/TASK-PROMPT.md](docs/TASK-PROMPT.md) | 任务拆分方法论 | 创建新任务拆分时 |
-| [lra.md](lra.md) | LRA 命令参考 | 管理任务时 |
-
-## 示例
-
-`docs/DESIGN.md` 和 `docs/TASK-BREAKDOWN.md` 包含一个完整的标签管理系统（Tag Sense）作为示例业务，用于验证框架可用性。它们以 `[Demo]` 标注，不属于框架本身。
-
-## API 文档：buf + proto → TypeScript
-
-**不用 Swagger。** 所有 API 通过 `.proto` 定义，用 `buf` 生成 TypeScript 客户端，前端直接 import 调用。
-
-```
-.proto → buf generate → @bufbuild/connect-web (TS client)
-                                   ↓
-                             浏览器直接 import
-```
-
-**为什么不用 OpenAPI/Swagger：**
-- Proto → TS 类型生成，前后端始终同步，零 drift
-- Agent 直接拿到 TS 客户端代码，不需要理解 HTTP 细节
-- 编译时类型检查，不是运行时文档
-
-**核心命令：**
 ```bash
-# 安装工具
-brew install buf protobuf
-
-# 生成 TS 客户端
-buf generate
-
-# 前端依赖
-npm install @bufbuild/connect-web @bufbuild/protobuf
+ep asset list              # 列出所有 Prompt（仅 ACTIVE 状态）
+ep asset create <id>       # 创建新 Prompt
+ep asset get <id>          # 查看 Prompt 详情和内容
+ep asset update <id>       # 更新 Prompt 内容（打开编辑器）
+ep asset archive <id>      # 归档（软删除，可恢复）
+ep asset restore <id>       # 从归档恢复
 ```
 
-**关键文件：**
-- `api/{package}/v1/*.proto` — API 定义
-- `buf.yaml` — 生成配置
-- `api/{package}/v1/generated/ts/` — 生成的 TS 客户端
+### 版本管理
+
+```bash
+ep snapshot list <id>           # 列出 Prompt 的所有版本
+ep snapshot create <id>         # 创建新版本（自动递增 version）
+ep snapshot diff <id> v1 v2     # 对比两个版本
+```
+
+### 评测
+
+```bash
+ep eval run <id> [--case-ids xxx]   # 对 Prompt 运行评测
+ep eval report <run-id>             # 查看详细评测报告
+ep eval compare <id> v1 v2          # 对比两个版本的评测分数
+```
+
+### Git 同步
+
+```bash
+ep sync reconcile   # 同步文件系统与索引（启动时自动运行）
+ep sync status      # 查看本地与远程状态
+ep sync push        # 推送到远程
+ep sync pull        # 从远程拉取
+```
+
+## 配置
+
+```yaml
+# config.yaml
+server:
+  port: 18080
+
+plugins:
+  llm:
+    enabled: true
+    provider: openai        # 或: claude, ollama
+    api_key: sk-xxx
+    endpoint:              # 第三方 OpenAI 兼容接口
+    api_path: /v1/chat/completions
+    default_model: gpt-4o
+```
+
+或使用环境变量：
+
+```bash
+export APP_PLUGINS_LLM_API_KEY=sk-xxx
+export APP_PLUGINS_LLM_DEFAULT_MODEL=gpt-4o
+export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
+```
+
+## 安装
+
+```bash
+# macOS / Linux / Git Bash
+curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+
+# Windows (PowerShell)
+iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
+```
+
+**二进制命名：**
+
+| 文件名 | 操作系统 | 架构 |
+|--------|----------|------|
+| `ep-darwin-arm64` | macOS | Apple Silicon |
+| `ep-darwin-amd64` | macOS | Intel |
+| `ep-linux-arm64` | Linux | ARM64 |
+| `ep-linux-amd64` | Linux | x86_64 |
+| `ep-windows-amd64.exe` | Windows | x86_64 |
+
+**依赖：**
+- macOS：需要 Xcode Command Line Tools
+- Linux：需要 gcc 和 SQLite 开发库
+- Windows：推荐使用 Git Bash 或 WSL
 
 ## License
 

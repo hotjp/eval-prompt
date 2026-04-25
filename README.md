@@ -1,174 +1,152 @@
-# vibe-go
+# eval-prompt
 
 **[中文](README_zh.md)** | English
 
-Go production framework scaffold.
+Prompt asset management for teams. Single Go binary with Web UI, CLI, and MCP — all data stays local.
 
-> **Purpose-built for AI agents and vibe coding.**
-> vibe-go is designed from the ground up for the era where autonomous agents write your codebase.
-> It provides the architectural constraints that AI needs but doesn't have —
-> so the code it produces is production-grade, not just "it compiles."
+## The Problem We Solve
 
-## What
-
-vibe-go is a compilable, deployable Go backend framework scaffold with 5-layer architecture and plugin inversion. Fork it, fill in your business logic, and ship a production-grade service.
-
-## Tech Stack
-
-| Category | Choice | Purpose |
-|---|---|---|
-| API | `connect-go` | gRPC + HTTP dual-mode |
-| ORM | `ent` (pgx) | Type-safe query, code generation |
-| Config | `koanf` | YAML + env, explicit DI |
-| Logging | `log/slog` | Structured JSON, stdlib |
-| ID | `oklog/ulid` | Globally unique, time-sortable |
-| Cache | `go-redis/v9` | Cache, event stream, distributed lock |
-| Observability | OpenTelemetry + Prometheus | Tracing, metrics |
-| DB Migration | `golang-migrate` | Versioned SQL migration |
-| Testing | testify + gomock + testcontainers + miniredis | Unit / integration / E2E |
+| Pain Point | What eval-prompt Does |
+|---|---|
+| Prompts scattered everywhere (ChatGPT, Notion, Slack) | Centralized Git repo, searchable |
+| Version chaos (which is latest? which is in prod?) | Git history, version tags |
+| No way to measure prompt quality | Eval with deterministic + rubric scoring |
+| Agents can't reuse prompt knowledge | MCP protocol for agent consumption |
 
 ## Architecture
 
 ```
-L5-Gateway → L3-Authz → L4-Service → L2-Domain → L1-Storage
+Filesystem (prompts/*.md) ← Source of Truth
+         ↓
+SQLite Index ← Fast search (id, name, tags, content_hash)
+         ↓
+Web UI / CLI / MCP ← Access layer
 ```
 
-- Core layers define interfaces, plugin layers implement them
-- Core MUST NOT import plugin implementations
-- L2-Domain has zero external dependencies
-
-```
-cmd/server/main.go           # Entry point, DI assembly
-internal/
-  gateway/                   # L5: Connect handler, middleware
-  authz/                     # L3: Authorization
-  service/                   # L4: Business orchestration (interfaces.go)
-  domain/                    # L2: Domain core (zero deps)
-  storage/                   # L1: Ent + PostgreSQL + Redis
-plugins/                     # Plugin implementations
-api/{package}/v1/            # Protobuf definitions
-```
-
-## Task Management with LRA (Recommended)
-
-vibe-go's task breakdown and agent workflow are designed around [LRA (Long-Running Agent)](https://hotjp.github.io/long-run-agent/) — a task management tool purpose-built for AI agent multi-turn development.
-
-LRA is optional. Use your own workflow if you prefer. But we strongly recommend pairing it with vibe-go:
-
-- Task definitions carry 5-section context (goal / contract / deps / conventions / acceptance) — agent starts cold and still delivers
-- Atomic claim + lock mechanism — multiple agents work in parallel without conflicts
-- Constitution quality gates — every task must pass before marked complete
-- Seamless integration with `TASK-BREAKDOWN.md` methodology
-
-**Install:**
-
-```bash
-# Check if installed
-lra --version
-
-# Install
-pip install long-run-agent
-```
-
-**Learn more:** [Documentation](https://hotjp.github.io/long-run-agent/) | [GitHub](https://github.com/hotjp/long-run-agent)
+**Core principle**: Edit `.md` files directly. The database is an index, not the source.
 
 ## Quick Start
 
 ```bash
-# 1. Fork and rename
-# 2. Fill CLAUDE.md (Project, Description, LRA profile)
-# 3. Run task breakdown for your business domain
-# 4. Start coding
+# 1. Install
+curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+
+# 2. Initialize project
+ep init ./my-prompts
+cd ./my-prompts
+
+# 3. Start server
+ep serve
+# Open http://127.0.0.1:18080
+
+# 4. Create and eval a prompt
+ep asset create my-prompt
+ep snapshot create my-prompt
+ep eval run my-prompt
 ```
 
-## For Agent
+## Prompt File Format
 
-Read docs in this order. Each doc serves a single purpose — don't scan everything upfront.
+```yaml
+---
+id: my-prompt
+name: My Prompt
+version: v1.0.0
+state: active
+tags: [review, go]
+eval_history:
+  - run_id: run-001
+    score: 92
+    model: gpt-4o
+    date: 2026-04-25
+labels:
+  - name: prod
+    snapshot: v1.0.0
+---
+# Prompt Content
 
-```
-CLAUDE.md               <- Architecture constraints & coding rules (always loaded)
-    |
-docs/TASK-BREAKDOWN.md  <- Pick task -> get self-contained 5-section context
-    |                         (no need to read other docs unless task references them)
-docs/DESIGN.md          <- Business details: entities, API proto, DDL, flows
-docs/architecture.md    <- Technical details: config, logging, telemetry, testing
-```
-
-### Agent Workflow
-
-```
-lra ready                              # Find available tasks
-lra claim <id>                         # Claim atomically
-lra show <id>                          # Read task details
-    |
-Read TASK-BREAKDOWN.md section TaskID  # Self-contained context
-    |
-Implement -> Test -> Commit
-    |
-lra set <id> completed
-lra check <id>                         # Run Constitution quality gates
-lra set <id> truly_completed           # Done
+You are an expert at...
 ```
 
-### Task Dependency Map
+## For AI Agents
 
-```
-Phase 0:  T00 -> T01 || T02 || T03 -> T04 -> T05
-Phase 1:  T01 -> T10 || T12;  T10 -> T11 || T13
-Phase 2:  T05 -> T20||T30||T40||T50||T60          (Domain, parallel)
-                 -> T21||T31||T41||T51||T61          (Storage, after each Domain)
-                 -> T22||T32||T42||T53||T62          (Service, after each Storage)
-Phase 5:  T05 -> T70 || T71                     (Plugins, parallel)
-Phase 6:  T61+T52+T70+T71 -> T80               (AutoTag orchestration)
-Phase 7:  All -> T90 -> T91 -> T92 -> T93         (Gateway + Authz + Assembly)
-```
+**MCP protocol** — connect programmatically:
 
-## Documentation
-
-| Document | Purpose | When to read |
-|---|---|---|
-| [CLAUDE.md](CLAUDE.md) | Architecture constraints, coding rules | Always (auto-loaded) |
-| [docs/TASK-BREAKDOWN.md](docs/TASK-BREAKDOWN.md) | Task definitions with full context | Before each task |
-| [docs/DESIGN.md](docs/DESIGN.md) | Business design (entities, API, DDL, flows) | When task references business details |
-| [docs/architecture.md](docs/architecture.md) | Technical specs (config, logging, telemetry) | When task references technical details |
-| [docs/TASK-PROMPT.md](docs/TASK-PROMPT.md) | Task splitting methodology | When creating new task breakdowns |
-| [lra.md](lra.md) | LRA command reference | When managing tasks |
-
-## Demo
-
-The `docs/DESIGN.md` and `docs/TASK-BREAKDOWN.md` contain a complete tag management system (Tag Sense) as a demo business to validate the framework. They are marked with `[Demo]` and do not belong to the framework itself.
-
-## API Docs: buf + proto → TypeScript
-
-**Skip Swagger.** All APIs are defined in `.proto` and generated to TypeScript clients via `buf`. Frontend imports directly.
-
-```
-.proto → buf generate → @bufbuild/connect-web (TS client)
-                                   ↓
-                             Browser import
-```
-
-**Why not OpenAPI/Swagger:**
-- Proto → TS type generation, zero drift between frontend and backend
-- Agent gets TS client code directly — no need to parse HTTP semantics
-- Compile-time type checking, not runtime documentation
-
-**Core commands:**
 ```bash
-# Install tools
-brew install buf protobuf
-
-# Generate TS client
-buf generate
-
-# Frontend deps
-npm install @bufbuild/connect-web @bufbuild/protobuf
+ep trigger match "SQL injection detection" --top 3
+ep asset get common/code-review
+ep eval run common/code-review
 ```
 
-**Key files:**
-- `api/{package}/v1/*.proto` — API definitions
-- `buf.yaml` — Generation config
-- `api/{package}/v1/generated/ts/` — Generated TS client
+**CLI commands:**
+
+```bash
+ep asset list              # List all prompts
+ep asset create <id>       # Create new prompt
+ep snapshot create <id>     # Create new version
+ep eval run <id>           # Run eval
+ep sync reconcile           # Sync filesystem with index
+```
+
+## Features
+
+| Feature | Description |
+|---|---|
+| **Git Version Control** | All prompts in Git, history + diff + team collaboration |
+| **Eval Verification** | Deterministic checker + LLM rubric grader,量化质量 |
+| **MCP Protocol** | Agent can query, fetch, and eval prompts programmatically |
+| **Cross-Model Adaptation** | Auto-adjust format for Claude ↔ GPT ↔ local models |
+| **Sandbox Security** | File isolation, command whitelist, execution timeout |
+
+## Configuration
+
+```yaml
+# config.yaml
+server:
+  port: 18080
+
+plugins:
+  llm:
+    enabled: true
+    provider: openai
+    api_key: sk-xxx
+    endpoint:           # for third-party APIs (e.g., Groq)
+    api_path: /v1/chat/completions
+    default_model: gpt-4o
+```
+
+Or environment variables:
+
+```bash
+export APP_PLUGINS_LLM_API_KEY=sk-xxx
+export APP_PLUGINS_LLM_DEFAULT_MODEL=gpt-4o
+export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
+```
+
+## Installation
+
+```bash
+# macOS / Linux / Git Bash
+curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+
+# Windows (PowerShell)
+iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
+```
+
+**Binaries:**
+
+| File | OS | Arch |
+|------|----|------|
+| `ep-darwin-arm64` | macOS | Apple Silicon |
+| `ep-darwin-amd64` | macOS | Intel |
+| `ep-linux-arm64` | Linux | ARM64 |
+| `ep-linux-amd64` | Linux | x86_64 |
+| `ep-windows-amd64.exe` | Windows | x86_64 |
+
+**Requirements:**
+- macOS: Xcode Command Line Tools
+- Linux: gcc + SQLite dev libraries
+- Windows: Git Bash or WSL
 
 ## License
 
