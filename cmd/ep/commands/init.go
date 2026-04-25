@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/spf13/cobra"
 )
@@ -18,20 +19,7 @@ var initCmd = &cobra.Command{
 		path := args[0]
 		fmt.Printf("初始化 prompt assets 仓库: %s\n", path)
 
-		// Create directory structure
-		dirs := []string{
-			"prompts",
-			".evals",
-			".traces",
-		}
-		for _, dir := range dirs {
-			fullPath := filepath.Join(path, dir)
-			if err := os.MkdirAll(fullPath, 0755); err != nil {
-				return fmt.Errorf("创建目录失败: %w", err)
-			}
-		}
-
-		// Git init using go-git bridge
+			// Git init using go-git bridge
 		bridge := gitbridge.NewBridge()
 		if err := bridge.InitRepo(context.Background(), path); err != nil {
 			fmt.Printf("警告: git init 失败: %v\n", err)
@@ -44,6 +32,25 @@ var initCmd = &cobra.Command{
 			os.WriteFile(filepath.Join(path, ".gitignore"), []byte(gitignore), 0644)
 		} else {
 			fmt.Printf("✅ Git 仓库初始化完成\n")
+		}
+
+		// Update repo lock file
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			fmt.Printf("警告: 无法获取绝对路径: %v\n", err)
+		} else {
+			repoLock, err := lock.ReadLock()
+			if err != nil {
+				fmt.Printf("警告: 读取 lock 文件失败: %v\n", err)
+			} else {
+				repoLock.AddRepo(absPath)
+				repoLock.SetCurrent(absPath)
+				if err := lock.WriteLock(repoLock); err != nil {
+					fmt.Printf("警告: 写入 lock 文件失败: %v\n", err)
+				} else {
+					fmt.Printf("✅ 仓库已添加到锁文件\n")
+				}
+			}
 		}
 
 		// Create SQLite database path

@@ -6,7 +6,7 @@
 *.dylib
 bin/
 dist/
-ep
+./ep
 web/ep
 web/dist/
 web/node_modules/
@@ -74,3 +74,4 @@ dump.rdb
 # Generated protobuf files (if using buf)
 buf.gen.yaml
 buf.work.yaml
+config.yaml

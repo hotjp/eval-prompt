@@ -84,6 +84,7 @@ export interface LLMConfig {
   api_key: string
   endpoint?: string
   default_model: string
+  default?: boolean
 }
 
 export interface ExecuteEvalRequest {
@@ -116,6 +117,16 @@ export interface RepoConfig {
   evals_dir: string
 }
 
+export interface RepoInfo {
+  path: string
+  status: string // "valid" | "notfound" | "notgit"
+}
+
+export interface RepoListResponse {
+  repos: RepoInfo[]
+  current: string
+}
+
 export const healthApi = {
   check: async (): Promise<HealthStatus> => {
     const { data } = await noPrefixApi.get('/readyz')
@@ -134,6 +145,38 @@ export const adminApi = {
   },
   saveRepoConfig: async (config: RepoConfig): Promise<void> => {
     await api.put('/admin/repo-config', config)
+  },
+  getRepoList: async (): Promise<RepoListResponse> => {
+    const { data } = await api.get('/admin/repo-list')
+    return data
+  },
+  switchRepo: async (path: string): Promise<{ status: string; path: string }> => {
+    const { data } = await api.put('/admin/repo-switch', { path })
+    return data
+  },
+  getFirstUse: async (): Promise<{ first_use: boolean }> => {
+    const { data } = await api.get('/admin/first-use')
+    return data
+  },
+  getRepoStatus: async (): Promise<{
+    current?: { path: string; valid: boolean; branch?: string; dirty?: boolean; short_commit?: string; error?: string }
+    repos: { path: string; status: string }[]
+    is_first_use: boolean
+  }> => {
+    const { data } = await api.get('/admin/repo-status')
+    return data
+  },
+  initRepo: async (path: string): Promise<{ status: string }> => {
+    const { data } = await api.post('/admin/init-repo', { path })
+    return data
+  },
+  reconcile: async (): Promise<{ added: number; updated: number; deleted: number; errors: string[] }> => {
+    const { data } = await api.post('/admin/reconcile')
+    return data
+  },
+  gitPull: async (): Promise<{ status: string; message: string }> => {
+    const { data } = await api.post('/admin/git-pull')
+    return data
   },
 }
 
@@ -198,12 +241,12 @@ export const evalApi = {
   },
 
   getExecution: async (executionId: string): Promise<Execution> => {
-    const { data } = await api.get(`/evals/executions/${executionId}`)
+    const { data } = await api.get(`/executions/${executionId}`)
     return data
   },
 
   cancelExecution: async (executionId: string): Promise<void> => {
-    await api.post(`/evals/executions/${executionId}/cancel`)
+    await api.post(`/executions/${executionId}/cancel`)
   },
 
   get: async (runId: string): Promise<EvalRun> => {
@@ -261,6 +304,16 @@ export const llmConfigApi = {
 
   save: async (configs: LLMConfig[]): Promise<void> => {
     await api.put('/llm-config', configs)
+  },
+
+  test: async (config: { provider: string; api_key: string; endpoint?: string; default_model: string; message?: string }): Promise<{ success: boolean; content?: string; error?: string }> => {
+    const { data } = await api.post('/llm-config/test', config)
+    return data
+  },
+
+  testByName: async (name: string, message?: string): Promise<{ success: boolean; content?: string; error?: string }> => {
+    const { data } = await api.post('/llm-config/test-by-name', { name, message })
+    return data
   },
 }
 

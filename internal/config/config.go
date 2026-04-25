@@ -90,6 +90,7 @@ type PromptAssetsConfig struct {
 	EvalsDir      string `koanf:"evals_dir"`
 	TracesDir     string `koanf:"traces_dir"`
 	EvalThreshold int    `koanf:"eval_threshold"`
+	Concurrency   int    `koanf:"concurrency"`
 }
 
 // PluginsConfig holds plugin-specific settings.
@@ -100,12 +101,13 @@ type PluginsConfig struct {
 
 // LLMProviderConfig holds settings for a single LLM provider.
 type LLMProviderConfig struct {
-	Name         string `koanf:"name"`
-	Provider     string `koanf:"provider"` // openai | claude | ollama
-	APIKey       string `koanf:"api_key"`
-	Endpoint     string `koanf:"endpoint"`
-	DefaultModel string `koanf:"default_model"`
-	PingPath     string `koanf:"ping_path"` // lightweight health check path, e.g. "/v1/models"
+	Name         string `koanf:"name" yaml:"name"`
+	Provider     string `koanf:"provider" yaml:"provider"` // openai | claude | ollama
+	APIKey       string `koanf:"api_key" yaml:"api_key"`
+	Endpoint     string `koanf:"endpoint" yaml:"endpoint"`
+	DefaultModel string `koanf:"default_model" yaml:"default_model"`
+	Default      bool   `koanf:"default" yaml:"default"` // if true, this is the default provider
+	PingPath     string `koanf:"ping_path" yaml:"ping_path"` // lightweight health check path, e.g. "/v1/models"
 }
 
 // LLMPluginConfig holds LLM plugin settings (legacy single-provider format).
@@ -145,13 +147,18 @@ func envKeyTransform(s string) string {
 func Load(configPath string) (*Config, error) {
 	k := koanf.New(".")
 
+	// Use default config path if none provided
+	if configPath == "" {
+		configPath = DefaultConfigPath
+	}
+
 	// Set all defaults first
 	for key, value := range getDefaults() {
 		k.Set(key, value)
 	}
 
 	// Load from YAML file if it exists
-	if configPath != "" && fileExists(configPath) {
+	if fileExists(configPath) {
 		if err := k.Load(file.Provider(configPath), yaml.Parser()); err != nil {
 			return nil, fmt.Errorf("failed to load config file %s: %w", configPath, err)
 		}
@@ -220,14 +227,12 @@ func getDefaults() map[string]interface{} {
 		"sandbox.max_file_count":     1000,
 
 		// PromptAssets defaults
-		"prompt_assets.repo_path":      "",
+		"prompt_assets.repo_path":      "./prompt-assets",
 		"prompt_assets.assets_dir":     "prompts",
 		"prompt_assets.evals_dir":      ".evals",
 		"prompt_assets.traces_dir":     ".traces",
 		"prompt_assets.eval_threshold": 80,
-
-		// Plugin defaults - LLM now supports multiple providers via slice
-		"plugins.llm": []map[string]interface{}{},
+		"prompt_assets.concurrency":    4,
 
 		"plugins.search.enabled": false,
 		"plugins.search.type":    "basic",
@@ -289,6 +294,25 @@ func (c *Config) Validate() error {
 	if c.Server.PprofPort <= 0 || c.Server.PprofPort > 65535 {
 		return fmt.Errorf("invalid pprof port: %d", c.Server.PprofPort)
 	}
+	return nil
+}
+
+// Save writes the current config back to the YAML file.
+// Note: This will overwrite the config file and may lose comments/formatting.
+func (c *Config) Save() error {
+	if c.Path == "" {
+		return fmt.Errorf("config path is not set, cannot save")
+	}
+
+	data, err := goyaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(c.Path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
 	return nil
 }
 
@@ -494,4 +518,49 @@ func SaveLLMConfig(path string, configs []LLMProviderConfig) error {
 	}
 
 	return nil
+}
+
+// SaveLLMConfigToMain saves LLM provider configs to the main config.yaml file.
+// This updates the plugins.llm section in the main config file.
+func SaveLLMConfigToMain(configPath string, configs []LLMProviderConfig) error {
+	if configPath == "" {
+		configPath = DefaultConfigPath
+	}
+
+	// Read existing config
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		// If file doesn't exist, create it with just the LLM config
+		cfg := map[string]interface{}{
+			"plugins": map[string]interface{}{
+				"llm": configs,
+			},
+		}
+		out, err := goyaml.Marshal(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to marshal config: %w", err)
+		}
+		return os.WriteFile(configPath, out, 0644)
+	}
+
+	// Parse existing config
+	var doc map[string]interface{}
+	if err := goyaml.Unmarshal(data, &doc); err != nil {
+		return fmt.Errorf("failed to parse existing config: %w", err)
+	}
+
+	// Update plugins.llm section
+	if doc["plugins"] == nil {
+		doc["plugins"] = map[string]interface{}{}
+	}
+	plugins := doc["plugins"].(map[string]interface{})
+	plugins["llm"] = configs
+
+	// Write back
+	out, err := goyaml.Marshal(doc)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	return os.WriteFile(configPath, out, 0644)
 }
