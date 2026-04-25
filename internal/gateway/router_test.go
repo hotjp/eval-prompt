@@ -138,6 +138,34 @@ func (m *mockAssetIndexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *mockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, content, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *mockAssetIndexer) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
+	return &domain.FrontMatter{ID: id, Name: "Test Asset"}, nil
+}
+
+func (m *mockAssetIndexer) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *mockAssetIndexer) WriteContent(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *mockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
+	return "# Test Content", nil
+}
+
 func newTestRouterConfig() RouterConfig {
 	mockTrigger := &mockTriggerService{
 		MatchTriggerFunc: func(ctx context.Context, input string, top int) ([]*service.MatchedPrompt, error) {
@@ -384,16 +412,16 @@ func TestRouter_HealthEndpoints(t *testing.T) {
 		checkResp func(t *testing.T, rec *httptest.ResponseRecorder)
 	}{
 		{
-			name:     "healthz returns OK",
+			name:     "healthz returns ok",
 			path:     "/healthz",
 			wantCode: http.StatusOK,
-			wantBody: "OK",
+			wantBody: "ok",
 		},
 		{
-			name:     "readyz returns OK",
+			name:     "readyz returns ok",
 			path:     "/readyz",
 			wantCode: http.StatusOK,
-			wantBody: "OK",
+			wantBody: "ok",
 		},
 	}
 

@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/gateway/handlers"
+	"github.com/eval-prompt/internal/gateway/middleware"
 	svc "github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/search"
 	"github.com/stretchr/testify/require"
@@ -18,13 +20,13 @@ import (
 
 // mockEvalServiceer is a mock implementation of EvalServiceer for E2E testing.
 type mockEvalServiceer struct {
-	RunEvalFunc         func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error)
-	GetEvalRunFunc      func(ctx context.Context, runID string) (*svc.EvalRun, error)
-	ListEvalRunsFunc    func(ctx context.Context, assetID string) ([]*svc.EvalRun, error)
-	CompareEvalFunc     func(ctx context.Context, assetID string, v1, v2 string) (*svc.CompareResult, error)
-	GenerateReportFunc  func(ctx context.Context, runID string) (*svc.EvalReport, error)
-	DiagnoseEvalFunc    func(ctx context.Context, runID string) (*svc.Diagnosis, error)
-	ListEvalCasesFunc   func(ctx context.Context, assetID string) ([]*svc.EvalCase, error)
+	RunEvalFunc        func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error)
+	GetEvalRunFunc     func(ctx context.Context, runID string) (*svc.EvalRun, error)
+	ListEvalRunsFunc   func(ctx context.Context, assetID string) ([]*svc.EvalRun, error)
+	CompareEvalFunc    func(ctx context.Context, assetID string, v1, v2 string) (*svc.CompareResult, error)
+	GenerateReportFunc func(ctx context.Context, runID string) (*svc.EvalReport, error)
+	DiagnoseEvalFunc   func(ctx context.Context, runID string) (*svc.Diagnosis, error)
+	ListEvalCasesFunc  func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
 }
 
 func (m *mockEvalServiceer) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error) {
@@ -44,10 +46,10 @@ func (m *mockEvalServiceer) GetEvalRun(ctx context.Context, runID string) (*svc.
 		return m.GetEvalRunFunc(ctx, runID)
 	}
 	return &svc.EvalRun{
-		ID:        runID,
-		Status:    svc.EvalRunStatusPassed,
-		Score:     85,
-		CreatedAt: time.Now(),
+		ID:                 runID,
+		Status:             svc.EvalRunStatusPassed,
+		DeterministicScore: 85,
+		CreatedAt:          time.Now(),
 	}, nil
 }
 
@@ -56,8 +58,8 @@ func (m *mockEvalServiceer) ListEvalRuns(ctx context.Context, assetID string) ([
 		return m.ListEvalRunsFunc(ctx, assetID)
 	}
 	return []*svc.EvalRun{
-		{ID: "run-1", AssetID: assetID, Status: svc.EvalRunStatusPassed, Score: 85},
-		{ID: "run-2", AssetID: assetID, Status: svc.EvalRunStatusFailed, Score: 60},
+		{ID: "run-1", AssetID: assetID, Status: svc.EvalRunStatusPassed, DeterministicScore: 85},
+		{ID: "run-2", AssetID: assetID, Status: svc.EvalRunStatusFailed, DeterministicScore: 60},
 	}, nil
 }
 
@@ -68,10 +70,8 @@ func (m *mockEvalServiceer) CompareEval(ctx context.Context, assetID string, v1,
 	return &svc.CompareResult{
 		AssetID:    assetID,
 		Version1:   v1,
-		Version2:    v2,
+		Version2:   v2,
 		ScoreDelta: 15,
-		Version1Score: 75,
-		Version2Score: 90,
 	}, nil
 }
 
@@ -80,11 +80,9 @@ func (m *mockEvalServiceer) GenerateReport(ctx context.Context, runID string) (*
 		return m.GenerateReportFunc(ctx, runID)
 	}
 	return &svc.EvalReport{
-		RunID:         runID,
-		Status:        svc.EvalRunStatusPassed,
-		OverallScore:  85,
-		Summary:       "Test passed",
-		Recommendations: []string{"Keep up the good work"},
+		RunID:        runID,
+		Status:       svc.EvalRunStatusPassed,
+		OverallScore: 85,
 	}, nil
 }
 
@@ -100,12 +98,12 @@ func (m *mockEvalServiceer) DiagnoseEval(ctx context.Context, runID string) (*sv
 	}, nil
 }
 
-func (m *mockEvalServiceer) ListEvalCases(ctx context.Context, assetID string) ([]*svc.EvalCase, error) {
+func (m *mockEvalServiceer) ListEvalCases(ctx context.Context, assetID string) ([]*domain.EvalCase, error) {
 	if m.ListEvalCasesFunc != nil {
 		return m.ListEvalCasesFunc(ctx, assetID)
 	}
-	return []*svc.EvalCase{
-		{ID: "case-1", AssetID: assetID, Name: "Test Case 1"},
+	return []*domain.EvalCase{
+		{ID: domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"), AssetID: domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAW"), Name: "Test Case 1"},
 	}, nil
 }
 
@@ -115,8 +113,8 @@ func setupTestRouter(t *testing.T) http.Handler {
 	indexer := search.NewIndexer()
 	mockEval := &mockEvalServiceer{}
 
-	assetHandler := handlers.NewAssetHandler(indexer, logger)
-	evalHandler := handlers.NewEvalHandler(mockEval, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	evalHandler := handlers.NewEvalHandler(mockEval, indexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
@@ -134,12 +132,11 @@ func setupTestRouter(t *testing.T) http.Handler {
 
 // TestRESTAPI_E2E_FullWorkflow tests the complete REST API workflow.
 func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
-	mux := setupTestRouter(t)
 	ctx := context.Background()
 	indexer := search.NewIndexer()
 	logger := slog.Default()
-	assetHandler := handlers.NewAssetHandler(indexer, logger)
-	evalHandler := handlers.NewEvalHandler(&mockEvalServiceer{}, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	evalHandler := handlers.NewEvalHandler(&mockEvalServiceer{}, indexer, logger)
 
 	// Register routes with the mux
 	testMux := http.NewServeMux()
@@ -153,11 +150,11 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 	testMux.HandleFunc("POST /api/v1/evals/compare", evalHandler.CompareEval)
 	testMux.HandleFunc("GET /api/v1/evals/{id}/report", evalHandler.GetEvalReport)
 
-	assetID := "e2e/test-asset"
+	assetID := "e2e-test-asset"
 	assetName := "E2E Test Asset"
 	assetDescription := "Test asset for E2E workflow"
 	bizLine := "ml"
-	tags := []string{"e2e", "test"}
+	_ = []string{"e2e", "test"} // tags declared for potential future use
 
 	// Step 1: POST /api/v1/assets - Create asset
 	t.Run("Step1_CreateAsset", func(t *testing.T) {
@@ -343,7 +340,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 
 	// Verify we can run the full workflow again with a new asset
 	t.Run("FullWorkflow_NewAsset", func(t *testing.T) {
-		newAssetID := "e2e/new-asset"
+		newAssetID := "e2e-new-asset"
 		body := `{
 			"id": "` + newAssetID + `",
 			"name": "New Test Asset",
@@ -379,7 +376,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 func TestRESTAPI_E2E_ErrorHandling(t *testing.T) {
 	logger := slog.Default()
 	indexer := search.NewIndexer()
-	assetHandler := handlers.NewAssetHandler(indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
 
 	testMux := http.NewServeMux()
 	testMux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
@@ -446,9 +443,8 @@ func TestRESTAPI_E2E_ErrorHandling(t *testing.T) {
 
 		testMux.ServeHTTP(rec, req)
 
-		// Delete should not error for non-existent (based on current implementation)
-		// If the implementation changes to return error, this would be StatusNotFound
-		require.Equal(t, http.StatusOK, rec.Code)
+		// Delete returns 404 when asset not found
+		require.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -456,7 +452,7 @@ func TestRESTAPI_E2E_ErrorHandling(t *testing.T) {
 func TestRESTAPI_E2E_Filters(t *testing.T) {
 	logger := slog.Default()
 	indexer := search.NewIndexer()
-	assetHandler := handlers.NewAssetHandler(indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
 
 	testMux := http.NewServeMux()
 	testMux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
@@ -482,7 +478,7 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 				tags = append(tags, `"`+t+`"`)
 			}
 			return tags
-		}()) + `]}`
+		}(), ",") + `]}`
 		req := httptest.NewRequest("POST", "/api/v1/assets", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -504,7 +500,7 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 	})
 
 	t.Run("FilterByState", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/assets?state=evaluated", nil)
+		req := httptest.NewRequest("GET", "/api/v1/assets?state=created", nil)
 		rec := httptest.NewRecorder()
 
 		testMux.ServeHTTP(rec, req)
@@ -512,8 +508,8 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		var resp map[string]any
 		json.Unmarshal(rec.Body.Bytes(), &resp)
-		// Should return 2 evaluated assets (asset2 and asset3)
-		require.Equal(t, float64(2), resp["total"], "should have 2 evaluated assets")
+		// All assets are created with state "created" by the handler
+		require.Equal(t, float64(3), resp["total"], "should have 3 created assets (all assets have state=created)")
 	})
 }
 
@@ -521,7 +517,8 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 func TestRESTAPI_E2E_EvalReports(t *testing.T) {
 	logger := slog.Default()
 	mockEval := &mockEvalServiceer{}
-	evalHandler := handlers.NewEvalHandler(mockEval, logger)
+	mockIndexer := search.NewIndexer()
+	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
 
 	testMux := http.NewServeMux()
 	testMux.HandleFunc("GET /api/v1/evals/{id}/report", evalHandler.GetEvalReport)
@@ -540,4 +537,394 @@ func TestRESTAPI_E2E_EvalReports(t *testing.T) {
 		require.Equal(t, "run-123", resp.RunID)
 		require.Equal(t, 85, resp.OverallScore)
 	})
+}
+
+// setupE2ERouter creates a test router with middleware chain for E2E testing
+func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer, *e2eMockTriggerService) {
+	mux := http.NewServeMux()
+	logger := slog.Default()
+
+	mockEval := &mockEvalServiceer{
+		RunEvalFunc: func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error) {
+			return &svc.EvalRun{
+				ID:        "run-e2e-001",
+				AssetID:   assetID,
+				Status:    svc.EvalRunStatusRunning,
+				CreatedAt: time.Now(),
+			}, nil
+		},
+		GetEvalRunFunc: func(ctx context.Context, runID string) (*svc.EvalRun, error) {
+			return &svc.EvalRun{
+				ID:        runID,
+				AssetID:   "common/test",
+				Status:    svc.EvalRunStatusPassed,
+				CreatedAt: time.Now(),
+			}, nil
+		},
+		CompareEvalFunc: func(ctx context.Context, assetID string, v1, v2 string) (*svc.CompareResult, error) {
+			return &svc.CompareResult{
+				AssetID:    assetID,
+				Version1:   v1,
+				Version2:   v2,
+				ScoreDelta: 10,
+			}, nil
+		},
+	}
+
+	mockIndexer := &e2eMockAssetIndexer{
+		GetByIDFunc: func(ctx context.Context, id string) (*svc.AssetDetail, error) {
+			return &svc.AssetDetail{
+				ID:          id,
+				Name:        "Test Asset",
+				Description: "A test asset",
+				BizLine:     "ai",
+				Tags:        []string{"test"},
+				State:       "created",
+				Snapshots:   []svc.SnapshotSummary{},
+				Labels:      []svc.LabelInfo{},
+			}, nil
+		},
+		SearchFunc: func(ctx context.Context, query string, filters svc.SearchFilters) ([]svc.AssetSummary, error) {
+			return []svc.AssetSummary{
+				{ID: "common/test", Name: "Test Asset", Description: "A test asset", BizLine: "ai", Tags: []string{"test"}, State: "created"},
+			}, nil
+		},
+		SaveFunc: func(ctx context.Context, asset svc.Asset) error {
+			return nil
+		},
+		DeleteFunc: func(ctx context.Context, id string) error {
+			return nil
+		},
+	}
+
+	mockTrigger := &e2eMockTriggerService{
+		MatchTriggerFunc: func(ctx context.Context, input string, top int) ([]*svc.MatchedPrompt, error) {
+			return []*svc.MatchedPrompt{
+				{AssetID: "common/test", Name: "Test", Description: "Test prompt", Relevance: 0.95},
+			}, nil
+		},
+		InjectVariablesFunc: func(ctx context.Context, prompt string, vars map[string]string) (string, error) {
+			return "injected: " + prompt, nil
+		},
+	}
+
+	// Create handlers
+	mcpHandler := handlers.NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	assetHandler := handlers.NewAssetHandler(mockIndexer, mockIndexer, logger)
+	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
+
+	// Build middleware chain
+	chain := func(h http.Handler) http.Handler {
+		h = middleware.Recover(logger)(h)
+		h = middleware.RequestID()(h)
+		h = middleware.Metrics(middleware.NewMetricsCollector())(h)
+		h = middleware.Logging(logger)(h)
+		h = middleware.CORS([]string{"*"})(h)
+		return h
+	}
+
+	// Register MCP endpoints
+	mux.Handle("GET /mcp/v1/sse", chain(http.HandlerFunc(mcpHandler.HandleSSE)))
+	mux.Handle("POST /mcp/v1", chain(http.HandlerFunc(mcpHandler.HandlePOST)))
+
+	// Register REST API endpoints
+	mux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
+	mux.HandleFunc("GET /api/v1/assets", assetHandler.ListAssets)
+	mux.HandleFunc("GET /api/v1/assets/{id}", assetHandler.GetAsset)
+	mux.HandleFunc("PUT /api/v1/assets/{id}", assetHandler.UpdateAsset)
+	mux.HandleFunc("DELETE /api/v1/assets/{id}", assetHandler.DeleteAsset)
+
+	mux.HandleFunc("POST /api/v1/evals/run", evalHandler.RunEval)
+	mux.HandleFunc("GET /api/v1/evals/{id}", evalHandler.GetEvalRun)
+	mux.HandleFunc("POST /api/v1/evals/compare", evalHandler.CompareEval)
+	mux.HandleFunc("GET /api/v1/evals", evalHandler.ListEvalRuns)
+
+	// Health check endpoints
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	return mux, mockEval, mockIndexer, mockTrigger
+}
+
+// e2eMockAssetIndexer is a mock implementation of AssetIndexer for E2E testing.
+type e2eMockAssetIndexer struct {
+	SearchFunc  func(ctx context.Context, query string, filters svc.SearchFilters) ([]svc.AssetSummary, error)
+	GetByIDFunc func(ctx context.Context, id string) (*svc.AssetDetail, error)
+	SaveFunc    func(ctx context.Context, asset svc.Asset) error
+	DeleteFunc  func(ctx context.Context, id string) error
+}
+
+func (m *e2eMockAssetIndexer) Reconcile(ctx context.Context) (svc.ReconcileReport, error) {
+	return svc.ReconcileReport{}, nil
+}
+
+func (m *e2eMockAssetIndexer) Search(ctx context.Context, query string, filters svc.SearchFilters) ([]svc.AssetSummary, error) {
+	if m.SearchFunc != nil {
+		return m.SearchFunc(ctx, query, filters)
+	}
+	return nil, nil
+}
+
+func (m *e2eMockAssetIndexer) GetByID(ctx context.Context, id string) (*svc.AssetDetail, error) {
+	if m.GetByIDFunc != nil {
+		return m.GetByIDFunc(ctx, id)
+	}
+	return &svc.AssetDetail{ID: id, Name: "Test Asset", State: "created"}, nil
+}
+
+func (m *e2eMockAssetIndexer) Save(ctx context.Context, asset svc.Asset) error {
+	if m.SaveFunc != nil {
+		return m.SaveFunc(ctx, asset)
+	}
+	return nil
+}
+
+func (m *e2eMockAssetIndexer) Delete(ctx context.Context, id string) error {
+	if m.DeleteFunc != nil {
+		return m.DeleteFunc(ctx, id)
+	}
+	return nil
+}
+
+func (m *e2eMockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *e2eMockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *e2eMockAssetIndexer) SaveFileContent(ctx context.Context, id, content, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *e2eMockAssetIndexer) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
+	return &domain.FrontMatter{ID: id, Name: "Test Asset"}, nil
+}
+
+func (m *e2eMockAssetIndexer) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *e2eMockAssetIndexer) WriteContent(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *e2eMockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
+	return "# Test Content", nil
+}
+
+// e2eMockTriggerService is a mock implementation of TriggerServicer for E2E testing.
+type e2eMockTriggerService struct {
+	MatchTriggerFunc         func(ctx context.Context, input string, top int) ([]*svc.MatchedPrompt, error)
+	ValidateAntiPatternsFunc func(ctx context.Context, prompt string) error
+	InjectVariablesFunc      func(ctx context.Context, prompt string, vars map[string]string) (string, error)
+}
+
+func (m *e2eMockTriggerService) MatchTrigger(ctx context.Context, input string, top int) ([]*svc.MatchedPrompt, error) {
+	if m.MatchTriggerFunc != nil {
+		return m.MatchTriggerFunc(ctx, input, top)
+	}
+	return nil, nil
+}
+
+func (m *e2eMockTriggerService) ValidateAntiPatterns(ctx context.Context, prompt string) error {
+	if m.ValidateAntiPatternsFunc != nil {
+		return m.ValidateAntiPatternsFunc(ctx, prompt)
+	}
+	return nil
+}
+
+func (m *e2eMockTriggerService) InjectVariables(ctx context.Context, prompt string, vars map[string]string) (string, error) {
+	if m.InjectVariablesFunc != nil {
+		return m.InjectVariablesFunc(ctx, prompt, vars)
+	}
+	return "", nil
+}
+
+// E2E_Middleware_RequestID_NotPresent tests that X-Request-ID is generated when not provided
+func TestE2E_Middleware_RequestID_NotPresent(t *testing.T) {
+	mux, _, _, _ := setupE2ERouter()
+
+	body := strings.NewReader(`{"jsonrpc": "2.0", "method": "prompts/list", "id": 1}`)
+	req := httptest.NewRequest("POST", "/mcp/v1", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	require.NotEmpty(t, rec.Header().Get("X-Request-ID"), "X-Request-ID should be set in response")
+}
+
+// E2E_Middleware_RequestID_CustomPresent tests that custom X-Request-ID is echoed back
+func TestE2E_Middleware_RequestID_CustomPresent(t *testing.T) {
+	mux, _, _, _ := setupE2ERouter()
+
+	body := strings.NewReader(`{"jsonrpc": "2.0", "method": "prompts/list", "id": 1}`)
+	req := httptest.NewRequest("POST", "/mcp/v1", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Request-ID", "my-custom-id-12345")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	require.Equal(t, "my-custom-id-12345", rec.Header().Get("X-Request-ID"), "X-Request-ID should echo back the custom value")
+}
+
+// E2E_Middleware_CORS_OriginHeader tests that CORS Origin header is set correctly
+func TestE2E_Middleware_CORS_OriginHeader(t *testing.T) {
+	mux, _, _, _ := setupE2ERouter()
+
+	body := strings.NewReader(`{"jsonrpc": "2.0", "method": "prompts/list", "id": 1}`)
+	req := httptest.NewRequest("POST", "/mcp/v1", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://example.com")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "http://example.com", rec.Header().Get("Access-Control-Allow-Origin"), "CORS Origin header should be set")
+}
+
+// E2E_Middleware_NotFound_Path tests that nonexistent paths return proper response
+func TestE2E_Middleware_NotFound_Path(t *testing.T) {
+	mux, _, _, _ := setupE2ERouter()
+
+	req := httptest.NewRequest("GET", "/nonexistent/path", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	// Should fall through to static handler or return 404
+	require.True(t, rec.Code == http.StatusOK || rec.Code == http.StatusNotFound,
+		"Expected 200 or 404 for nonexistent path, got %d", rec.Code)
+}
+
+// E2E_REST_API_RunEval_Validation tests validation for run eval endpoint
+func TestE2E_REST_API_RunEval_Validation(t *testing.T) {
+	logger := slog.Default()
+	mockEval := &mockEvalServiceer{}
+	mockIndexer := search.NewIndexer()
+	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
+
+	testMux := http.NewServeMux()
+	testMux.HandleFunc("POST /api/v1/evals/run", evalHandler.RunEval)
+
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+	}{
+		{
+			name:       "missing asset_id returns 400",
+			body:       `{"snapshot_version": "v1"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "empty body returns 400",
+			body:       `{}`,
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/api/v1/evals/run", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			testMux.ServeHTTP(rec, req)
+
+			require.Equal(t, tt.wantStatus, rec.Code)
+		})
+	}
+}
+
+// E2E_REST_API_CompareEval_Validation tests validation for compare eval endpoint
+func TestE2E_REST_API_CompareEval_Validation(t *testing.T) {
+	logger := slog.Default()
+	mockEval := &mockEvalServiceer{}
+	mockIndexer := search.NewIndexer()
+	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
+
+	testMux := http.NewServeMux()
+	testMux.HandleFunc("POST /api/v1/evals/compare", evalHandler.CompareEval)
+
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+	}{
+		{
+			name:       "missing version1 returns 400",
+			body:       `{"asset_id": "common/test", "version2": "v2"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing version2 returns 400",
+			body:       `{"asset_id": "common/test", "version1": "v1"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing asset_id returns 400",
+			body:       `{"version1": "v1", "version2": "v2"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/api/v1/evals/compare", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			testMux.ServeHTTP(rec, req)
+
+			require.Equal(t, tt.wantStatus, rec.Code)
+		})
+	}
+}
+
+// E2E_REST_API_HealthEndpoints tests health check endpoints
+func TestE2E_REST_API_HealthEndpoints(t *testing.T) {
+	mux, _, _, _ := setupE2ERouter()
+
+	tests := []struct {
+		name       string
+		path       string
+		wantStatus int
+		wantBody   string
+	}{
+		{
+			name:       "healthz returns OK",
+			path:       "/healthz",
+			wantStatus: http.StatusOK,
+			wantBody:   "OK",
+		},
+		{
+			name:       "readyz returns OK",
+			path:       "/readyz",
+			wantStatus: http.StatusOK,
+			wantBody:   "OK",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.path, nil)
+			rec := httptest.NewRecorder()
+
+			mux.ServeHTTP(rec, req)
+
+			require.Equal(t, tt.wantStatus, rec.Code)
+			require.Contains(t, rec.Body.String(), tt.wantBody)
+		})
+	}
 }

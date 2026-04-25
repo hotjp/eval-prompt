@@ -41,7 +41,7 @@ func newTestAssetHandler() (*AssetHandler, *mock.MockAssetIndexer) {
 		},
 	}
 	logger := slog.Default()
-	return NewAssetHandler(mockIndexer, logger), mockIndexer
+	return NewAssetHandler(mockIndexer, mockIndexer, logger), mockIndexer
 }
 
 func TestAssetHandler_ListAssets(t *testing.T) {
