@@ -3,11 +3,12 @@ package domain
 // EvalHistoryEntry represents an eval run summary stored in YAML front matter.
 // This is a lightweight representation for serialization in .md files.
 type EvalHistoryEntry struct {
-	RunID  string    `yaml:"run_id"`
-	Score  int       `yaml:"score"`
-	Model  string    `yaml:"model"`
-	Date   string    `yaml:"date"`
-	By     string    `yaml:"by"`
+	RunID       string `yaml:"run_id"`
+	SnapshotID  string `yaml:"snapshot_id"`
+	Score       int    `yaml:"score"`
+	Model       string `yaml:"model"`
+	Date        string `yaml:"date"`
+	By          string `yaml:"by"`
 }
 
 // LabelEntry represents a label stored in YAML front matter.
