@@ -2,7 +2,7 @@
 
 **[中文](README_zh.md)** | English
 
-Prompt asset management for teams. Single Go binary with Web UI, CLI, and MCP — all data stays local.
+Version-controlled AI asset management. Git for versioning, SQLite for indexing, accessible via Web UI / CLI / MCP — all data stays local and private.
 
 ## The Problem We Solve
 
