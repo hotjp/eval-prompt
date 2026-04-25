@@ -53,10 +53,16 @@ cd ./my-prompts
 ep serve
 # Open http://127.0.0.1:18080
 
-# 4. Create and eval a prompt
-ep asset create my-prompt
-ep snapshot create my-prompt
+# 4. Create a prompt
+ep asset create my-prompt --content "# My Prompt\n\nYou are an expert..."
+
+# 5. Run eval (requires evals/my-prompt.md to exist)
 ep eval run my-prompt
+
+# 6. Sync results — REQUIRED after every eval
+ep sync reconcile
+
+# 7. View in Web UI: Assets → my-prompt → Version History
 ```
 
 ## Prompt File Format
@@ -73,6 +79,13 @@ eval_history:
     score: 92
     model: gpt-4o
     date: 2026-04-25
+eval_stats:
+  gpt-4o:
+    count: 5
+    mean: 88.4
+    min: 82
+    max: 95
+    last_run: 2026-04-25
 labels:
   - name: prod
     snapshot: v1.0.0
@@ -81,6 +94,8 @@ labels:
 
 You are an expert at...
 ```
+
+**eval_stats** uses Welford's algorithm for incremental mean/variance — updated automatically after each `ep eval run`.
 
 ## For AI Agents
 
@@ -99,9 +114,23 @@ ep eval run common/code-review
 ```bash
 ep asset list              # List all prompts
 ep asset create <id>       # Create new prompt
-ep snapshot create <id>     # Create new version
-ep eval run <id>           # Run eval
-ep sync reconcile           # Sync filesystem with index
+ep snapshot create <id>    # Create new version
+ep eval run <id>           # Run eval (requires evals/{id}.md)
+ep sync reconcile          # Sync filesystem with index (required after eval)
+```
+
+**Complete eval workflow:**
+
+```bash
+# 1. Run eval (requires evals/{asset-id}.md to exist)
+ep eval run <asset-id>
+
+# 2. Sync results into index — REQUIRED before viewing in UI
+ep sync reconcile
+
+# 3. View in Web UI:
+#    - Version History: Assets → <asset> → History tab
+#    - Compare: Compare tab → select asset and two versions
 ```
 
 ## Features
