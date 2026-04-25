@@ -48,6 +48,10 @@
 ```
 
 ### 核心设计原则
+- **文件优先（File-first）**：Prompt 内容以 .md 文件存储在 Git 仓库中，Git 是唯一真实来源（Source of Truth）
+- **Agent 优先**：API/CLI 设计优先考虑 Agent 消费场景，结构化输出、明确语义
+- **CLI 优先于 API**：核心功能优先通过 CLI 暴露，HTTP API 是可选的 UI 增强
+- **SQLite 仅做索引**：SQLite 仅存储元数据索引（AssetDetail），不存储 Prompt 内容
 - 核心层定义接口，插件层实现接口，通过依赖注入连接
 - **禁止核心层 import 插件层具体实现**
 - L2-Domain 零外部依赖（纯 Go struct + 标准库）
