@@ -14,6 +14,9 @@ import (
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
 	"github.com/spf13/cobra"
+
+	_ "github.com/eval-prompt/docs" // swagger docs
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 var serveCmd = &cobra.Command{
@@ -49,6 +52,9 @@ var serveCmd = &cobra.Command{
 			Metrics:        middleware.NewMetricsCollector(),
 			CORSOrigins:    []string{"http://localhost:8080", "http://127.0.0.1:8080"},
 		})
+
+		// Register Swagger UI
+		router.Handle("/swagger/", httpSwagger.Handler())
 
 		// Create HTTP server
 		server := &http.Server{

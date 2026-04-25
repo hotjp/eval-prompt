@@ -50,6 +50,17 @@ type SnapshotResponse struct {
 }
 
 // ListAssets handles GET /api/v1/assets.
+//
+//	@Summary List assets
+//	@Description Get all assets with optional filtering
+//	@Tags assets
+//	@Accept json
+//	@Produce json
+//	@Param biz_line query string false "Business line filter"
+//	@Param tag query string false "Tag filter"
+//	@Param state query string false "State filter"
+//	@Success 200 {object} map[string]interface{}
+//	@Router /api/v1/assets [get]
 func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -90,6 +101,17 @@ func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAsset handles GET /api/v1/assets/{id}.
+//
+//	@Summary Get asset by ID
+//	@Description Get a single asset by its ID
+//	@Tags assets
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Asset ID"
+//	@Success 200 {object} AssetResponse
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 404 {object} map[string]interface{}
+//	@Router /api/v1/assets/{id} [get]
 func (h *AssetHandler) GetAsset(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -148,6 +170,17 @@ type CreateAssetRequest struct {
 }
 
 // CreateAsset handles POST /api/v1/assets.
+//
+//	@Summary Create asset
+//	@Description Create a new asset
+//	@Tags assets
+//	@Accept json
+//	@Produce json
+//	@Param request body CreateAssetRequest true "Asset creation request"
+//	@Success 201 {object} map[string]interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/assets [post]
 func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -194,6 +227,19 @@ type UpdateAssetRequest struct {
 }
 
 // UpdateAsset handles PUT /api/v1/assets/{id}.
+//
+//	@Summary Update asset
+//	@Description Update an existing asset
+//	@Tags assets
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Asset ID"
+//	@Param request body UpdateAssetRequest true "Asset update request"
+//	@Success 200 {object} map[string]interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 404 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/assets/{id} [put]
 func (h *AssetHandler) UpdateAsset(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -256,12 +302,30 @@ func (h *AssetHandler) UpdateAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAsset handles DELETE /api/v1/assets/{id}.
+//
+//	@Summary Delete asset
+//	@Description Delete an asset by ID
+//	@Tags assets
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Asset ID"
+//	@Success 200 {object} map[string]interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 404 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/assets/{id} [delete]
 func (h *AssetHandler) DeleteAsset(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	id := r.PathValue("id")
 	if id == "" {
 		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	// Check if asset exists first
+	if _, err := h.indexer.GetByID(ctx, id); err != nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
 		return
 	}
 

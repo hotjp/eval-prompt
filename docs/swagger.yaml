@@ -1,0 +1,639 @@
+definitions:
+  handlers.AssetResponse:
+    properties:
+      biz_line:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      snapshots:
+        items:
+          $ref: '#/definitions/handlers.SnapshotResponse'
+        type: array
+      state:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
+  handlers.CompareEvalRequest:
+    properties:
+      asset_id:
+        type: string
+      version1:
+        type: string
+      version2:
+        type: string
+    type: object
+  handlers.CreateAssetRequest:
+    properties:
+      biz_line:
+        type: string
+      content:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.InjectVariablesRequest:
+    properties:
+      prompt:
+        type: string
+      variables:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  handlers.InjectVariablesResponse:
+    properties:
+      result:
+        type: string
+    type: object
+  handlers.MatchTriggerRequest:
+    properties:
+      input:
+        type: string
+      top:
+        type: integer
+    type: object
+  handlers.MatchTriggerResponse:
+    properties:
+      matches:
+        items:
+          $ref: '#/definitions/service.MatchedPrompt'
+        type: array
+      total:
+        type: integer
+    type: object
+  handlers.RunEvalRequest:
+    properties:
+      asset_id:
+        type: string
+      eval_case_ids:
+        items:
+          type: string
+        type: array
+      snapshot_version:
+        type: string
+    type: object
+  handlers.RunEvalResponse:
+    properties:
+      message:
+        type: string
+      run_id:
+        type: string
+      status:
+        type: string
+    type: object
+  handlers.SnapshotResponse:
+    properties:
+      author:
+        type: string
+      commit_hash:
+        type: string
+      created_at:
+        type: string
+      eval_score:
+        type: number
+      reason:
+        type: string
+      version:
+        type: string
+    type: object
+  handlers.UpdateAssetRequest:
+    properties:
+      biz_line:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      state:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.ValidateAntiPatternsRequest:
+    properties:
+      prompt:
+        type: string
+    type: object
+  handlers.ValidateAntiPatternsResponse:
+    properties:
+      message:
+        type: string
+      valid:
+        type: boolean
+      violations:
+        items:
+          type: string
+        type: array
+    type: object
+  service.MatchedPrompt:
+    properties:
+      asset_id:
+        type: string
+      content:
+        type: string
+      description:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      relevance:
+        type: number
+      variables:
+        items:
+          type: string
+        type: array
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/assets:
+    get:
+      consumes:
+      - application/json
+      description: Get all assets with optional filtering
+      parameters:
+      - description: Business line filter
+        in: query
+        name: biz_line
+        type: string
+      - description: Tag filter
+        in: query
+        name: tag
+        type: string
+      - description: State filter
+        in: query
+        name: state
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List assets
+      tags:
+      - assets
+    post:
+      consumes:
+      - application/json
+      description: Create a new asset
+      parameters:
+      - description: Asset creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create asset
+      tags:
+      - assets
+  /api/v1/assets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an asset by ID
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete asset
+      tags:
+      - assets
+    get:
+      consumes:
+      - application/json
+      description: Get a single asset by its ID
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AssetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get asset by ID
+      tags:
+      - assets
+    put:
+      consumes:
+      - application/json
+      description: Update an existing asset
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Asset update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update asset
+      tags:
+      - assets
+  /api/v1/evals:
+    get:
+      consumes:
+      - application/json
+      description: Get all eval runs for an asset
+      parameters:
+      - description: Asset ID
+        in: query
+        name: asset_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List eval runs
+      tags:
+      - evals
+  /api/v1/evals/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a single eval run by its ID
+      parameters:
+      - description: Eval Run ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get eval run by ID
+      tags:
+      - evals
+  /api/v1/evals/{id}/diagnose:
+    get:
+      consumes:
+      - application/json
+      description: Get diagnosis for an eval run
+      parameters:
+      - description: Eval Run ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Diagnose eval run
+      tags:
+      - evals
+  /api/v1/evals/{id}/report:
+    get:
+      consumes:
+      - application/json
+      description: Get the report for an eval run
+      parameters:
+      - description: Eval Run ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get eval report
+      tags:
+      - evals
+  /api/v1/evals/compare:
+    post:
+      consumes:
+      - application/json
+      description: Compare two versions of an eval
+      parameters:
+      - description: Compare request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CompareEvalRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Compare eval versions
+      tags:
+      - evals
+  /api/v1/evals/run:
+    post:
+      consumes:
+      - application/json
+      description: Start an eval run for an asset
+      parameters:
+      - description: Eval run request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RunEvalRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/handlers.RunEvalResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Run evaluation
+      tags:
+      - evals
+  /api/v1/trigger/anti-patterns:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of defined anti-patterns
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get anti-patterns
+      tags:
+      - trigger
+  /api/v1/trigger/inject:
+    post:
+      consumes:
+      - application/json
+      description: Replace variables in a prompt with provided values
+      parameters:
+      - description: Variable injection request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.InjectVariablesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.InjectVariablesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Inject variables
+      tags:
+      - trigger
+  /api/v1/trigger/match:
+    post:
+      consumes:
+      - application/json
+      description: Find matching prompts for the given input
+      parameters:
+      - description: Match trigger request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.MatchTriggerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MatchTriggerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Match triggers
+      tags:
+      - trigger
+  /api/v1/trigger/validate:
+    post:
+      consumes:
+      - application/json
+      description: Check if a prompt violates any anti-patterns
+      parameters:
+      - description: Validation request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ValidateAntiPatternsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ValidateAntiPatternsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Validate anti-patterns
+      tags:
+      - trigger
+swagger: "2.0"

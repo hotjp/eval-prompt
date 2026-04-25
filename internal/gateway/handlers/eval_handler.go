@@ -39,6 +39,17 @@ type RunEvalResponse struct {
 }
 
 // RunEval handles POST /api/v1/evals/run.
+//
+//	@Summary Run evaluation
+//	@Description Start an eval run for an asset
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param request body RunEvalRequest true "Eval run request"
+//	@Success 202 {object} RunEvalResponse
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals/run [post]
 func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -73,6 +84,17 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetEvalRun handles GET /api/v1/evals/{id}.
+//
+//	@Summary Get eval run by ID
+//	@Description Get a single eval run by its ID
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Eval Run ID"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 404 {object} map[string]interface{}
+//	@Router /api/v1/evals/{id} [get]
 func (h *EvalHandler) GetEvalRun(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -92,6 +114,17 @@ func (h *EvalHandler) GetEvalRun(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetEvalReport handles GET /api/v1/evals/{id}/report.
+//
+//	@Summary Get eval report
+//	@Description Get the report for an eval run
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Eval Run ID"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals/{id}/report [get]
 func (h *EvalHandler) GetEvalReport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -118,6 +151,17 @@ type CompareEvalRequest struct {
 }
 
 // CompareEval handles POST /api/v1/evals/compare.
+//
+//	@Summary Compare eval versions
+//	@Description Compare two versions of an eval
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param request body CompareEvalRequest true "Compare request"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals/compare [post]
 func (h *EvalHandler) CompareEval(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -142,6 +186,17 @@ func (h *EvalHandler) CompareEval(w http.ResponseWriter, r *http.Request) {
 }
 
 // DiagnoseEval handles GET /api/v1/evals/{id}/diagnose.
+//
+//	@Summary Diagnose eval run
+//	@Description Get diagnosis for an eval run
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param id path string true "Eval Run ID"
+//	@Success 200 {object} interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals/{id}/diagnose [get]
 func (h *EvalHandler) DiagnoseEval(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -161,6 +216,17 @@ func (h *EvalHandler) DiagnoseEval(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListEvalRuns handles GET /api/v1/evals.
+//
+//	@Summary List eval runs
+//	@Description Get all eval runs for an asset
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param asset_id query string true "Asset ID"
+//	@Success 200 {object} map[string]interface{}
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 500 {object} map[string]interface{}
+//	@Router /api/v1/evals [get]
 func (h *EvalHandler) ListEvalRuns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

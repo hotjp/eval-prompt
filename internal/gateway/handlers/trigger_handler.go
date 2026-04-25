@@ -36,7 +36,17 @@ type MatchTriggerResponse struct {
 	Total   int                      `json:"total"`
 }
 
-// MatchTrigger handles POST /api/v1/trigger/match.
+// MatchTrigger godoc
+// @Summary Match triggers
+// @Description Find matching prompts for the given input
+// @Tags trigger
+// @Accept json
+// @Produce json
+// @Param body body MatchTriggerRequest true "Match trigger request"
+// @Success 200 {object} MatchTriggerResponse
+// @Failure 400 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /api/v1/trigger/match [post]
 func (h *TriggerHandler) MatchTrigger(w http.ResponseWriter, r *http.Request) {
 	var req MatchTriggerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -77,7 +87,16 @@ type ValidateAntiPatternsResponse struct {
 	Message    string   `json:"message,omitempty"`
 }
 
-// ValidateAntiPatterns handles POST /api/v1/trigger/validate.
+// ValidateAntiPatterns godoc
+// @Summary Validate anti-patterns
+// @Description Check if a prompt violates any anti-patterns
+// @Tags trigger
+// @Accept json
+// @Produce json
+// @Param body body ValidateAntiPatternsRequest true "Validation request"
+// @Success 200 {object} ValidateAntiPatternsResponse
+// @Failure 400 {object} map[string]any
+// @Router /api/v1/trigger/validate [post]
 func (h *TriggerHandler) ValidateAntiPatterns(w http.ResponseWriter, r *http.Request) {
 	var req ValidateAntiPatternsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -117,7 +136,17 @@ type InjectVariablesResponse struct {
 	Result string `json:"result"`
 }
 
-// InjectVariables handles POST /api/v1/trigger/inject.
+// InjectVariables godoc
+// @Summary Inject variables
+// @Description Replace variables in a prompt with provided values
+// @Tags trigger
+// @Accept json
+// @Produce json
+// @Param body body InjectVariablesRequest true "Variable injection request"
+// @Success 200 {object} InjectVariablesResponse
+// @Failure 400 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /api/v1/trigger/inject [post]
 func (h *TriggerHandler) InjectVariables(w http.ResponseWriter, r *http.Request) {
 	var req InjectVariablesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -146,7 +175,14 @@ func (h *TriggerHandler) InjectVariables(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// GetAntiPatterns handles GET /api/v1/trigger/anti-patterns.
+// GetAntiPatterns godoc
+// @Summary Get anti-patterns
+// @Description Get the list of defined anti-patterns
+// @Tags trigger
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Router /api/v1/trigger/anti-patterns [get]
 func (h *TriggerHandler) GetAntiPatterns(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"anti_patterns": service.DefaultAntiPatterns,
