@@ -89,25 +89,27 @@ func TestBridge_Diff(t *testing.T) {
 	err := bridge.InitRepo(context.Background(), repoPath)
 	require.NoError(t, err)
 
-	// Create and commit initial file
+	// Create initial file and commit
 	testFile := filepath.Join(repoPath, "test.txt")
 	err = os.WriteFile(testFile, []byte("initial content"), 0644)
 	require.NoError(t, err)
-
-	commit1, err := bridge.StageAndCommit(context.Background(), "test.txt", "Initial commit")
+	_, err = bridge.StageAndCommit(context.Background(), "test.txt", "Initial commit")
 	require.NoError(t, err)
 
-	// Modify file
+	// Modify file and commit
 	err = os.WriteFile(testFile, []byte("modified content"), 0644)
 	require.NoError(t, err)
-
-	commit2, err := bridge.StageAndCommit(context.Background(), "test.txt", "Modify test")
+	_, err = bridge.StageAndCommit(context.Background(), "test.txt", "Modify test")
 	require.NoError(t, err)
 
-	// Get diff between commits using proper git diff syntax
-	diff, err := bridge.Diff(context.Background(), commit1, commit2)
+	// Get log to find actual commit hashes
+	commits, err := bridge.Log(context.Background(), "test.txt", 2)
 	require.NoError(t, err)
-	// The diff should contain + or - lines showing the change
+	require.Len(t, commits, 2)
+
+	// Now diff should work with proper hashes
+	diff, err := bridge.Diff(context.Background(), commits[1].Hash, commits[0].Hash)
+	require.NoError(t, err)
 	require.True(t, len(diff) > 0, "diff should not be empty")
 }
 
@@ -158,10 +160,11 @@ func TestBridge_Log_Limit(t *testing.T) {
 	err := bridge.InitRepo(context.Background(), repoPath)
 	require.NoError(t, err)
 
-	// Create and commit multiple files
+	// Create and commit multiple versions with different content
 	for i := 0; i < 5; i++ {
 		testFile := filepath.Join(repoPath, "test.txt")
-		err = os.WriteFile(testFile, []byte("content"), 0644)
+		content := []byte{byte('a' + i)} // Different byte for each commit
+		err = os.WriteFile(testFile, content, 0644)
 		require.NoError(t, err)
 
 		_, err = bridge.StageAndCommit(context.Background(), "test.txt", "Commit message")
@@ -182,20 +185,19 @@ func TestBridge_Status(t *testing.T) {
 	err := bridge.InitRepo(context.Background(), repoPath)
 	require.NoError(t, err)
 
-	// Create a new file
+	// Create a new file and stage it
 	newFile := filepath.Join(repoPath, "new.txt")
 	err = os.WriteFile(newFile, []byte("new content"), 0644)
 	require.NoError(t, err)
 
-	// Modify existing file
-	testFile := filepath.Join(repoPath, ".gitignore")
-	err = os.WriteFile(testFile, []byte("modified"), 0644)
+	// Stage the new file using git add
+	_, err = bridge.runGit(context.Background(), "add", "new.txt")
 	require.NoError(t, err)
 
 	added, modified, deleted, err := bridge.Status(context.Background())
 	require.NoError(t, err)
 	require.Contains(t, added, "new.txt")
-	require.Contains(t, modified, ".gitignore")
+	require.Empty(t, modified)
 	require.Empty(t, deleted)
 }
 

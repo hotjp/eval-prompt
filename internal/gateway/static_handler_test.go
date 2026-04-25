@@ -79,8 +79,9 @@ func TestRegisterStaticRoutes_CatchAll(t *testing.T) {
 
 			mux.ServeHTTP(rec, req)
 
-			// Static handler should handle these paths
-			require.True(t, rec.Code == http.StatusOK || rec.Code == http.StatusNotFound)
+			// Static handler should handle these paths (200, 301, 404 are valid - depends on embedded FS content)
+			require.True(t, rec.Code == http.StatusOK || rec.Code == http.StatusMovedPermanently || rec.Code == http.StatusNotFound,
+				"expected 200, 301, or 404, got %d", rec.Code)
 		})
 	}
 }
