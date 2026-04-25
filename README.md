@@ -84,6 +84,8 @@ You are an expert at...
 
 ## For AI Agents
 
+> **Important**: Read [agent.md](./agent.md) for complete command reference.
+
 **MCP protocol** — connect programmatically:
 
 ```bash
