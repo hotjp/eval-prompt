@@ -49,6 +49,20 @@ func (_c *AssetCreate) SetFilePath(v string) *AssetCreate {
 	return _c
 }
 
+// SetRepoPath sets the "repo_path" field.
+func (_c *AssetCreate) SetRepoPath(v string) *AssetCreate {
+	_c.mutation.SetRepoPath(v)
+	return _c
+}
+
+// SetNillableRepoPath sets the "repo_path" field if the given value is not nil.
+func (_c *AssetCreate) SetNillableRepoPath(v *string) *AssetCreate {
+	if v != nil {
+		_c.SetRepoPath(*v)
+	}
+	return _c
+}
+
 // SetState sets the "state" field.
 func (_c *AssetCreate) SetState(v asset.State) *AssetCreate {
 	_c.mutation.SetState(v)
@@ -139,6 +153,11 @@ func (_c *AssetCreate) check() error {
 			return &ValidationError{Name: "file_path", err: fmt.Errorf(`ent: validator failed for field "Asset.file_path": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.RepoPath(); ok {
+		if err := asset.RepoPathValidator(v); err != nil {
+			return &ValidationError{Name: "repo_path", err: fmt.Errorf(`ent: validator failed for field "Asset.repo_path": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.State(); !ok {
 		return &ValidationError{Name: "state", err: errors.New(`ent: missing required field "Asset.state"`)}
 	}
@@ -206,6 +225,10 @@ func (_c *AssetCreate) createSpec() (*Asset, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FilePath(); ok {
 		_spec.SetField(asset.FieldFilePath, field.TypeString, value)
 		_node.FilePath = value
+	}
+	if value, ok := _c.mutation.RepoPath(); ok {
+		_spec.SetField(asset.FieldRepoPath, field.TypeString, value)
+		_node.RepoPath = value
 	}
 	if value, ok := _c.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)

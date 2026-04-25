@@ -56,7 +56,7 @@ func (a *AuditLogger) LogAssetCreated(ctx context.Context, actor, assetID, name,
 		AssetID:    assetID,
 		Details: map[string]interface{}{
 			"name":     name,
-			"biz_line": bizLine,
+			"asset_type": bizLine,
 			"tags":     tags,
 		},
 	}

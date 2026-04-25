@@ -19,6 +19,7 @@ func (Asset) Fields() []ent.Field {
 		field.JSON("tags", []string{}).Optional(),
 		field.String("content_hash").MaxLen(128).NotEmpty(),
 		field.String("file_path").MaxLen(512).NotEmpty(),
+		field.String("repo_path").MaxLen(512).Optional(), // repo isolation
 		field.Enum("state").Values("created", "evaluating", "evaluated", "promoted", "archived").Default("created"),
 	}
 }

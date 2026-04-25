@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 
 var evalCmd = &cobra.Command{
 	Use:   "eval",
-	Short: "Eval 操作",
+	Short: "Eval operations",
 }
 
 func init() {
@@ -28,16 +29,21 @@ func init() {
 	evalCmd.AddCommand(evalReportCmd)
 	evalCmd.AddCommand(evalDiagnoseCmd)
 	evalCmd.AddCommand(evalSetupCmd)
+	evalCmd.AddCommand(evalListCmd)
+	evalCmd.AddCommand(evalCancelCmd)
 }
 
 var evalRunCmd = &cobra.Command{
 	Use:   "run <id>",
-	Short: "执行 Eval",
+	Short: "Run Eval",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
 		snapshot, _ := cmd.Flags().GetString("snapshot")
 		caseIDs, _ := cmd.Flags().GetStringSlice("case")
+		concurrency, _ := cmd.Flags().GetInt("concurrency")
+		model, _ := cmd.Flags().GetString("model")
+		temperature, _ := cmd.Flags().GetFloat64("temperature")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		noSync, _ := cmd.Flags().GetBool("no-sync")
 
@@ -45,12 +51,21 @@ var evalRunCmd = &cobra.Command{
 			snapshot = "latest"
 		}
 
-		evalService := service.NewEvalService()
-		run, err := evalService.RunEval(context.Background(), assetID, snapshot, caseIDs)
+		evalService, err := service.NewEvalServiceWithDefaultStorage()
 		if err != nil {
-			if service.ErrNotImplemented != nil {
-				return fmt.Errorf("Eval 执行失败: %w", err)
-			}
+			return fmt.Errorf("Failed to initialize storage: %w", err)
+		}
+		svcReq := &service.RunEvalRequest{
+			AssetID:         assetID,
+			SnapshotVersion: snapshot,
+			EvalCaseIDs:     caseIDs,
+			Concurrency:     concurrency,
+			Model:           model,
+			Temperature:     temperature,
+		}
+		execution, err := evalService.RunEval(context.Background(), svcReq)
+		if err != nil {
+			return fmt.Errorf("Eval execution failed: %w", err)
 		}
 
 		if !noSync {
@@ -62,14 +77,14 @@ var evalRunCmd = &cobra.Command{
 			indexer := search.Default()
 			indexer.SetPersistDir(filepath.Join(wd, ".eval-prompt"))
 			if err := indexer.Load(); err != nil {
-				fmt.Printf("警告: 加载索引失败: %v\n", err)
+				fmt.Printf("Warning: failed to load index: %v\n", err)
 			}
 			gitBridge := gitbridge.NewBridge()
 			if err := gitBridge.Open(wd); err == nil {
 				indexer.SetGitBridge(gitBridge)
 				report, err := indexer.Reconcile(context.Background())
 				if err == nil {
-					fmt.Printf("索引已同步: 新增 %d, 更新 %d, 删除 %d\n", report.Added, report.Updated, report.Deleted)
+					fmt.Printf("Index synced: 新增 %d, 更新 %d, 删除 %d\n", report.Added, report.Updated, report.Deleted)
 				}
 			}
 		}
@@ -77,25 +92,41 @@ var evalRunCmd = &cobra.Command{
 		if jsonOutput {
 			encoder := json.NewEncoder(os.Stdout)
 			encoder.SetIndent("", "  ")
-			return encoder.Encode(run)
+			return encoder.Encode(execution)
 		}
 
-		fmt.Printf("Eval 运行已启动: %s\n", run.ID)
-		fmt.Printf("状态: %s\n", run.Status)
+		fmt.Printf("Eval run started: %s\n", execution.ID)
+		fmt.Printf("Status: %s\n", execution.Status)
+		if concurrency > 0 {
+			fmt.Printf("Concurrency: %d\n", concurrency)
+		}
+		if model != "" {
+			fmt.Printf("Model: %s\n", model)
+		}
+		if temperature > 0 {
+			fmt.Printf("Temperature: %.2f\n", temperature)
+		}
 		return nil
 	},
 }
 
 var evalCasesCmd = &cobra.Command{
 	Use:   "cases <id>",
-	Short: "列出测试用例",
+	Short: "List test cases",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		_ = args[0] // assetID
+		assetID := args[0]
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		// TODO: Get eval cases from storage
-		var cases []service.AssetSummary
+		evalService, err := service.NewEvalServiceWithDefaultStorage()
+		if err != nil {
+			return fmt.Errorf("Failed to initialize storage: %w", err)
+		}
+
+		cases, err := evalService.ListEvalCases(context.Background(), assetID)
+		if err != nil {
+			return fmt.Errorf("Failed to get eval cases: %w", err)
+		}
 
 		if jsonOutput {
 			encoder := json.NewEncoder(os.Stdout)
@@ -106,7 +137,11 @@ var evalCasesCmd = &cobra.Command{
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		fmt.Fprintf(w, "ID\tNAME\tSHOULD_TRIGGER\n")
 		for _, c := range cases {
-			fmt.Fprintf(w, "%s\t%s\t\n", c.ID, c.Name)
+			triggerStr := "false"
+			if c.ShouldTrigger {
+				triggerStr = "true"
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\n", c.ID, c.Name, triggerStr)
 		}
 		return w.Flush()
 	},
@@ -114,7 +149,7 @@ var evalCasesCmd = &cobra.Command{
 
 var evalCompareCmd = &cobra.Command{
 	Use:   "compare <id> <v1> <v2>",
-	Short: "A/B 比对",
+	Short: "A/B Compare",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -125,8 +160,8 @@ var evalCompareCmd = &cobra.Command{
 		evalService := service.NewEvalService()
 		result, err := evalService.CompareEval(context.Background(), assetID, v1, v2)
 		if err != nil {
-			if service.ErrNotImplemented != nil {
-				return fmt.Errorf("比对失败: %w", err)
+			if errors.Is(err, service.ErrNotImplemented) {
+				return fmt.Errorf("Compare failed: %w", err)
 			}
 		}
 
@@ -155,7 +190,7 @@ var evalCompareCmd = &cobra.Command{
 
 var evalReportCmd = &cobra.Command{
 	Use:   "report <run-id>",
-	Short: "Eval 报告",
+	Short: "Eval Report",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		runID := args[0]
@@ -164,9 +199,7 @@ var evalReportCmd = &cobra.Command{
 		evalService := service.NewEvalService()
 		report, err := evalService.GenerateReport(context.Background(), runID)
 		if err != nil {
-			if service.ErrNotImplemented != nil {
-				return fmt.Errorf("生成报告失败: %w", err)
-			}
+			return fmt.Errorf("Failed to generate report: %w", err)
 		}
 
 		if jsonOutput {
@@ -175,8 +208,8 @@ var evalReportCmd = &cobra.Command{
 			return encoder.Encode(report)
 		}
 
-		fmt.Printf("Eval 报告: %s\n", runID)
-		fmt.Printf("得分: %d/%d\n", report.RubricScore, 100)
+		fmt.Printf("Eval Report: %s\n", runID)
+		fmt.Printf("Score: %d/%d\n", report.RubricScore, 100)
 		fmt.Printf("状态: %s\n", report.Status)
 		return nil
 	},
@@ -184,7 +217,7 @@ var evalReportCmd = &cobra.Command{
 
 var evalDiagnoseCmd = &cobra.Command{
 	Use:   "diagnose <run-id>",
-	Short: "失败归因",
+	Short: "Failure Diagnosis",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		runID := args[0]
@@ -193,9 +226,7 @@ var evalDiagnoseCmd = &cobra.Command{
 		evalService := service.NewEvalService()
 		diagnosis, err := evalService.DiagnoseEval(context.Background(), runID)
 		if err != nil {
-			if service.ErrNotImplemented != nil {
-				return fmt.Errorf("诊断失败: %w", err)
-			}
+			return fmt.Errorf("Failed to diagnose: %w", err)
 		}
 
 		switch format {
@@ -204,14 +235,14 @@ var evalDiagnoseCmd = &cobra.Command{
 			encoder.SetIndent("", "  ")
 			return encoder.Encode(diagnosis)
 		default:
-			fmt.Printf("诊断报告: %s\n\n", runID)
-			fmt.Printf("严重程度: %s\n", diagnosis.OverallSeverity)
-			fmt.Printf("推荐策略: %s\n\n", diagnosis.RecommendedStrategy)
+			fmt.Printf("Diagnosis Report: %s\n\n", runID)
+			fmt.Printf("Severity: %s\n", diagnosis.OverallSeverity)
+			fmt.Printf("Recommended Strategy: %s\n\n", diagnosis.RecommendedStrategy)
 			for _, f := range diagnosis.Findings {
 				fmt.Printf("## [%s] %s\n", f.Severity, f.Category)
-				fmt.Printf("位置: %s\n", f.Location)
-				fmt.Printf("问题: %s\n", f.Problem)
-				fmt.Printf("建议: %s\n\n", f.Suggestion)
+				fmt.Printf("Location: %s\n", f.Location)
+				fmt.Printf("Problem: %s\n", f.Problem)
+				fmt.Printf("Suggestion: %s\n\n", f.Suggestion)
 			}
 		}
 
@@ -221,7 +252,7 @@ var evalDiagnoseCmd = &cobra.Command{
 
 var evalSetupCmd = &cobra.Command{
 	Use:   "setup <asset_id>",
-	Short: "创建 Eval Prompt 模板",
+	Short: "Create Eval Prompt Template",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -238,7 +269,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Create evals directory if it doesn't exist
 		if err := os.MkdirAll(evalsDir, 0755); err != nil {
-			return fmt.Errorf("创建 evals 目录失败: %w", err)
+			return fmt.Errorf("Failed to create evals directory: %w", err)
 		}
 
 		// Generate eval prompt file path
@@ -246,7 +277,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Check if file already exists
 		if _, err := os.Stat(evalFilePath); err == nil {
-			return fmt.Errorf("eval prompt 文件已存在: %s", evalFilePath)
+			return fmt.Errorf("eval prompt file already exists: %s", evalFilePath)
 		}
 
 		// Create eval prompt front matter
@@ -280,16 +311,69 @@ Describe the expected output format.
 		// Format the complete markdown file
 		mdContent, err := yamlutil.FormatEvalPromptMarkdown(fm, content)
 		if err != nil {
-			return fmt.Errorf("格式化 eval prompt 失败: %w", err)
+			return fmt.Errorf("Failed to format eval prompt: %w", err)
 		}
 
 		// Write the file
 		if err := os.WriteFile(evalFilePath, []byte(mdContent), 0644); err != nil {
-			return fmt.Errorf("写入 eval prompt 文件失败: %w", err)
+			return fmt.Errorf("Failed to write eval prompt file: %w", err)
 		}
 
-		fmt.Printf("Eval Prompt 模板已创建: %s\n", evalFilePath)
-		fmt.Printf("模型: %s\n", model)
+		fmt.Printf("Eval Prompt template created: %s\n", evalFilePath)
+		fmt.Printf("Model: %s\n", model)
+		return nil
+	},
+}
+
+var evalListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List Eval Executions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		assetID, _ := cmd.Flags().GetString("asset-id")
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+
+		if assetID == "" {
+			return fmt.Errorf("--asset-id is required")
+		}
+
+		evalService := service.NewEvalService()
+		runs, err := evalService.ListEvalRuns(context.Background(), assetID)
+		if err != nil {
+			return fmt.Errorf("Failed to list eval executions: %w", err)
+		}
+
+		if jsonOutput {
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			return encoder.Encode(runs)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "ID\tSTATUS\tDETERMINISTIC_SCORE\tRUBRIC_SCORE\tCREATED_AT\n")
+		for _, run := range runs {
+			fmt.Fprintf(w, "%s\t%s\t%.2f\t%d\t%s\n",
+				run.ID, run.Status, run.DeterministicScore, run.RubricScore, run.CreatedAt)
+		}
+		return w.Flush()
+	},
+}
+
+var evalCancelCmd = &cobra.Command{
+	Use:   "cancel <execution-id>",
+	Short: "取消正在执行的 Eval",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		executionID := args[0]
+		evalService, err := service.NewEvalServiceWithDefaultStorage()
+		if err != nil {
+			return fmt.Errorf("Failed to initialize storage: %w", err)
+		}
+
+		if err := evalService.CancelExecution(context.Background(), executionID); err != nil {
+			return fmt.Errorf("Failed to cancel eval: %w", err)
+		}
+
+		fmt.Printf("Eval 已取消: %s\n", executionID)
 		return nil
 	},
 }
@@ -297,6 +381,9 @@ Describe the expected output format.
 func init() {
 	evalRunCmd.Flags().String("snapshot", "", "快照版本")
 	evalRunCmd.Flags().StringSlice("case", []string{}, "指定测试用例 ID")
+	evalRunCmd.Flags().Int("concurrency", 0, "并发数")
+	evalRunCmd.Flags().String("model", "", "使用的模型")
+	evalRunCmd.Flags().Float64("temperature", 0, "温度参数")
 	evalRunCmd.Flags().Bool("json", false, "JSON 输出")
 	evalRunCmd.Flags().Bool("no-sync", false, "跳过自动同步索引")
 	evalRunCmd.Flags().String("dir", "", "项目目录路径")
@@ -311,4 +398,9 @@ func init() {
 
 	evalSetupCmd.Flags().String("evals-dir", "evals", "Eval 提示词目录")
 	evalSetupCmd.Flags().String("model", "gpt-4o", "使用的模型")
+
+	evalListCmd.Flags().String("asset-id", "", "资产 ID (必需)")
+	evalListCmd.Flags().Bool("json", false, "JSON 输出")
+
+	evalCancelCmd.Flags().Bool("json", false, "JSON 输出")
 }

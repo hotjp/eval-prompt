@@ -15,7 +15,9 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/auditlog"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
+	"github.com/eval-prompt/internal/storage/ent/evalexecution"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
+	"github.com/eval-prompt/internal/storage/ent/evalworkitem"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
@@ -82,7 +84,9 @@ func checkColumn(t, c string) error {
 			asset.Table:           asset.ValidColumn,
 			auditlog.Table:        auditlog.ValidColumn,
 			evalcase.Table:        evalcase.ValidColumn,
+			evalexecution.Table:   evalexecution.ValidColumn,
 			evalrun.Table:         evalrun.ValidColumn,
+			evalworkitem.Table:    evalworkitem.ValidColumn,
 			label.Table:           label.ValidColumn,
 			modeladaptation.Table: modeladaptation.ValidColumn,
 			outboxevent.Table:     outboxevent.ValidColumn,

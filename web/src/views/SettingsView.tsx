@@ -3,7 +3,7 @@ import { Layout, Card, Table, Tag, Button, Space, Modal, Form, Input, message, P
 import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, RobotOutlined, LockOutlined, FolderOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, SwapOutlined, RocketOutlined, SendOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
-import { getBizLines, saveBizLinesToAPI, BizLineConfig } from '../config/bizLines'
+import { getAssetTypes, saveAssetTypesToAPI, AssetTypeConfig } from '../config/bizLines'
 import { getTags, saveTagsToAPI, TagConfig } from '../config/tags'
 import { getLLMConfigs, saveLLMConfigsToAPI, LLMConfig as LLMConfigType } from '../config/llmConfig'
 import { adminApi, llmConfigApi, type RepoListResponse } from '../api/client'
@@ -11,7 +11,7 @@ import ColorPicker from '../components/ColorPicker'
 
 const { Sider, Content } = Layout
 
-type BizLine = BizLineConfig & { assetCount?: number; built_in?: boolean }
+type AssetType = AssetTypeConfig & { assetCount?: number; built_in?: boolean }
 type TagItem = TagConfig & { usageCount?: number; built_in?: boolean }
 type LLMConfigItem = LLMConfigType & { key: string; default?: boolean }
 
@@ -25,14 +25,14 @@ function SettingsView() {
     if (section === 'repo') return 'repo'
     return 'categories'
   })
-  const [bizLines, setBizLines] = useState<BizLine[]>(() => getBizLines().map((b, i) => ({ ...b, key: b.name || `biz-${i}`, assetCount: 0 })))
+  const [bizLines, setAssetTypes] = useState<AssetType[]>(() => getAssetTypes().map((b, i) => ({ ...b, key: b.name || `biz-${i}`, assetCount: 0 })))
   const [tags, setTags] = useState<TagItem[]>(() => getTags().map((t, i) => ({ ...t, key: t.name || `tag-${i}`, usageCount: 0 })))
   const [llmConfigs, setLlmConfigs] = useState<LLMConfigItem[]>(() => getLLMConfigs().map((c, i) => ({ ...c, key: c.name || `llm-${i}` })))
   const [repoForm] = Form.useForm()
-  const [bizLineModalOpen, setBizLineModalOpen] = useState(false)
+  const [bizLineModalOpen, setAssetTypeModalOpen] = useState(false)
   const [tagModalOpen, setTagModalOpen] = useState(false)
   const [llmModalOpen, setLlmModalOpen] = useState(false)
-  const [editingBizLine, setEditingBizLine] = useState<BizLine | null>(null)
+  const [editingAssetType, setEditingAssetType] = useState<AssetType | null>(null)
   const [editingTag, setEditingTag] = useState<TagItem | null>(null)
   const [editingLlm, setEditingLlm] = useState<LLMConfigItem | null>(null)
   const [form] = Form.useForm()
@@ -107,7 +107,7 @@ function SettingsView() {
     }
   }
 
-  const bizLineColumns: ColumnsType<BizLine> = [
+  const bizLineColumns: ColumnsType<AssetType> = [
     { title: 'Name', dataIndex: 'name', key: 'name', render: (name, record) => (
       <Space>
         <Tag key={name} color={record.color}>{name}</Tag>
@@ -127,9 +127,9 @@ function SettingsView() {
             size="small"
             icon={<EditOutlined />}
             onClick={() => {
-              setEditingBizLine(record)
+              setEditingAssetType(record)
               form.setFieldsValue(record)
-              setBizLineModalOpen(true)
+              setAssetTypeModalOpen(true)
             }}
           />
           {!record.built_in && (
@@ -137,8 +137,8 @@ function SettingsView() {
               title="Delete this biz line?"
               onConfirm={() => {
                 const updated = bizLines.filter((b) => b.name !== record.name)
-                setBizLines(updated)
-                saveBizLinesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
+                setAssetTypes(updated)
+                saveAssetTypesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
                 message.success('Deleted')
               }}
             >
@@ -252,21 +252,21 @@ function SettingsView() {
     },
   ]
 
-  const handleBizLineSave = () => {
+  const handleAssetTypeSave = () => {
     form.validateFields().then((values) => {
-      let updated: BizLine[]
-      if (editingBizLine) {
-        updated = bizLines.map((b) => (b.name === editingBizLine.name ? { ...b, ...values } : b))
+      let updated: AssetType[]
+      if (editingAssetType) {
+        updated = bizLines.map((b) => (b.name === editingAssetType.name ? { ...b, ...values } : b))
         message.success('Updated')
       } else {
         updated = [...bizLines, { ...values, key: values.name, color: values.color || 'default', assetCount: 0 }]
         message.success('Added')
       }
-      setBizLines(updated)
-      saveBizLinesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
-      setBizLineModalOpen(false)
+      setAssetTypes(updated)
+      saveAssetTypesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
+      setAssetTypeModalOpen(false)
       form.resetFields()
-      setEditingBizLine(null)
+      setEditingAssetType(null)
     })
   }
 
@@ -338,9 +338,9 @@ function SettingsView() {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => {
-                  setEditingBizLine(null)
+                  setEditingAssetType(null)
                   form.resetFields()
-                  setBizLineModalOpen(true)
+                  setAssetTypeModalOpen(true)
                 }}
               >
                 Add
@@ -557,13 +557,13 @@ function SettingsView() {
       </Content>
 
       <Modal
-        title={editingBizLine ? 'Edit Biz Line' : 'Add Biz Line'}
+        title={editingAssetType ? 'Edit Biz Line' : 'Add Biz Line'}
         open={bizLineModalOpen}
-        onOk={handleBizLineSave}
+        onOk={handleAssetTypeSave}
         onCancel={() => {
-          setBizLineModalOpen(false)
+          setAssetTypeModalOpen(false)
           form.resetFields()
-          setEditingBizLine(null)
+          setEditingAssetType(null)
         }}
       >
         <Form form={form} layout="vertical">

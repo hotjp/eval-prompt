@@ -18,8 +18,12 @@ type Tx struct {
 	AuditLog *AuditLogClient
 	// EvalCase is the client for interacting with the EvalCase builders.
 	EvalCase *EvalCaseClient
+	// EvalExecution is the client for interacting with the EvalExecution builders.
+	EvalExecution *EvalExecutionClient
 	// EvalRun is the client for interacting with the EvalRun builders.
 	EvalRun *EvalRunClient
+	// EvalWorkItem is the client for interacting with the EvalWorkItem builders.
+	EvalWorkItem *EvalWorkItemClient
 	// Label is the client for interacting with the Label builders.
 	Label *LabelClient
 	// ModelAdaptation is the client for interacting with the ModelAdaptation builders.
@@ -160,7 +164,9 @@ func (tx *Tx) init() {
 	tx.Asset = NewAssetClient(tx.config)
 	tx.AuditLog = NewAuditLogClient(tx.config)
 	tx.EvalCase = NewEvalCaseClient(tx.config)
+	tx.EvalExecution = NewEvalExecutionClient(tx.config)
 	tx.EvalRun = NewEvalRunClient(tx.config)
+	tx.EvalWorkItem = NewEvalWorkItemClient(tx.config)
 	tx.Label = NewLabelClient(tx.config)
 	tx.ModelAdaptation = NewModelAdaptationClient(tx.config)
 	tx.OutboxEvent = NewOutboxEventClient(tx.config)

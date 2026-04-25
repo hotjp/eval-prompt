@@ -269,24 +269,26 @@ func TestAsset_TransitionTo(t *testing.T) {
 }
 
 func TestNewAsset(t *testing.T) {
-	asset := NewAsset("Test", "desc", "biz", []string{"tag1"}, "hash123", "/path")
+	asset := NewAsset("Test", "desc", "biz", []string{"tag1"}, "hash123", "/path", "/repo")
 
 	require.NotEmpty(t, asset.ID.String())
 	require.Equal(t, "Test", asset.Name)
 	require.Equal(t, "desc", asset.Description)
-	require.Equal(t, "biz", asset.BizLine)
+	require.Equal(t, "biz", asset.AssetType)
 	require.Equal(t, []string{"tag1"}, asset.Tags)
 	require.Equal(t, "hash123", asset.ContentHash)
 	require.Equal(t, "/path", asset.FilePath)
+	require.Equal(t, "/repo", asset.RepoPath)
 	require.Equal(t, AssetStateCreated, asset.State)
 	require.Equal(t, int64(0), asset.Version)
 }
 
 func TestNewAssetWithID(t *testing.T) {
 	specificID := ID{value: "01ARZ3NDEKTSV4RRFFQ69G5FAV"}
-	asset := NewAssetWithID(specificID, "Test", "desc", "biz", []string{"tag1"}, "hash123", "/path")
+	asset := NewAssetWithID(specificID, "Test", "desc", "biz", []string{"tag1"}, "hash123", "/path", "/repo")
 
 	require.Equal(t, specificID, asset.ID)
 	require.Equal(t, "Test", asset.Name)
+	require.Equal(t, "/repo", asset.RepoPath)
 	require.Equal(t, AssetStateCreated, asset.State)
 }

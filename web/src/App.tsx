@@ -9,14 +9,14 @@ import VersionTreeView from './views/VersionTreeView'
 import EvalPanelView from './views/EvalPanelView'
 import CompareView from './views/CompareView'
 import SettingsView from './views/SettingsView'
-import { loadBizLinesFromAPI } from './config/bizLines'
+import { loadAssetTypesFromAPI } from './config/bizLines'
 import { loadTagsFromAPI } from './config/tags'
 
 const { Content } = Layout
 
 function App() {
   useEffect(() => {
-    loadBizLinesFromAPI()
+    loadAssetTypesFromAPI()
     loadTagsFromAPI()
   }, [])
 

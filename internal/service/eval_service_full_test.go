@@ -12,6 +12,7 @@ import (
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/storage"
 	"github.com/eval-prompt/internal/storage/ent/enttest"
+	"github.com/eval-prompt/plugins/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -274,7 +275,7 @@ func TestReconcileReport_Structure(t *testing.T) {
 }
 
 func TestLLMResponse_Structure(t *testing.T) {
-	resp := &LLMResponse{
+	resp := &llm.LLMResponse{
 		Content:    "This is the response content",
 		Model:      "gpt-4o",
 		TokensIn:    120,
@@ -472,13 +473,13 @@ func TestStatusToService(t *testing.T) {
 
 func TestSearchFilters_Structure(t *testing.T) {
 	filters := SearchFilters{
-		BizLine: "ai",
+		AssetType: "ai",
 		Tags:    []string{"tag1", "tag2"},
 		State:   "created",
 		Label:   "prod",
 	}
 
-	assert.Equal(t, "ai", filters.BizLine)
+	assert.Equal(t, "ai", filters.AssetType)
 	assert.Len(t, filters.Tags, 2)
 	assert.Equal(t, "created", filters.State)
 	assert.Equal(t, "prod", filters.Label)
@@ -490,7 +491,7 @@ func TestAssetSummary_Structure(t *testing.T) {
 		ID:          "asset-123",
 		Name:        "Test Asset",
 		Description: "A test asset",
-		BizLine:     "engineering",
+		AssetType:     "engineering",
 		Tags:        []string{"test", "unit"},
 		State:       "created",
 		LatestScore: &score,
@@ -498,7 +499,7 @@ func TestAssetSummary_Structure(t *testing.T) {
 
 	assert.Equal(t, "asset-123", summary.ID)
 	assert.Equal(t, "Test Asset", summary.Name)
-	assert.Equal(t, "engineering", summary.BizLine)
+	assert.Equal(t, "engineering", summary.AssetType)
 	assert.Equal(t, 0.85, *summary.LatestScore)
 }
 
@@ -507,7 +508,7 @@ func TestAssetDetail_Structure(t *testing.T) {
 		ID:          "asset-456",
 		Name:        "Detailed Asset",
 		Description: "A detailed asset",
-		BizLine:     "data",
+		AssetType:     "data",
 		Tags:        []string{"detailed"},
 		State:       "active",
 		Snapshots: []SnapshotSummary{
@@ -718,14 +719,14 @@ func TestValidateResults(t *testing.T) {
 
 // localMockLLMInvoker is a local mock for testing.
 type localMockLLMInvoker struct {
-	InvokeFunc func(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error)
+	InvokeFunc func(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error)
 }
 
-func (m *localMockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error) {
+func (m *localMockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
 	if m.InvokeFunc != nil {
 		return m.InvokeFunc(ctx, prompt, model, temperature)
 	}
-	return &LLMResponse{Content: "mock response", Model: model, TokensIn: 10, TokensOut: 5}, nil
+	return &llm.LLMResponse{Content: "mock response", Model: model, TokensIn: 10, TokensOut: 5}, nil
 }
 
 func (m *localMockLLMInvoker) InvokeWithSchema(ctx context.Context, prompt string, schema []byte) ([]byte, error) {
@@ -735,7 +736,7 @@ func (m *localMockLLMInvoker) InvokeWithSchema(ctx context.Context, prompt strin
 // localMockEvalRunner is a local mock for testing.
 type localMockEvalRunner struct {
 	RunDeterministicFunc func(ctx context.Context, trace []TraceEvent, checks []DeterministicCheck) (DeterministicResult, error)
-	RunRubricFunc        func(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker) (RubricResult, error)
+	RunRubricFunc        func(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker, model string) (RubricResult, error)
 }
 
 func (m *localMockEvalRunner) RunDeterministic(ctx context.Context, trace []TraceEvent, checks []DeterministicCheck) (DeterministicResult, error) {
@@ -745,9 +746,9 @@ func (m *localMockEvalRunner) RunDeterministic(ctx context.Context, trace []Trac
 	return DeterministicResult{Passed: true, Score: 1.0}, nil
 }
 
-func (m *localMockEvalRunner) RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker) (RubricResult, error) {
+func (m *localMockEvalRunner) RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker, model string) (RubricResult, error) {
 	if m.RunRubricFunc != nil {
-		return m.RunRubricFunc(ctx, output, rubric, invoker)
+		return m.RunRubricFunc(ctx, output, rubric, invoker, model)
 	}
 	return RubricResult{Score: rubric.MaxScore, MaxScore: rubric.MaxScore, Passed: true}, nil
 }
@@ -814,6 +815,13 @@ func (m *localMockGitBridger) Status(ctx context.Context) (added, modified, dele
 
 func (m *localMockGitBridger) RepoPath() string {
 	return ""
+}
+
+func (m *localMockGitBridger) Pull(ctx context.Context) error {
+	return nil
+}
+
+func (m *localMockGitBridger) SetPath(path string) {
 }
 
 func TestEvalService_ToServiceEvalRun(t *testing.T) {
@@ -1086,7 +1094,7 @@ func TestAssetResponse_Structure(t *testing.T) {
 		ID:          "asset-123",
 		Name:        "Test Asset",
 		Description: "Description",
-		BizLine:     "ai",
+		AssetType:     "ai",
 		Tags:        []string{"tag1", "tag2"},
 		State:       "created",
 		Version:     1,
@@ -1114,7 +1122,7 @@ func TestAssetDetailResponse_Structure(t *testing.T) {
 		ID:          "asset-123",
 		Name:        "Detailed Asset",
 		Description: "Description",
-		BizLine:     "engineering",
+		AssetType:     "engineering",
 		Tags:        []string{"test"},
 		State:       "active",
 		Version:     5,
@@ -1164,13 +1172,13 @@ func TestListAssetsRequest_Structure(t *testing.T) {
 	req := &ListAssetsRequest{
 		Offset:  10,
 		Limit:   20,
-		BizLine: "ai",
+		AssetType: "ai",
 		State:   "active",
 	}
 
 	assert.Equal(t, 10, req.Offset)
 	assert.Equal(t, 20, req.Limit)
-	assert.Equal(t, "ai", req.BizLine)
+	assert.Equal(t, "ai", req.AssetType)
 	assert.Equal(t, "active", req.State)
 }
 
@@ -1229,7 +1237,7 @@ func TestEvalService_RunEval_NoStorage(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
-	_, err := svc.RunEval(ctx, "asset-id", "v1.0.0", nil)
+	_, err := svc.RunEval(ctx, &RunEvalRequest{AssetID: "asset-id", SnapshotVersion: "v1.0.0"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "storage not initialized")
 }
@@ -1496,7 +1504,7 @@ func TestAssetService_CreateAssetRequest_Structure(t *testing.T) {
 	req := &CreateAssetRequest{
 		Name:        "New Asset",
 		Description: "A new asset description",
-		BizLine:     "ai",
+		AssetType:     "ai",
 		Tags:        []string{"new", "test"},
 		FilePath:    "/prompts/new.md",
 		ContentHash: "hash-abc",
@@ -1618,6 +1626,22 @@ func (m *mockAssetIndexerForTrigger) Reconcile(ctx context.Context) (ReconcileRe
 	return ReconcileReport{}, nil
 }
 
+func (m *mockAssetIndexerForTrigger) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+	return "", nil
+}
+
+func (m *mockAssetIndexerForTrigger) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *mockAssetIndexerForTrigger) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *mockAssetIndexerForTrigger) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 // mockSyncIndexerForTest is a local mock for sync service tests.
 type mockSyncIndexerForTest struct {
 	SearchFunc    func(ctx context.Context, query string, filters SearchFilters) ([]AssetSummary, error)
@@ -1650,6 +1674,22 @@ func (m *mockSyncIndexerForTest) Reconcile(ctx context.Context) (ReconcileReport
 	return ReconcileReport{}, nil
 }
 
+func (m *mockSyncIndexerForTest) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+	return "", nil
+}
+
+func (m *mockSyncIndexerForTest) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *mockSyncIndexerForTest) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *mockSyncIndexerForTest) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 // -----------------------------------------------------------------------------
 // Integration tests using real in-memory SQLite storage
 // -----------------------------------------------------------------------------
@@ -1670,7 +1710,7 @@ func TestEvalService_GetEvalRun_WithRealStorage(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -1744,7 +1784,7 @@ func TestEvalService_ListEvalCases_WithRealStorage(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -1806,8 +1846,8 @@ func TestEvalService_DiagnoseEval2_WithLLMInvoker(t *testing.T) {
 
 	svc := NewEvalServiceWithStorage(storageClient)
 	svc.llmInvoker = &localMockLLMInvoker{
-		InvokeFunc: func(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error) {
-			return &LLMResponse{Content: "Diagnosis: The prompt needs improvement", Model: model, TokensIn: 10, TokensOut: 5}, nil
+		InvokeFunc: func(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
+			return &llm.LLMResponse{Content: "Diagnosis: The prompt needs improvement", Model: model, TokensIn: 10, TokensOut: 5}, nil
 		},
 	}
 	ctx := context.Background()
@@ -1816,7 +1856,7 @@ func TestEvalService_DiagnoseEval2_WithLLMInvoker(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -1873,7 +1913,7 @@ func TestEvalService_DiagnoseEval2_LLMInvokeError(t *testing.T) {
 
 	svc := NewEvalServiceWithStorage(storageClient)
 	svc.llmInvoker = &localMockLLMInvoker{
-		InvokeFunc: func(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error) {
+		InvokeFunc: func(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
 			return nil, errors.New("LLM invocation failed")
 		},
 	}
@@ -1883,7 +1923,7 @@ func TestEvalService_DiagnoseEval2_LLMInvokeError(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -1939,7 +1979,7 @@ func TestEvalService_DiagnoseEval2_NoLLMInvoker(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -2078,7 +2118,7 @@ func TestEvalService_ListEvalRuns_WithRealStorage_NoSnapshots(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -2109,7 +2149,7 @@ func TestEvalService_CompareEval_WithRealStorage_SnapshotNotFound(t *testing.T) 
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -2140,7 +2180,7 @@ func TestEvalService_RunEval_WithRealStorage_NoCases(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -2150,7 +2190,7 @@ func TestEvalService_RunEval_WithRealStorage_NoCases(t *testing.T) {
 	require.NoError(t, err)
 
 	// RunEval will fail with "no eval cases found" because there are no eval cases
-	_, err = svc.RunEval(ctx, asset.ID.String(), "v1.0.0", nil)
+	_, err = svc.RunEval(ctx, &RunEvalRequest{AssetID: asset.ID.String(), SnapshotVersion: "v1.0.0"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no eval cases found")
 }
@@ -2165,7 +2205,7 @@ func TestEvalService_RunEval_WithRealStorage_CaseNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// RunEval with specific case IDs that don't exist
-	_, err := svc.RunEval(ctx, "nonexistent-asset", "v1.0.0", []string{"nonexistent-case"})
+	_, err := svc.RunEval(ctx, &RunEvalRequest{AssetID: "nonexistent-asset", SnapshotVersion: "v1.0.0", EvalCaseIDs: []string{"nonexistent-case"}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get eval case")
 }
@@ -2218,7 +2258,7 @@ Evaluate this prompt.
 	require.NoError(t, err)
 
 	// RunEval will fail because SnapshotRepository.GetByAssetIDAndVersion returns nil
-	_, err = svc.RunEval(context.Background(), "test-asset", "v1.0.0", nil)
+	_, err = svc.RunEval(context.Background(), &RunEvalRequest{AssetID: "test-asset", SnapshotVersion: "v1.0.0"})
 	require.Error(t, err)
 	// The error could be about snapshot not found
 	assert.True(t, err != nil)

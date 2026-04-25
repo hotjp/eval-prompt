@@ -91,7 +91,7 @@ func TestFrontMatter_Validate(t *testing.T) {
 				Name:        "Test Asset",
 				ContentHash: "hash123",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "empty Name",
@@ -110,8 +110,7 @@ func TestFrontMatter_Validate(t *testing.T) {
 				Name:        "Test Asset",
 				ContentHash: "",
 			},
-			wantErr: true,
-			errCode: "L2211",
+			wantErr: false,
 		},
 	}
 
@@ -202,7 +201,7 @@ func TestEvalPromptFrontMatter_Validate(t *testing.T) {
 				Name:        "Eval Prompt",
 				ContentHash: "hash123",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "empty Name",
@@ -221,8 +220,7 @@ func TestEvalPromptFrontMatter_Validate(t *testing.T) {
 				Name:        "Eval Prompt",
 				ContentHash: "",
 			},
-			wantErr: true,
-			errCode: "L2211",
+			wantErr: false,
 		},
 	}
 

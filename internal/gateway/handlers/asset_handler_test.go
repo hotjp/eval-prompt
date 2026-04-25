@@ -18,7 +18,7 @@ func newTestAssetHandler() (*AssetHandler, *mock.MockAssetIndexer) {
 	mockIndexer := &mock.MockAssetIndexer{
 		SearchFunc: func(ctx context.Context, query string, filters svc.SearchFilters) ([]svc.AssetSummary, error) {
 			return []svc.AssetSummary{
-				{ID: "common/test", Name: "Test Asset", Description: "A test asset", BizLine: "ai", Tags: []string{"test"}, State: "created"},
+				{ID: "common/test", Name: "Test Asset", Description: "A test asset", AssetType: "ai", Tags: []string{"test"}, State: "created"},
 			}, nil
 		},
 		GetByIDFunc: func(ctx context.Context, id string) (*svc.AssetDetail, error) {
@@ -26,7 +26,7 @@ func newTestAssetHandler() (*AssetHandler, *mock.MockAssetIndexer) {
 				ID:          id,
 				Name:        "Test Asset",
 				Description: "A test asset",
-				BizLine:     "ai",
+				AssetType:     "ai",
 				Tags:        []string{"test"},
 				State:       "created",
 				Snapshots:   []svc.SnapshotSummary{},
@@ -41,7 +41,7 @@ func newTestAssetHandler() (*AssetHandler, *mock.MockAssetIndexer) {
 		},
 	}
 	logger := slog.Default()
-	return NewAssetHandler(mockIndexer, mockIndexer, logger), mockIndexer
+	return NewAssetHandler(mockIndexer, mockIndexer, logger, nil), mockIndexer
 }
 
 func TestAssetHandler_ListAssets(t *testing.T) {
@@ -105,7 +105,7 @@ func TestAssetHandler_CreateAsset(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/assets", handler.CreateAsset)
 
-	body := `{"id": "common/newasset", "name": "New Asset", "description": "A new asset", "biz_line": "ai"}`
+	body := `{"id": "common/newasset", "name": "New Asset", "description": "A new asset", "asset_type": "ai"}`
 	req := httptest.NewRequest("POST", "/api/v1/assets", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -144,7 +144,7 @@ func TestAssetHandler_UpdateAsset(t *testing.T) {
 			ID:          id,
 			Name:        "Original Name",
 			Description: "Original desc",
-			BizLine:     "ai",
+			AssetType:     "ai",
 			Tags:        []string{"test"},
 			State:       "created",
 			Snapshots:   []svc.SnapshotSummary{},

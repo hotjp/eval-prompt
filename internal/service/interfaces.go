@@ -86,7 +86,7 @@ type AssetIndexer interface {
 // SearchFilters contains filter criteria for asset search.
 type SearchFilters struct {
 	RepoPath string
-	BizLine  string
+	AssetType  string
 	Tags     []string
 	State    string
 	Label    string
@@ -97,7 +97,7 @@ type AssetSummary struct {
 	ID          string
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	State       string
 	LatestScore *float64
@@ -108,7 +108,7 @@ type AssetDetail struct {
 	ID          string
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	State       string
 	Snapshots   []SnapshotSummary
@@ -144,7 +144,7 @@ type ReconcileReport struct {
 type FileMetadata struct {
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	State       string
 	Version     string
@@ -155,7 +155,7 @@ type Asset struct {
 	ID          string
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	ContentHash string
 	FilePath    string
@@ -187,7 +187,7 @@ type SemanticAnalyzer interface {
 type AnalyzeContentRequest struct {
 	Content     string
 	Description string
-	BizLine     string
+	AssetType     string
 }
 
 type AnalyzeContentResult struct {

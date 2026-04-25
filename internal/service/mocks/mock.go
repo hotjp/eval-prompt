@@ -38,7 +38,7 @@ func (m *MockAssetIndexer) GetByID(ctx context.Context, id string) (*service.Ass
 		ID:          id,
 		Name:        "Test Asset",
 		Description: "Test description",
-		BizLine:     "ai",
+		AssetType:     "ai",
 		Tags:        []string{"test"},
 		State:       "created",
 		Snapshots:   []service.SnapshotSummary{},

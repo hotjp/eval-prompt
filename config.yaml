@@ -1,71 +1,105 @@
-# eval-prompt Configuration
-# All settings can be overridden via environment variables with APP_ prefix.
-# Example: APP_SERVER_PORT=9090 overrides the server.port value.
-
-# HTTP Server settings
-server:
-  port: 8080
-  host: 127.0.0.1
-  metrics_port: 9090
-  pprof_port: 6060
-  read_timeout: 30s
-  write_timeout: 30s
-
-# Database settings (SQLite)
 database:
-  dsn: ""
-  max_open: 25
-  max_idle: 5
-  max_lifetime: 5m
-
-# Observability / Telemetry
-telemetry:
-  enabled: false
-  endpoint: localhost:4317
-
-# Sandbox execution limits
-sandbox:
-  allowed_commands:
-    - npm
-    - go
-    - python
-    - python3
-    - node
-    - git
-    - curl
-    - mkdir
-    - cp
-    - mv
-  forbidden_patterns:
-    - rm -rf /
-    - rm -rf /*
-    - "> /etc/"
-    - "| sh"
-    - "| bash"
-    - curl .* | sh
-  max_execution_time: 60s
-  max_file_size: 10485760   # 10MB in bytes
-  max_file_count: 1000
-
-# Prompt asset repository
-prompt_assets:
-  repo_path: ""
-  assets_dir: prompts
-  evals_dir: .evals
-  traces_dir: .traces
-  eval_threshold: 80
-
-# Plugin configurations
+    dsn: ""
+    maxidle: 5
+    maxlifetime: 5m0s
+    maxopen: 25
+path: config.yaml
 plugins:
-  llm:
+    llm:
+        - name: minimax
+          provider: openai-compatible
+          api_key: sk-cp-RoPFThCxbKCkoA-O6V8SmL8xLD8dqC1mwL11sAutso2F-MpsPSfOuCaKCoiozms4GnyJSwApuH4SLEFSrTtPoddwIoJN7JrsBGQ7MjWoQrOfX22ewTPf-AI
+          endpoint: https://api.minimaxi.com/v1
+          default_model: MiniMax-M2.7-highspeed
+          default: false
+          ping_path: ""
+    search:
+        apikey: ""
+        enabled: false
+        type: basic
+        url: ""
+promptassets:
+    assetsdir: prompts
+    concurrency: 4
+    evalsdir: .evals
+    evalthreshold: 80
+    repopath: /Users/kingj/code/eval-prompt/~/test
+    tracesdir: .traces
+sandbox:
+    allowedcommands:
+        - npm
+        - go
+        - python
+        - python3
+        - node
+        - git
+        - curl
+        - mkdir
+        - cp
+        - mv
+    forbiddenpatterns:
+        - rm -rf /
+        - rm -rf /*
+        - '> /etc/'
+        - '| sh'
+        - '| bash'
+        - curl .* | sh
+    maxexecutiontime: 1m0s
+    maxfilecount: 1000
+    maxfilesize: 10485760
+server:
+    host: 127.0.0.1
+    metricsport: 9090
+    port: 8080
+    pprofport: 6060
+    readtimeout: 30s
+    writetimeout: 30s
+taxonomy:
+    bizlines:
+        - builtin: false
+          color: blue
+          description: 技术研发
+          name: tech
+        - builtin: false
+          color: red
+          description: 舆情业务
+          name: opinion
+        - builtin: false
+          color: green
+          description: 营销业务
+          name: marketing
+        - builtin: false
+          color: purple
+          description: 内容创作
+          name: content
+    tags:
+        - builtin: false
+          color: green
+          name: prod
+        - builtin: false
+          color: orange
+          name: draft
+        - builtin: false
+          color: blue
+          name: llm
+        - builtin: false
+          color: purple
+          name: rag
+        - builtin: false
+          color: cyan
+          name: agent
+        - builtin: false
+          color: red
+          name: security
+        - builtin: false
+          color: geekblue
+          name: ops
+        - builtin: false
+          color: lime
+          name: go
+        - builtin: false
+          color: gold
+          name: review
+telemetry:
     enabled: false
-    provider: openai
-    api_key: ""
-    endpoint: ""
-    default_model: gpt-4o
-
-  search:
-    enabled: false
-    type: basic
-    url: ""
-    api_key: ""
+    endpoint: localhost:4317

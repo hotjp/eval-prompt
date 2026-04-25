@@ -10,10 +10,11 @@ type Asset struct {
 	ID          ID
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	ContentHash string
 	FilePath    string
+	RepoPath    string // repo isolation
 	State       State
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -119,16 +120,17 @@ func (a *Asset) canTransitionTo(to State, event EventType) bool {
 }
 
 // NewAsset creates a new Asset with the given parameters.
-func NewAsset(name, description, bizLine string, tags []string, contentHash, filePath string) *Asset {
+func NewAsset(name, description, bizLine string, tags []string, contentHash, filePath, repoPath string) *Asset {
 	now := time.Now()
 	return &Asset{
 		ID:          NewAutoID(),
 		Name:        name,
 		Description: description,
-		BizLine:     bizLine,
+		AssetType:     bizLine,
 		Tags:        tags,
 		ContentHash: contentHash,
 		FilePath:    filePath,
+		RepoPath:    repoPath,
 		State:       AssetStateCreated,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -137,16 +139,17 @@ func NewAsset(name, description, bizLine string, tags []string, contentHash, fil
 }
 
 // NewAssetWithID creates a new Asset with a specific ID.
-func NewAssetWithID(id ID, name, description, bizLine string, tags []string, contentHash, filePath string) *Asset {
+func NewAssetWithID(id ID, name, description, bizLine string, tags []string, contentHash, filePath, repoPath string) *Asset {
 	now := time.Now()
 	return &Asset{
 		ID:          id,
 		Name:        name,
 		Description: description,
-		BizLine:     bizLine,
+		AssetType:     bizLine,
 		Tags:        tags,
 		ContentHash: contentHash,
 		FilePath:    filePath,
+		RepoPath:    repoPath,
 		State:       AssetStateCreated,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -158,7 +161,7 @@ func NewAssetWithID(id ID, name, description, bizLine string, tags []string, con
 type AssetSummary struct {
 	ID        ID
 	Name      string
-	BizLine   string
+	AssetType   string
 	State     State
 	UpdatedAt time.Time
 }

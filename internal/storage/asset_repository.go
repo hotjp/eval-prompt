@@ -28,6 +28,7 @@ func (r *AssetRepository) Create(ctx context.Context, a *domain.Asset) error {
 		SetTags(a.Tags).
 		SetContentHash(a.ContentHash).
 		SetFilePath(a.FilePath).
+		SetRepoPath(a.RepoPath).
 		SetState(r.stateToEnt(a.State)).
 		Save(ctx)
 	return err
@@ -50,6 +51,7 @@ func (r *AssetRepository) Update(ctx context.Context, a *domain.Asset) error {
 		SetTags(a.Tags).
 		SetContentHash(a.ContentHash).
 		SetFilePath(a.FilePath).
+		SetRepoPath(a.RepoPath).
 		SetState(r.stateToEnt(a.State)).
 		Save(ctx)
 	return err
@@ -61,16 +63,19 @@ func (r *AssetRepository) Delete(ctx context.Context, id string) error {
 }
 
 // List retrieves assets with pagination.
-func (r *AssetRepository) List(ctx context.Context, offset, limit int) ([]*domain.Asset, int, error) {
-	entAssets, err := r.client.ent.Asset.Query().
-		Offset(offset).
-		Limit(limit).
-		All(ctx)
+func (r *AssetRepository) List(ctx context.Context, repoPath string, offset, limit int) ([]*domain.Asset, int, error) {
+	var query *ent.AssetQuery
+	if repoPath == "" {
+		query = r.client.ent.Asset.Query()
+	} else {
+		query = r.client.ent.Asset.Query().Where(asset.RepoPathEQ(repoPath))
+	}
+	entAssets, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	total, err := r.client.ent.Asset.Query().Count(ctx)
+	total, err := query.Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -82,19 +87,21 @@ func (r *AssetRepository) List(ctx context.Context, offset, limit int) ([]*domai
 	return assets, total, nil
 }
 
-// ListByState retrieves assets by state.
-func (r *AssetRepository) ListByState(ctx context.Context, state domain.State, offset, limit int) ([]*domain.Asset, int, error) {
+// ListByState retrieves assets by state within a repo.
+func (r *AssetRepository) ListByState(ctx context.Context, repoPath string, state domain.State, offset, limit int) ([]*domain.Asset, int, error) {
 	entState := r.stateToEnt(state)
-	entAssets, err := r.client.ent.Asset.Query().
-		Where(asset.StateEQ(entState)).
-		Offset(offset).
-		Limit(limit).
-		All(ctx)
+	var query *ent.AssetQuery
+	if repoPath == "" {
+		query = r.client.ent.Asset.Query().Where(asset.StateEQ(entState))
+	} else {
+		query = r.client.ent.Asset.Query().Where(asset.RepoPathEQ(repoPath), asset.StateEQ(entState))
+	}
+	entAssets, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	total, err := r.client.ent.Asset.Query().Where(asset.StateEQ(entState)).Count(ctx)
+	total, err := query.Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -115,6 +122,7 @@ func (r *AssetRepository) toDomainAsset(e *ent.Asset) *domain.Asset {
 		Tags:        e.Tags,
 		ContentHash: e.ContentHash,
 		FilePath:    e.FilePath,
+		RepoPath:    e.RepoPath,
 		State:       r.stateFromEnt(e.State),
 		Version:     0, // ent doesn't track version the same way
 	}
@@ -164,12 +172,21 @@ func (r *AssetRepository) UpdateState(ctx context.Context, id string, state doma
 	return err
 }
 
-// GetByName retrieves an asset by its name.
-func (r *AssetRepository) GetByName(ctx context.Context, name string) (*domain.Asset, error) {
-	entAssets, err := r.client.ent.Asset.Query().
-		Where(asset.Name(name)).
-		Limit(1).
-		All(ctx)
+// GetByName retrieves an asset by its name within a repo.
+func (r *AssetRepository) GetByName(ctx context.Context, repoPath, name string) (*domain.Asset, error) {
+	var entAssets []*ent.Asset
+	var err error
+	if repoPath == "" {
+		entAssets, err = r.client.ent.Asset.Query().
+			Where(asset.Name(name)).
+			Limit(1).
+			All(ctx)
+	} else {
+		entAssets, err = r.client.ent.Asset.Query().
+			Where(asset.RepoPathEQ(repoPath), asset.Name(name)).
+			Limit(1).
+			All(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}

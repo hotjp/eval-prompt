@@ -140,8 +140,8 @@ func (h *MCPHandler) HandlePOST(w http.ResponseWriter, r *http.Request) {
 func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]any) (any, error) {
 	// Extract filters
 	filters := service.SearchFilters{}
-	if bizLine, ok := params["biz_line"].(string); ok {
-		filters.BizLine = bizLine
+	if bizLine, ok := params["asset_type"].(string); ok {
+		filters.AssetType = bizLine
 	}
 	if tag, ok := params["tag"].(string); ok {
 		filters.Tags = []string{tag}
@@ -159,7 +159,7 @@ func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]an
 			"id":          r.ID,
 			"name":        r.Name,
 			"description": r.Description,
-			"biz_line":    r.BizLine,
+			"asset_type":    r.AssetType,
 			"tags":        r.Tags,
 		}
 	}
@@ -185,7 +185,7 @@ func (h *MCPHandler) handlePromptsGet(ctx context.Context, params map[string]any
 	result := map[string]any{
 		"content":     "", // Would load from Git/file
 		"description": detail.Description,
-		"biz_line":    detail.BizLine,
+		"asset_type":    detail.AssetType,
 		"tags":        detail.Tags,
 	}
 
@@ -210,14 +210,19 @@ func (h *MCPHandler) handlePromptsEval(ctx context.Context, params map[string]an
 	caseID, _ := params["case_id"].(string)
 
 	// Run eval
-	run, err := h.evalService.RunEval(ctx, id, snapshotVersion, []string{caseID})
+	svcReq := &service.RunEvalRequest{
+		AssetID:         id,
+		SnapshotVersion: snapshotVersion,
+		EvalCaseIDs:     []string{caseID},
+	}
+	execution, err := h.evalService.RunEval(ctx, svcReq)
 	if err != nil {
 		return nil, fmt.Errorf("eval run: %w", err)
 	}
 
 	return map[string]any{
-		"run_id": run.ID,
-		"status": run.Status,
+		"execution_id": execution.ID,
+		"status":       execution.Status,
 	}, nil
 }
 

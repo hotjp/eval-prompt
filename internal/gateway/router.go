@@ -125,7 +125,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 
 	// Taxonomy API routes
 	mux.HandleFunc("GET /api/v1/taxonomy", taxonomyHandler.GetTaxonomy)
-	mux.HandleFunc("PUT /api/v1/taxonomy/biz_lines", taxonomyHandler.UpdateBizLines)
+	mux.HandleFunc("PUT /api/v1/taxonomy/asset_types", taxonomyHandler.UpdateAssetTypes)
 	mux.HandleFunc("PUT /api/v1/taxonomy/tags", taxonomyHandler.UpdateTags)
 
 	// LLM Config API routes

@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Select, Button, Space, message } from 'antd'
 import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
-import { getBizLines } from '../config/bizLines'
+import { getAssetTypes } from '../config/bizLines'
 import { getTags } from '../config/tags'
 
 const { TextArea } = Input
 
-const bizLineOptions = getBizLines().map((b) => ({ label: b.name, value: b.name }))
+const bizLineOptions = getAssetTypes().map((b) => ({ label: b.name, value: b.name }))
 const tagOptions = getTags().map((t) => ({ label: t.name, value: t.name }))
 const stateOptions = [
   { label: 'Active', value: 'active' },
@@ -20,14 +20,14 @@ function CreateAssetView() {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
 
-  const handleCreate = async (values: { name: string; description?: string; biz_line: string; tags?: string[]; state?: string }) => {
+  const handleCreate = async (values: { name: string; description?: string; asset_type: string; tags?: string[]; state?: string }) => {
     setSaving(true)
     try {
       await assetApi.create({
         id: values.name,
         name: values.name,
         description: values.description,
-        biz_line: values.biz_line,
+        asset_type: values.asset_type,
         tags: values.tags,
       })
       message.success('Asset created successfully')
@@ -54,7 +54,7 @@ function CreateAssetView() {
             form={form}
             layout="vertical"
             onFinish={handleCreate}
-            initialValues={{ state: 'draft', biz_line: 'common' }}
+            initialValues={{ state: 'draft', asset_type: 'common' }}
           >
             <Form.Item
               label="Asset Name"
@@ -70,7 +70,7 @@ function CreateAssetView() {
 
             <Form.Item
               label="Business Line"
-              name="biz_line"
+              name="asset_type"
               rules={[{ required: true, message: 'Please select business line' }]}
             >
               <Select options={bizLineOptions} style={{ width: 200 }} />

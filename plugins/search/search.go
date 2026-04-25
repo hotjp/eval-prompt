@@ -62,7 +62,7 @@ func (i *Indexer) persist() error {
 		ID          string                    `json:"id"`
 		Name        string                    `json:"name"`
 		Description string                    `json:"description"`
-		BizLine     string                    `json:"biz_line"`
+		AssetType     string                    `json:"asset_type"`
 		Tags        []string                  `json:"tags"`
 		State       string                    `json:"state"`
 		Snapshots   []service.SnapshotSummary `json:"snapshots"`
@@ -73,7 +73,7 @@ func (i *Indexer) persist() error {
 			ID:          entry.detail.ID,
 			Name:        entry.detail.Name,
 			Description: entry.detail.Description,
-			BizLine:     entry.detail.BizLine,
+			AssetType:     entry.detail.AssetType,
 			Tags:        entry.detail.Tags,
 			State:       entry.detail.State,
 			Snapshots:   entry.detail.Snapshots,
@@ -102,7 +102,7 @@ func (i *Indexer) Load() error {
 		ID          string                    `json:"id"`
 		Name        string                    `json:"name"`
 		Description string                    `json:"description"`
-		BizLine     string                    `json:"biz_line"`
+		AssetType     string                    `json:"asset_type"`
 		Tags        []string                  `json:"tags"`
 		State       string                    `json:"state"`
 		Snapshots   []service.SnapshotSummary `json:"snapshots"`
@@ -121,7 +121,7 @@ func (i *Indexer) Load() error {
 				ID:          pe.ID,
 				Name:        pe.Name,
 				Description: pe.Description,
-				BizLine:     pe.BizLine,
+				AssetType:     pe.AssetType,
 				Tags:        pe.Tags,
 				State:       pe.State,
 			},
@@ -129,7 +129,7 @@ func (i *Indexer) Load() error {
 				ID:          pe.ID,
 				Name:        pe.Name,
 				Description: pe.Description,
-				BizLine:     pe.BizLine,
+				AssetType:     pe.AssetType,
 				Tags:        pe.Tags,
 				State:       pe.State,
 				Snapshots:   pe.Snapshots,
@@ -251,14 +251,19 @@ func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *se
 
 	// Check if asset already exists (update) or is new (add)
 	_, existed := i.assets[fm.ID]
+	repoPath := ""
+	if i.gitBridge != nil {
+		repoPath = i.gitBridge.RepoPath()
+	}
 	asset := service.Asset{
 		ID:          fm.ID,
 		Name:        fm.Name,
 		Description: fm.Description,
-		BizLine:     fm.BizLine,
+		AssetType:     fm.AssetType,
 		Tags:        fm.Tags,
 		State:       fm.State,
 		ContentHash: fm.ContentHash,
+		RepoPath:    repoPath,
 	}
 
 	// Build snapshots from eval history
@@ -284,7 +289,7 @@ func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *se
 		ID:          asset.ID,
 		Name:        asset.Name,
 		Description: asset.Description,
-		BizLine:     asset.BizLine,
+		AssetType:     asset.AssetType,
 		Tags:        asset.Tags,
 		State:       asset.State,
 		Snapshots:   snapshots,
@@ -320,7 +325,7 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 				ID:          entry.asset.ID,
 				Name:        entry.asset.Name,
 				Description: entry.asset.Description,
-				BizLine:     entry.asset.BizLine,
+				AssetType:     entry.asset.AssetType,
 				Tags:        entry.asset.Tags,
 				State:       entry.asset.State,
 				LatestScore: latestScore,
@@ -353,7 +358,7 @@ func (i *Indexer) Save(ctx context.Context, asset service.Asset) error {
 			ID:          asset.ID,
 			Name:        asset.Name,
 			Description: asset.Description,
-			BizLine:     asset.BizLine,
+			AssetType:     asset.AssetType,
 			Tags:        asset.Tags,
 			State:       asset.State,
 			Snapshots:   []service.SnapshotSummary{},
@@ -442,7 +447,7 @@ func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine strin
 	fm := &domain.FrontMatter{
 		ID:      id,
 		Name:    name,
-		BizLine: bizLine,
+		AssetType: bizLine,
 		Tags:    tags,
 		State:   "draft",
 	}
@@ -592,8 +597,8 @@ func matchAsset(asset service.Asset, query string, filters service.SearchFilters
 		}
 	}
 
-	// BizLine filter
-	if filters.BizLine != "" && filters.BizLine != asset.BizLine {
+	// AssetType filter
+	if filters.AssetType != "" && filters.AssetType != asset.AssetType {
 		return false
 	}
 

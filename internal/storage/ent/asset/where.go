@@ -82,6 +82,11 @@ func FilePath(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldFilePath, v))
 }
 
+// RepoPath applies equality check predicate on the "repo_path" field. It's identical to RepoPathEQ.
+func RepoPath(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldRepoPath, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldName, v))
@@ -350,6 +355,81 @@ func FilePathEqualFold(v string) predicate.Asset {
 // FilePathContainsFold applies the ContainsFold predicate on the "file_path" field.
 func FilePathContainsFold(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldContainsFold(FieldFilePath, v))
+}
+
+// RepoPathEQ applies the EQ predicate on the "repo_path" field.
+func RepoPathEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldRepoPath, v))
+}
+
+// RepoPathNEQ applies the NEQ predicate on the "repo_path" field.
+func RepoPathNEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldNEQ(FieldRepoPath, v))
+}
+
+// RepoPathIn applies the In predicate on the "repo_path" field.
+func RepoPathIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldIn(FieldRepoPath, vs...))
+}
+
+// RepoPathNotIn applies the NotIn predicate on the "repo_path" field.
+func RepoPathNotIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldNotIn(FieldRepoPath, vs...))
+}
+
+// RepoPathGT applies the GT predicate on the "repo_path" field.
+func RepoPathGT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGT(FieldRepoPath, v))
+}
+
+// RepoPathGTE applies the GTE predicate on the "repo_path" field.
+func RepoPathGTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGTE(FieldRepoPath, v))
+}
+
+// RepoPathLT applies the LT predicate on the "repo_path" field.
+func RepoPathLT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLT(FieldRepoPath, v))
+}
+
+// RepoPathLTE applies the LTE predicate on the "repo_path" field.
+func RepoPathLTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLTE(FieldRepoPath, v))
+}
+
+// RepoPathContains applies the Contains predicate on the "repo_path" field.
+func RepoPathContains(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContains(FieldRepoPath, v))
+}
+
+// RepoPathHasPrefix applies the HasPrefix predicate on the "repo_path" field.
+func RepoPathHasPrefix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasPrefix(FieldRepoPath, v))
+}
+
+// RepoPathHasSuffix applies the HasSuffix predicate on the "repo_path" field.
+func RepoPathHasSuffix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasSuffix(FieldRepoPath, v))
+}
+
+// RepoPathIsNil applies the IsNil predicate on the "repo_path" field.
+func RepoPathIsNil() predicate.Asset {
+	return predicate.Asset(sql.FieldIsNull(FieldRepoPath))
+}
+
+// RepoPathNotNil applies the NotNil predicate on the "repo_path" field.
+func RepoPathNotNil() predicate.Asset {
+	return predicate.Asset(sql.FieldNotNull(FieldRepoPath))
+}
+
+// RepoPathEqualFold applies the EqualFold predicate on the "repo_path" field.
+func RepoPathEqualFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEqualFold(FieldRepoPath, v))
+}
+
+// RepoPathContainsFold applies the ContainsFold predicate on the "repo_path" field.
+func RepoPathContainsFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContainsFold(FieldRepoPath, v))
 }
 
 // StateEQ applies the EQ predicate on the "state" field.

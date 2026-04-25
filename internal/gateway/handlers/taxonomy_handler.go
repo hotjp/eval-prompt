@@ -12,7 +12,7 @@ import (
 	"github.com/eval-prompt/internal/service"
 )
 
-// TaxonomyHandler handles taxonomy (biz_line, tag) API endpoints.
+// TaxonomyHandler handles taxonomy (asset_type, tag) API endpoints.
 type TaxonomyHandler struct {
 	cfg           *config.TaxonomyConfig
 	logger        *slog.Logger
@@ -48,11 +48,11 @@ func (h *TaxonomyHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
 	defer h.mu.RUnlock()
 
 	resp := TaxonomyResponse{
-		BizLines: make([]BizLineResp, len(h.cfg.BizLines)),
+		AssetTypes: make([]AssetTypeResp, len(h.cfg.AssetTypes)),
 		Tags:     make([]TagResp, len(h.cfg.Tags)),
 	}
-	for i, b := range h.cfg.BizLines {
-		resp.BizLines[i] = BizLineResp{
+	for i, b := range h.cfg.AssetTypes {
+		resp.AssetTypes[i] = AssetTypeResp{
 			Name:        b.Name,
 			Description: b.Description,
 			Color:       b.Color,
@@ -70,9 +70,9 @@ func (h *TaxonomyHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, resp)
 }
 
-// UpdateBizLines updates the biz_lines taxonomy.
-func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request) {
-	var bizLines []BizLineResp
+// UpdateAssetTypes updates the asset_types taxonomy.
+func (h *TaxonomyHandler) UpdateAssetTypes(w http.ResponseWriter, r *http.Request) {
+	var bizLines []AssetTypeResp
 	if err := json.NewDecoder(r.Body).Decode(&bizLines); err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
 		return
@@ -81,9 +81,9 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	var currentBuiltIn []config.BizLineConfig
-	var currentUserDefined []config.BizLineConfig
-	for _, b := range h.cfg.BizLines {
+	var currentBuiltIn []config.AssetTypeConfig
+	var currentUserDefined []config.AssetTypeConfig
+	for _, b := range h.cfg.AssetTypes {
 		if b.BuiltIn {
 			currentBuiltIn = append(currentBuiltIn, b)
 		} else {
@@ -91,13 +91,13 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	newUserDefined := make([]config.BizLineConfig, 0, len(bizLines))
+	newUserDefined := make([]config.AssetTypeConfig, 0, len(bizLines))
 	newNames := make(map[string]bool)
 	for _, b := range bizLines {
 		if b.BuiltIn {
 			continue
 		}
-		newUserDefined = append(newUserDefined, config.BizLineConfig{
+		newUserDefined = append(newUserDefined, config.AssetTypeConfig{
 			Name:        b.Name,
 			Description: b.Description,
 			Color:       b.Color,
@@ -106,34 +106,34 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		newNames[b.Name] = true
 	}
 
-	keptUserDefined := make([]config.BizLineConfig, 0)
+	keptUserDefined := make([]config.AssetTypeConfig, 0)
 	for _, u := range currentUserDefined {
 		if newNames[u.Name] {
 			keptUserDefined = append(keptUserDefined, u)
 		}
 	}
 
-	h.cfg.BizLines = append(currentBuiltIn, keptUserDefined...)
+	h.cfg.AssetTypes = append(currentBuiltIn, keptUserDefined...)
 	for _, n := range newUserDefined {
-		if _, exists := func() (config.BizLineConfig, bool) {
+		if _, exists := func() (config.AssetTypeConfig, bool) {
 			for _, u := range keptUserDefined {
 				if u.Name == n.Name {
 					return u, true
 				}
 			}
-			return config.BizLineConfig{}, false
+			return config.AssetTypeConfig{}, false
 		}(); !exists {
-			h.cfg.BizLines = append(h.cfg.BizLines, n)
+			h.cfg.AssetTypes = append(h.cfg.AssetTypes, n)
 		}
 	}
 
 	userOnlyConfig := &config.TaxonomyConfig{
-		BizLines: make([]config.BizLineConfig, 0, len(h.cfg.BizLines)),
+		AssetTypes: make([]config.AssetTypeConfig, 0, len(h.cfg.AssetTypes)),
 		Tags:     h.cfg.Tags,
 	}
-	for _, b := range h.cfg.BizLines {
+	for _, b := range h.cfg.AssetTypes {
 		if !b.BuiltIn {
-			userOnlyConfig.BizLines = append(userOnlyConfig.BizLines, b)
+			userOnlyConfig.AssetTypes = append(userOnlyConfig.AssetTypes, b)
 		}
 	}
 
@@ -143,10 +143,10 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 	}
 
 	if h.configManager != nil {
-		h.configManager.Notify(r.Context(), "taxonomy", []string{"biz_lines"})
+		h.configManager.Notify(r.Context(), "taxonomy", []string{"asset_types"})
 	}
 
-	h.logger.Info("taxonomy biz_lines updated", "count", len(bizLines), "layer", "L5")
+	h.logger.Info("taxonomy asset_types updated", "count", len(bizLines), "layer", "L5")
 	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -207,7 +207,7 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userOnlyConfig := &config.TaxonomyConfig{
-		BizLines: h.cfg.BizLines,
+		AssetTypes: h.cfg.AssetTypes,
 		Tags:     make([]config.TagConfig, 0),
 	}
 	for _, t := range h.cfg.Tags {
@@ -231,12 +231,12 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 
 // TaxonomyResponse is the API response for taxonomy.
 type TaxonomyResponse struct {
-	BizLines []BizLineResp `json:"biz_lines"`
+	AssetTypes []AssetTypeResp `json:"asset_types"`
 	Tags     []TagResp     `json:"tags"`
 }
 
-// BizLineResp represents a biz_line in API responses.
-type BizLineResp struct {
+// AssetTypeResp represents a asset_type in API responses.
+type AssetTypeResp struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	Color       string `json:"color"`

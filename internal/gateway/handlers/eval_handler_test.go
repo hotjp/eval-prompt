@@ -12,17 +12,16 @@ import (
 
 	svc "github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/service/mocks"
+	"github.com/eval-prompt/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
 func newTestEvalHandler() (*EvalHandler, *mock.MockEvalService) {
 	mockEval := &mock.MockEvalService{
-		RunEvalFunc: func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error) {
-			return &svc.EvalRun{
-				ID:        "run-123",
-				AssetID:   assetID,
-				Status:    svc.EvalRunStatusRunning,
-				CreatedAt: time.Now(),
+		RunEvalFunc: func(ctx context.Context, req *svc.RunEvalRequest) (*domain.EvalExecution, error) {
+			return &domain.EvalExecution{
+				ID:     "execution-123",
+				Status: domain.ExecutionStatusRunning,
 			}, nil
 		},
 		GetEvalRunFunc: func(ctx context.Context, runID string) (*svc.EvalRun, error) {
@@ -85,7 +84,7 @@ func TestEvalHandler_RunEval(t *testing.T) {
 	var resp RunEvalResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	require.Equal(t, "run-123", resp.RunID)
+	require.Equal(t, "execution-123", resp.ExecutionID)
 	require.Equal(t, "running", resp.Status)
 }
 

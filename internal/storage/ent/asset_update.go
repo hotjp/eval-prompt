@@ -102,6 +102,26 @@ func (_u *AssetUpdate) SetNillableFilePath(v *string) *AssetUpdate {
 	return _u
 }
 
+// SetRepoPath sets the "repo_path" field.
+func (_u *AssetUpdate) SetRepoPath(v string) *AssetUpdate {
+	_u.mutation.SetRepoPath(v)
+	return _u
+}
+
+// SetNillableRepoPath sets the "repo_path" field if the given value is not nil.
+func (_u *AssetUpdate) SetNillableRepoPath(v *string) *AssetUpdate {
+	if v != nil {
+		_u.SetRepoPath(*v)
+	}
+	return _u
+}
+
+// ClearRepoPath clears the value of the "repo_path" field.
+func (_u *AssetUpdate) ClearRepoPath() *AssetUpdate {
+	_u.mutation.ClearRepoPath()
+	return _u
+}
+
 // SetState sets the "state" field.
 func (_u *AssetUpdate) SetState(v asset.State) *AssetUpdate {
 	_u.mutation.SetState(v)
@@ -165,6 +185,11 @@ func (_u *AssetUpdate) check() error {
 			return &ValidationError{Name: "file_path", err: fmt.Errorf(`ent: validator failed for field "Asset.file_path": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RepoPath(); ok {
+		if err := asset.RepoPathValidator(v); err != nil {
+			return &ValidationError{Name: "repo_path", err: fmt.Errorf(`ent: validator failed for field "Asset.repo_path": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.State(); ok {
 		if err := asset.StateValidator(v); err != nil {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
@@ -207,6 +232,12 @@ func (_u *AssetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.FilePath(); ok {
 		_spec.SetField(asset.FieldFilePath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RepoPath(); ok {
+		_spec.SetField(asset.FieldRepoPath, field.TypeString, value)
+	}
+	if _u.mutation.RepoPathCleared() {
+		_spec.ClearField(asset.FieldRepoPath, field.TypeString)
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
@@ -305,6 +336,26 @@ func (_u *AssetUpdateOne) SetNillableFilePath(v *string) *AssetUpdateOne {
 	return _u
 }
 
+// SetRepoPath sets the "repo_path" field.
+func (_u *AssetUpdateOne) SetRepoPath(v string) *AssetUpdateOne {
+	_u.mutation.SetRepoPath(v)
+	return _u
+}
+
+// SetNillableRepoPath sets the "repo_path" field if the given value is not nil.
+func (_u *AssetUpdateOne) SetNillableRepoPath(v *string) *AssetUpdateOne {
+	if v != nil {
+		_u.SetRepoPath(*v)
+	}
+	return _u
+}
+
+// ClearRepoPath clears the value of the "repo_path" field.
+func (_u *AssetUpdateOne) ClearRepoPath() *AssetUpdateOne {
+	_u.mutation.ClearRepoPath()
+	return _u
+}
+
 // SetState sets the "state" field.
 func (_u *AssetUpdateOne) SetState(v asset.State) *AssetUpdateOne {
 	_u.mutation.SetState(v)
@@ -381,6 +432,11 @@ func (_u *AssetUpdateOne) check() error {
 			return &ValidationError{Name: "file_path", err: fmt.Errorf(`ent: validator failed for field "Asset.file_path": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RepoPath(); ok {
+		if err := asset.RepoPathValidator(v); err != nil {
+			return &ValidationError{Name: "repo_path", err: fmt.Errorf(`ent: validator failed for field "Asset.repo_path": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.State(); ok {
 		if err := asset.StateValidator(v); err != nil {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
@@ -440,6 +496,12 @@ func (_u *AssetUpdateOne) sqlSave(ctx context.Context) (_node *Asset, err error)
 	}
 	if value, ok := _u.mutation.FilePath(); ok {
 		_spec.SetField(asset.FieldFilePath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RepoPath(); ok {
+		_spec.SetField(asset.FieldRepoPath, field.TypeString, value)
+	}
+	if _u.mutation.RepoPathCleared() {
+		_spec.ClearField(asset.FieldRepoPath, field.TypeString)
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)

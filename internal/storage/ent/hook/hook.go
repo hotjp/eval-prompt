@@ -45,6 +45,18 @@ func (f EvalCaseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EvalCaseMutation", m)
 }
 
+// The EvalExecutionFunc type is an adapter to allow the use of ordinary
+// function as EvalExecution mutator.
+type EvalExecutionFunc func(context.Context, *ent.EvalExecutionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EvalExecutionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EvalExecutionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EvalExecutionMutation", m)
+}
+
 // The EvalRunFunc type is an adapter to allow the use of ordinary
 // function as EvalRun mutator.
 type EvalRunFunc func(context.Context, *ent.EvalRunMutation) (ent.Value, error)
@@ -55,6 +67,18 @@ func (f EvalRunFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EvalRunMutation", m)
+}
+
+// The EvalWorkItemFunc type is an adapter to allow the use of ordinary
+// function as EvalWorkItem mutator.
+type EvalWorkItemFunc func(context.Context, *ent.EvalWorkItemMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EvalWorkItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EvalWorkItemMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EvalWorkItemMutation", m)
 }
 
 // The LabelFunc type is an adapter to allow the use of ordinary

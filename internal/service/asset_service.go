@@ -57,11 +57,12 @@ type AssetServicer interface {
 type CreateAssetRequest struct {
 	Name        string
 	Description string
-	BizLine     string
+	AssetType     string
 	Tags        []string
 	FilePath    string
 	ContentHash string
 	Author      string
+	RepoPath    string // repo isolation - set by gateway handler
 }
 
 // AssetResponse contains the response data for an asset operation.
@@ -69,7 +70,7 @@ type AssetResponse struct {
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
-	BizLine     string            `json:"biz_line"`
+	AssetType     string            `json:"asset_type"`
 	Tags        []string          `json:"tags"`
 	State       string            `json:"state"`
 	Version     int64             `json:"version"`
@@ -94,7 +95,7 @@ type AssetDetailResponse struct {
 	ID          string              `json:"id"`
 	Name        string              `json:"name"`
 	Description string              `json:"description"`
-	BizLine     string              `json:"biz_line"`
+	AssetType     string              `json:"asset_type"`
 	Tags        []string            `json:"tags"`
 	State       string              `json:"state"`
 	Version     int64               `json:"version"`
@@ -113,10 +114,11 @@ type LabelResponse struct {
 
 // ListAssetsRequest contains the request data for listing assets.
 type ListAssetsRequest struct {
-	Offset  int
-	Limit   int
-	BizLine string
-	State   string
+	Offset   int
+	Limit    int
+	AssetType  string
+	State    string
+	RepoPath string // repo isolation
 }
 
 // ListAssetsResponse contains the response data for listing assets.
@@ -166,10 +168,11 @@ func (s *AssetService) CreateAsset(ctx context.Context, req *CreateAssetRequest)
 	asset := domain.NewAsset(
 		req.Name,
 		req.Description,
-		req.BizLine,
+		req.AssetType,
 		req.Tags,
 		req.ContentHash,
 		req.FilePath,
+		req.RepoPath,
 	)
 
 	// Validate asset
@@ -200,7 +203,7 @@ func (s *AssetService) CreateAsset(ctx context.Context, req *CreateAssetRequest)
 		ID:          asset.ID.String(),
 		Name:        asset.Name,
 		Description: asset.Description,
-		BizLine:     asset.BizLine,
+		AssetType:     asset.AssetType,
 		Tags:        asset.Tags,
 		State:       string(asset.State),
 		Version:     asset.Version,
@@ -280,7 +283,7 @@ func (s *AssetService) UpdateAsset(ctx context.Context, req *UpdateAssetRequest)
 		ID:          asset.ID.String(),
 		Name:        asset.Name,
 		Description: asset.Description,
-		BizLine:     asset.BizLine,
+		AssetType:     asset.AssetType,
 		Tags:        asset.Tags,
 		State:       string(asset.State),
 		Version:     asset.Version,
@@ -346,7 +349,7 @@ func (s *AssetService) GetAsset(ctx context.Context, id string) (*AssetDetailRes
 		ID:          asset.ID.String(),
 		Name:        asset.Name,
 		Description: asset.Description,
-		BizLine:     asset.BizLine,
+		AssetType:     asset.AssetType,
 		Tags:        asset.Tags,
 		State:       string(asset.State),
 		Version:     asset.Version,
@@ -375,9 +378,9 @@ func (s *AssetService) ListAssets(ctx context.Context, req *ListAssetsRequest) (
 
 	if req.State != "" {
 		state := domain.State(req.State)
-		assets, total, err = s.assetRepo.ListByState(ctx, state, req.Offset, req.Limit)
+		assets, total, err = s.assetRepo.ListByState(ctx, req.RepoPath, state, req.Offset, req.Limit)
 	} else {
-		assets, total, err = s.assetRepo.List(ctx, req.Offset, req.Limit)
+		assets, total, err = s.assetRepo.List(ctx, req.RepoPath, req.Offset, req.Limit)
 	}
 
 	if err != nil {
@@ -390,7 +393,7 @@ func (s *AssetService) ListAssets(ctx context.Context, req *ListAssetsRequest) (
 			ID:          a.ID.String(),
 			Name:        a.Name,
 			Description: a.Description,
-			BizLine:     a.BizLine,
+			AssetType:     a.AssetType,
 			Tags:        a.Tags,
 			State:       string(a.State),
 			Version:     a.Version,

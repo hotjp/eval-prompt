@@ -13,7 +13,7 @@ export interface AssetSummary {
   id: string
   name: string
   description: string
-  biz_line: string
+  asset_type: string
   tags: string[]
   state: string
   latest_score?: number
@@ -187,9 +187,9 @@ export interface AssetListResponse {
 }
 
 export const assetApi = {
-  list: async (filters?: { biz_line?: string; tag?: string }): Promise<AssetListResponse> => {
+  list: async (filters?: { asset_type?: string; tag?: string }): Promise<AssetListResponse> => {
     const params = new URLSearchParams()
-    if (filters?.biz_line) params.append('biz_line', filters.biz_line)
+    if (filters?.asset_type) params.append('asset_type', filters.asset_type)
     if (filters?.tag) params.append('tag', filters.tag)
     const { data } = await api.get(`/assets?${params}`)
     return { assets: data.assets || [], total: data.total || 0 }
@@ -200,7 +200,7 @@ export const assetApi = {
     return data
   },
 
-  create: async (asset: { id: string; name: string; description?: string; biz_line?: string; tags?: string[]; content?: string }): Promise<void> => {
+  create: async (asset: { id: string; name: string; description?: string; asset_type?: string; tags?: string[]; content?: string }): Promise<void> => {
     await api.post('/assets', asset)
   },
 

@@ -10,7 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eval-prompt/internal/config"
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/gateway/handlers"
+	"github.com/eval-prompt/plugins/llm"
 	"github.com/eval-prompt/internal/service"
 	"github.com/stretchr/testify/require"
 )
@@ -45,19 +48,22 @@ func (m *mockTriggerService) InjectVariables(ctx context.Context, prompt string,
 }
 
 type mockEvalService struct {
-	RunEvalFunc        func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error)
-	GetEvalRunFunc     func(ctx context.Context, runID string) (*service.EvalRun, error)
-	ListEvalRunsFunc   func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
+	RunEvalFunc         func(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error)
+	GetEvalRunFunc      func(ctx context.Context, runID string) (*service.EvalRun, error)
+	ListEvalRunsFunc    func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
 	GenerateReportFunc  func(ctx context.Context, runID string) (*service.EvalReport, error)
-	DiagnoseEvalFunc   func(ctx context.Context, runID string) (*service.Diagnosis, error)
-	CompareEvalFunc    func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
+	DiagnoseEvalFunc    func(ctx context.Context, runID string) (*service.Diagnosis, error)
+	CompareEvalFunc     func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
+	GetExecutionFunc    func(ctx context.Context, executionID string) (*domain.EvalExecution, error)
+	CancelExecutionFunc func(ctx context.Context, executionID string) error
+	ListExecutionsFunc  func(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error)
 }
 
-func (m *mockEvalService) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error) {
+func (m *mockEvalService) RunEval(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error) {
 	if m.RunEvalFunc != nil {
-		return m.RunEvalFunc(ctx, assetID, snapshotVersion, caseIDs)
+		return m.RunEvalFunc(ctx, req)
 	}
-	return &service.EvalRun{ID: "test-run", Status: service.EvalRunStatusRunning, CreatedAt: time.Now()}, nil
+	return &domain.EvalExecution{ID: "test-execution", Status: domain.ExecutionStatusRunning}, nil
 }
 
 func (m *mockEvalService) GetEvalRun(ctx context.Context, runID string) (*service.EvalRun, error) {
@@ -97,6 +103,27 @@ func (m *mockEvalService) DiagnoseEval(ctx context.Context, runID string) (*serv
 		return m.DiagnoseEvalFunc(ctx, runID)
 	}
 	return nil, nil
+}
+
+func (m *mockEvalService) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
+	if m.GetExecutionFunc != nil {
+		return m.GetExecutionFunc(ctx, executionID)
+	}
+	return &domain.EvalExecution{ID: executionID, Status: domain.ExecutionStatusRunning}, nil
+}
+
+func (m *mockEvalService) CancelExecution(ctx context.Context, executionID string) error {
+	if m.CancelExecutionFunc != nil {
+		return m.CancelExecutionFunc(ctx, executionID)
+	}
+	return nil
+}
+
+func (m *mockEvalService) ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error) {
+	if m.ListExecutionsFunc != nil {
+		return m.ListExecutionsFunc(ctx, offset, limit)
+	}
+	return []*domain.EvalExecution{}, 0, nil
 }
 
 type mockAssetIndexer struct {
@@ -166,6 +193,10 @@ func (m *mockAssetIndexer) GetBody(ctx context.Context, id string) (string, erro
 	return "# Test Content", nil
 }
 
+func (m *mockAssetIndexer) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 func newTestRouterConfig() RouterConfig {
 	mockTrigger := &mockTriggerService{
 		MatchTriggerFunc: func(ctx context.Context, input string, top int) ([]*service.MatchedPrompt, error) {
@@ -178,11 +209,10 @@ func newTestRouterConfig() RouterConfig {
 		},
 	}
 	mockEval := &mockEvalService{
-		RunEvalFunc: func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error) {
-			return &service.EvalRun{
-				ID:        "run-123",
-				Status:    service.EvalRunStatusRunning,
-				CreatedAt: time.Now(),
+		RunEvalFunc: func(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error) {
+			return &domain.EvalExecution{
+				ID:     "execution-123",
+				Status: domain.ExecutionStatusRunning,
 			}, nil
 		},
 		GetEvalRunFunc: func(ctx context.Context, runID string) (*service.EvalRun, error) {
@@ -233,7 +263,7 @@ func newTestRouterConfig() RouterConfig {
 				ID:          id,
 				Name:        "Test Asset",
 				Description: "A test asset",
-				BizLine:     "ai",
+				AssetType:     "ai",
 				Tags:        []string{"test"},
 				State:       "created",
 				Snapshots:   []service.SnapshotSummary{},
@@ -255,6 +285,11 @@ func newTestRouterConfig() RouterConfig {
 		Logger:         logger,
 		Metrics:        nil,
 		CORSOrigins:    []string{"*"},
+		AdminConfig:    &config.Config{},
+		RestartFunc:    func() {},
+		GitBridge:      nil,
+		StorageClient:  nil,
+		LLMInvoker:     handlers.NewLLMCheckerAdapter(&llm.NoopInvoker{}),
 	}
 }
 

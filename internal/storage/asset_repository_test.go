@@ -19,7 +19,7 @@ func TestAssetRepository_Create(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "A test asset",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test", "unit"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -42,7 +42,7 @@ func TestAssetRepository_Create(t *testing.T) {
 	if got.Description != asset.Description {
 		t.Errorf("expected description %q, got %q", asset.Description, got.Description)
 	}
-	// BizLine is not stored in database in V1.1
+	// AssetType is not stored in database in V1.1
 }
 
 func TestAssetRepository_GetByID(t *testing.T) {
@@ -56,7 +56,7 @@ func TestAssetRepository_GetByID(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Get Test",
 		Description: "Test get by ID",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/get.md",
@@ -88,7 +88,7 @@ func TestAssetRepository_Update(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Original Name",
 		Description: "Original description",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/update.md",
@@ -128,7 +128,7 @@ func TestAssetRepository_Delete(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Delete Test",
 		Description: "Test delete",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/delete.md",
@@ -164,7 +164,7 @@ func TestAssetRepository_List(t *testing.T) {
 			ID:          domain.NewAutoID(),
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			ContentHash: "hash",
 			FilePath:    "/prompts/asset.md",
@@ -176,7 +176,7 @@ func TestAssetRepository_List(t *testing.T) {
 		}
 	}
 
-	assets, total, err := repo.List(ctx, 0, 10)
+	assets, total, err := repo.List(ctx, "", 0, 10)
 	if err != nil {
 		t.Fatalf("failed to list assets: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestAssetRepository_List(t *testing.T) {
 	}
 
 	// Test pagination
-	assets, total, err = repo.List(ctx, 0, 2)
+	assets, total, err = repo.List(ctx, "", 0, 2)
 	if err != nil {
 		t.Fatalf("failed to list assets with limit: %v", err)
 	}
@@ -200,8 +200,8 @@ func TestAssetRepository_List(t *testing.T) {
 	}
 }
 
-func TestAssetRepository_ListByBizLine(t *testing.T) {
-	t.Skip("biz_line is deprecated in V1.1 schema")
+func TestAssetRepository_ListByAssetType(t *testing.T) {
+	t.Skip("asset_type is deprecated in V1.1 schema")
 }
 
 func TestAssetRepository_ListByState(t *testing.T) {
@@ -218,7 +218,7 @@ func TestAssetRepository_ListByState(t *testing.T) {
 			ID:          domain.NewAutoID(),
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			ContentHash: "hash",
 			FilePath:    "/prompts/asset.md",
@@ -230,7 +230,7 @@ func TestAssetRepository_ListByState(t *testing.T) {
 		}
 	}
 
-	assets, total, err := repo.ListByState(ctx, domain.AssetStateCreated, 0, 10)
+	assets, total, err := repo.ListByState(ctx, "", domain.AssetStateCreated, 0, 10)
 	if err != nil {
 		t.Fatalf("failed to list by state: %v", err)
 	}
@@ -253,7 +253,7 @@ func TestAssetRepository_UpdateState(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "State Test",
 		Description: "Test state update",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash",
 		FilePath:    "/prompts/state.md",
@@ -290,7 +290,7 @@ func TestAssetRepository_GetByName(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "UniqueAssetName",
 		Description: "Test get by name",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/by-name.md",
@@ -301,7 +301,7 @@ func TestAssetRepository_GetByName(t *testing.T) {
 		t.Fatalf("failed to create asset: %v", err)
 	}
 
-	got, err := repo.GetByName(ctx, "UniqueAssetName")
+	got, err := repo.GetByName(ctx, "", "UniqueAssetName")
 	if err != nil {
 		t.Fatalf("failed to get asset by name: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestAssetRepository_GetByName_NotFound(t *testing.T) {
 	repo := NewAssetRepository(&Client{ent: client})
 	ctx := context.Background()
 
-	_, err := repo.GetByName(ctx, "NonExistentAsset")
+	_, err := repo.GetByName(ctx, "", "NonExistentAsset")
 	if err == nil {
 		t.Error("expected error when getting non-existent asset by name")
 	}

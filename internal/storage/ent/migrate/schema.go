@@ -16,6 +16,7 @@ var (
 		{Name: "tags", Type: field.TypeJSON, Nullable: true},
 		{Name: "content_hash", Type: field.TypeString, Size: 128},
 		{Name: "file_path", Type: field.TypeString, Size: 512},
+		{Name: "repo_path", Type: field.TypeString, Nullable: true, Size: 512},
 		{Name: "state", Type: field.TypeEnum, Enums: []string{"created", "evaluating", "evaluated", "promoted", "archived"}, Default: "created"},
 	}
 	// AssetsTable holds the schema information for the "assets" table.
@@ -74,6 +75,48 @@ var (
 			},
 		},
 	}
+	// EvalExecutionsColumns holds the columns for the "eval_executions" table.
+	EvalExecutionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
+		{Name: "asset_id", Type: field.TypeString, Size: 128},
+		{Name: "snapshot_id", Type: field.TypeString, Size: 128},
+		{Name: "mode", Type: field.TypeEnum, Enums: []string{"single", "batch", "matrix"}, Default: "single"},
+		{Name: "runs_per_case", Type: field.TypeInt, Default: 1},
+		{Name: "case_ids", Type: field.TypeJSON},
+		{Name: "total_runs", Type: field.TypeInt},
+		{Name: "completed_runs", Type: field.TypeInt, Default: 0},
+		{Name: "failed_runs", Type: field.TypeInt, Default: 0},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "completed", "partial_failure", "failed", "cancelled"}, Default: "pending"},
+		{Name: "concurrency", Type: field.TypeInt, Default: 1},
+		{Name: "model", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "temperature", Type: field.TypeFloat64, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+	}
+	// EvalExecutionsTable holds the schema information for the "eval_executions" table.
+	EvalExecutionsTable = &schema.Table{
+		Name:       "eval_executions",
+		Columns:    EvalExecutionsColumns,
+		PrimaryKey: []*schema.Column{EvalExecutionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "evalexecution_asset_id",
+				Unique:  false,
+				Columns: []*schema.Column{EvalExecutionsColumns[1]},
+			},
+			{
+				Name:    "evalexecution_status",
+				Unique:  false,
+				Columns: []*schema.Column{EvalExecutionsColumns[9]},
+			},
+			{
+				Name:    "evalexecution_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{EvalExecutionsColumns[13]},
+			},
+		},
+	}
 	// EvalRunsColumns holds the columns for the "eval_runs" table.
 	EvalRunsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
@@ -97,6 +140,53 @@ var (
 				Name:    "evalrun_status",
 				Unique:  false,
 				Columns: []*schema.Column{EvalRunsColumns[1]},
+			},
+		},
+	}
+	// EvalWorkItemsColumns holds the columns for the "eval_work_items" table.
+	EvalWorkItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true, Size: 128},
+		{Name: "execution_id", Type: field.TypeString, Size: 128},
+		{Name: "eval_case_id", Type: field.TypeString, Size: 128},
+		{Name: "run_number", Type: field.TypeInt, Default: 1},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "completed", "failed", "cancelled"}, Default: "pending"},
+		{Name: "prompt_hash", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "prompt_text", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "response", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "model", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "temperature", Type: field.TypeFloat64, Default: 0},
+		{Name: "tokens_in", Type: field.TypeInt, Default: 0},
+		{Name: "tokens_out", Type: field.TypeInt, Default: 0},
+		{Name: "duration_ms", Type: field.TypeInt, Default: 0},
+		{Name: "error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+	}
+	// EvalWorkItemsTable holds the schema information for the "eval_work_items" table.
+	EvalWorkItemsTable = &schema.Table{
+		Name:       "eval_work_items",
+		Columns:    EvalWorkItemsColumns,
+		PrimaryKey: []*schema.Column{EvalWorkItemsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "evalworkitem_execution_id",
+				Unique:  false,
+				Columns: []*schema.Column{EvalWorkItemsColumns[1]},
+			},
+			{
+				Name:    "evalworkitem_eval_case_id",
+				Unique:  false,
+				Columns: []*schema.Column{EvalWorkItemsColumns[2]},
+			},
+			{
+				Name:    "evalworkitem_status",
+				Unique:  false,
+				Columns: []*schema.Column{EvalWorkItemsColumns[4]},
+			},
+			{
+				Name:    "evalworkitem_prompt_hash",
+				Unique:  false,
+				Columns: []*schema.Column{EvalWorkItemsColumns[5]},
 			},
 		},
 	}
@@ -186,7 +276,9 @@ var (
 		AssetsTable,
 		AuditLogsTable,
 		EvalCasesTable,
+		EvalExecutionsTable,
 		EvalRunsTable,
+		EvalWorkItemsTable,
 		LabelsTable,
 		ModelAdaptationsTable,
 		OutboxEventsTable,

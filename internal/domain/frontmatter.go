@@ -84,7 +84,7 @@ type FrontMatter struct {
 	Version                string            `yaml:"version,omitempty"`
 	ContentHash            string            `yaml:"content_hash"`
 	State                  string            `yaml:"state"`
-	BizLine                string            `yaml:"biz_line,omitempty"`
+	AssetType                string            `yaml:"asset_type,omitempty"`
 	Tags                   []string          `yaml:"tags,omitempty"`
 	UpdatedAt              time.Time         `yaml:"updated_at,omitempty"`
 	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`
@@ -125,7 +125,7 @@ type EvalPromptFrontMatter struct {
 	Version      string   `yaml:"version,omitempty"`
 	ContentHash  string   `yaml:"content_hash"`
 	State        string   `yaml:"state"`
-	BizLine      string   `yaml:"biz_line,omitempty"`
+	AssetType      string   `yaml:"asset_type,omitempty"`
 	Tags         []string `yaml:"tags,omitempty"`
 	EvalCaseIDs  []string `yaml:"eval_case_ids,omitempty"`
 	Model        string   `yaml:"model"`

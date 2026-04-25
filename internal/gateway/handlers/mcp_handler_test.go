@@ -13,6 +13,7 @@ import (
 
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/service/mocks"
+	"github.com/eval-prompt/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,11 +29,10 @@ func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockEvalS
 		},
 	}
 	mockEval := &mock.MockEvalService{
-		RunEvalFunc: func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error) {
-			return &service.EvalRun{
-				ID:        "run-123",
-				Status:    service.EvalRunStatusRunning,
-				CreatedAt: time.Now(),
+		RunEvalFunc: func(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error) {
+			return &domain.EvalExecution{
+				ID:     "execution-123",
+				Status: domain.ExecutionStatusRunning,
 			}, nil
 		},
 	}
@@ -47,7 +47,7 @@ func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockEvalS
 				ID:          id,
 				Name:        "Test Asset",
 				Description: "A test asset",
-				BizLine:     "ai",
+				AssetType:     "ai",
 				Tags:        []string{"test"},
 				State:       "created",
 				Snapshots:   []service.SnapshotSummary{},
@@ -195,7 +195,7 @@ func TestMCPHandler_E2E_Workflow(t *testing.T) {
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
 	// Step 1: prompts/list to get available prompts
-	listBody := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"biz_line": "ai"}, "id": 1}`
+	listBody := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"asset_type": "ai"}, "id": 1}`
 	listReq := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(listBody))
 	listReq.Header.Set("Content-Type", "application/json")
 	listRec := httptest.NewRecorder()
@@ -246,9 +246,9 @@ func TestMCPHandler_E2E_Workflow(t *testing.T) {
 	require.Nil(t, evalResp.Error)
 	require.NotNil(t, evalResp.Result)
 
-	// Verify eval result contains run_id and status
+	// Verify eval result contains execution_id and status
 	evalResult := evalResp.Result.(map[string]interface{})
-	require.Contains(t, evalResult, "run_id")
+	require.Contains(t, evalResult, "execution_id")
 	require.Contains(t, evalResult, "status")
 }
 
@@ -270,7 +270,7 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 				ID:          id,
 				Name:        "Greeting Prompt",
 				Description: "A greeting prompt",
-				BizLine:     "ai",
+				AssetType:     "ai",
 				Tags:        []string{"greeting"},
 				State:       "created",
 				Snapshots:   []service.SnapshotSummary{},
@@ -312,7 +312,7 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 				ID:          id,
 				Name:        "Test Prompt",
 				Description: "A test prompt",
-				BizLine:     "ml",
+				AssetType:     "ml",
 				Tags:        []string{"test"},
 				State:       "created",
 				Snapshots:   []service.SnapshotSummary{},
@@ -343,18 +343,18 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 
 	result := resp.Result.(map[string]interface{})
 	require.Equal(t, "A test prompt", result["description"])
-	require.Equal(t, "ml", result["biz_line"])
+	require.Equal(t, "ml", result["asset_type"])
 }
 
 func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 	// Test prompts/list with various filters
-	searchedBizLine := ""
+	searchedAssetType := ""
 	mockIndexer := &mock.MockAssetIndexer{
 		SearchFunc: func(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error) {
-			searchedBizLine = filters.BizLine
+			searchedAssetType = filters.AssetType
 			return []service.AssetSummary{
-				{ID: "ai/gpt-prompt", Name: "GPT Prompt", Description: "GPT prompt", BizLine: "ai", Tags: []string{"gpt"}},
-				{ID: "ml/llm-prompt", Name: "LLM Prompt", Description: "LLM prompt", BizLine: "ml", Tags: []string{"llm"}},
+				{ID: "ai/gpt-prompt", Name: "GPT Prompt", Description: "GPT prompt", AssetType: "ai", Tags: []string{"gpt"}},
+				{ID: "ml/llm-prompt", Name: "LLM Prompt", Description: "LLM prompt", AssetType: "ml", Tags: []string{"llm"}},
 			}, nil
 		},
 	}
@@ -366,8 +366,8 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
-	// List with biz_line filter
-	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"biz_line": "ai", "tag": "gpt"}, "id": 1}`
+	// List with asset_type filter
+	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"asset_type": "ai", "tag": "gpt"}, "id": 1}`
 	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -375,7 +375,7 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "ai", searchedBizLine)
+	require.Equal(t, "ai", searchedAssetType)
 
 	var resp MCPResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
@@ -439,7 +439,7 @@ func TestMCPHandler_E2E_PromptsListEmptyResult(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
-	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"biz_line": "nonexistent"}, "id": 1}`
+	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"asset_type": "nonexistent"}, "id": 1}`
 	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

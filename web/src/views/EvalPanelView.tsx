@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Row, Col, Statistic, Button, Space, Spin, message, Table, Tag } from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Card, Row, Col, Statistic, Button, Space, Spin, message, Table, Tag, Select, Progress } from 'antd'
+import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import * as echarts from 'echarts'
 import { assetApi, evalApi } from '../api/client'
-import type { AssetDetail, EvalRun, EvalReport } from '../api/client'
+import type { AssetDetail, EvalRun, EvalReport, Execution } from '../api/client'
 import { useStore } from '../store'
 
 function EvalPanelView() {
@@ -15,6 +15,9 @@ function EvalPanelView() {
   const [currentRun, setCurrentRun] = useState<EvalReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const [execution, setExecution] = useState<Execution | null>(null)
+  const [evalMode, setEvalMode] = useState<string>('single')
+  const evalConcurrency = useStore((state) => state.evalConcurrency)
 
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
@@ -90,21 +93,27 @@ function EvalPanelView() {
   const handleRunEval = async () => {
     if (!id) return
     setRunning(true)
+    setExecution(null)
     useStore.getState().setRunningEval({ id: '', assetId: id, assetName: asset?.name || id })
     try {
-      const result = await evalApi.run(id)
-      useStore.getState().setRunningEval({ id: result.run_id, assetId: id, assetName: asset?.name || id })
-      message.info('Eval started, run ID: ' + result.run_id)
+      const result = await evalApi.execute({
+        asset_id: id,
+        mode: evalMode,
+        concurrency: evalConcurrency,
+      })
+      useStore.getState().setRunningEval({ id: result.execution_id, assetId: id, assetName: asset?.name || id })
+      message.info('Eval started, execution ID: ' + result.execution_id)
+
       const poll = async () => {
-        const run = await evalApi.get(result.run_id)
-        if (run.status === 'running' || run.status === 'pending') {
+        const exec = await evalApi.getExecution(result.execution_id)
+        setExecution(exec)
+
+        if (exec.status === 'running' || exec.status === 'pending' || exec.status === 'initializing') {
           setTimeout(poll, 2000)
         } else {
-          const report = await evalApi.report(result.run_id)
-          setCurrentRun(report)
-          setRuns((prev) => [run, ...prev])
           setRunning(false)
           useStore.getState().setRunningEval(null)
+          message.success('Eval completed with status: ' + exec.status)
         }
       }
       poll()
@@ -112,6 +121,16 @@ function EvalPanelView() {
       message.error('Failed to start eval')
       setRunning(false)
       useStore.getState().setRunningEval(null)
+    }
+  }
+
+  const handleCancelExecution = async () => {
+    if (!execution?.id) return
+    try {
+      await evalApi.cancelExecution(execution.id)
+      message.info('Cancellation requested')
+    } catch {
+      message.error('Failed to cancel execution')
     }
   }
 
@@ -165,9 +184,60 @@ function EvalPanelView() {
         </Card>
 
         <Card
-          title="Rubric Details"
-          extra={<Button type="primary" onClick={handleRunEval} loading={running}>Run Eval</Button>}
+          title="Run Eval"
+          extra={
+            <Space>
+              <Select
+                value={evalMode}
+                onChange={setEvalMode}
+                style={{ width: 120 }}
+                disabled={running}
+                options={[
+                  { value: 'single', label: 'Single' },
+                  { value: 'batch', label: 'Batch' },
+                  { value: 'matrix', label: 'Matrix' },
+                ]}
+              />
+              <span>Concurrency: {evalConcurrency}</span>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={handleRunEval}
+                loading={running}
+              >
+                Run Eval
+              </Button>
+              {running && execution && (
+                <Button
+                  danger
+                  icon={<StopOutlined />}
+                  onClick={handleCancelExecution}
+                >
+                  Cancel
+                </Button>
+              )}
+            </Space>
+          }
         >
+          {running && execution && (
+            <div style={{ marginBottom: 16 }}>
+              <Progress
+                percent={execution.total_cases > 0
+                  ? Math.round((execution.completed_cases / execution.total_cases) * 100)
+                  : 0}
+                status="active"
+                format={() =>
+                  `${execution.completed_cases} / ${execution.total_cases} cases`
+                }
+              />
+              <div style={{ marginTop: 8, color: '#888' }}>
+                Status: {execution.status} | Concurrency: {execution.concurrency} | Model: {execution.model}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <Card title="Rubric Details">
           {currentRun ? (
             <Table
               dataSource={currentRun.rubric_details}

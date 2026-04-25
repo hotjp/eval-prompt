@@ -1,60 +1,63 @@
-// Shared biz_line configuration
+// Shared asset_type configuration
 // Fetched from API on init, cached in localStorage for synchronous access
 
 import axios from 'axios'
 
-export interface BizLineConfig {
+export interface AssetTypeConfig {
   name: string
   description: string
   color: string
   built_in?: boolean
 }
 
-const STORAGE_KEY = 'ep_biz_lines'
+const STORAGE_KEY = 'ep_asset_types'
 
-const DEFAULT_BIZ_LINES: BizLineConfig[] = [
-  { name: 'tech', description: '技术研发', color: 'blue', built_in: true },
-  { name: 'opinion', description: '舆情业务', color: 'red', built_in: true },
-  { name: 'marketing', description: '营销业务', color: 'green', built_in: true },
-  { name: 'content', description: '内容创作', color: 'purple', built_in: true },
+const DEFAULT_BIZ_LINES: AssetTypeConfig[] = [
+  { name: 'prompt', description: '提示词', color: 'blue', built_in: true },
+  { name: 'agent', description: 'Agent 描述文件', color: 'purple', built_in: true },
+  { name: 'skill', description: 'Skill', color: 'green', built_in: true },
+  { name: 'knowledge', description: '知识库', color: 'orange', built_in: true },
+  { name: 'system', description: '系统配置', color: 'red', built_in: true },
+  { name: 'workflow', description: '工作流', color: 'cyan', built_in: true },
+  { name: 'tool', description: '工具描述', color: 'geekblue', built_in: true },
 ]
 
-let cachedBizLines: BizLineConfig[] | null = null
+let cachedAssetTypes: AssetTypeConfig[] | null = null
 
-export function getBizLines(): BizLineConfig[] {
-  if (cachedBizLines) return cachedBizLines
+export function getAssetTypes(): AssetTypeConfig[] {
+  if (cachedAssetTypes) return cachedAssetTypes
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      cachedBizLines = JSON.parse(stored)
-      return cachedBizLines!
+      cachedAssetTypes = JSON.parse(stored)
+      return cachedAssetTypes!
     }
   } catch {}
-  cachedBizLines = DEFAULT_BIZ_LINES
-  return cachedBizLines
+  cachedAssetTypes = DEFAULT_BIZ_LINES
+  return cachedAssetTypes
 }
 
-export async function loadBizLinesFromAPI(): Promise<void> {
+export async function loadAssetTypesFromAPI(): Promise<void> {
   try {
-    const { data } = await axios.get<{ biz_lines: BizLineConfig[] }>('/api/v1/taxonomy')
-    cachedBizLines = data.biz_lines || DEFAULT_BIZ_LINES
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedBizLines))
+    const { data } = await axios.get<{ asset_types: AssetTypeConfig[] }>('/api/v1/taxonomy')
+    cachedAssetTypes = data.asset_types || DEFAULT_BIZ_LINES
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedAssetTypes))
   } catch {
     // fallback to cached or default
-    if (!cachedBizLines) {
-      cachedBizLines = DEFAULT_BIZ_LINES
+    if (!cachedAssetTypes) {
+      cachedAssetTypes = DEFAULT_BIZ_LINES
     }
   }
 }
 
-export async function saveBizLinesToAPI(bizLines: BizLineConfig[]): Promise<void> {
-  cachedBizLines = bizLines
+export async function saveAssetTypesToAPI(bizLines: AssetTypeConfig[]): Promise<void> {
+  cachedAssetTypes = bizLines
   localStorage.setItem(STORAGE_KEY, JSON.stringify(bizLines))
-  await axios.put('/api/v1/taxonomy/biz_lines', bizLines)
+  await axios.put('/api/v1/taxonomy/asset_types', bizLines)
 }
 
-export function getBizLineColor(name: string): string {
-  const bizLines = getBizLines()
+export function getAssetTypeColor(name: string): string {
+  const bizLines = getAssetTypes()
   const found = bizLines.find((b) => b.name === name)
   return found?.color || 'default'
 }

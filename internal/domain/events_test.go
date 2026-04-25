@@ -137,7 +137,7 @@ func TestPromptAssetCreatedEvent(t *testing.T) {
 	t.Run("Create event", func(t *testing.T) {
 		require.Equal(t, "Test Asset", event.Name)
 		require.Equal(t, "desc", event.Description)
-		require.Equal(t, "bizline", event.BizLine)
+		require.Equal(t, "bizline", event.AssetType)
 		require.Equal(t, []string{"tag1"}, event.Tags)
 		require.Equal(t, "/path", event.FilePath)
 	})

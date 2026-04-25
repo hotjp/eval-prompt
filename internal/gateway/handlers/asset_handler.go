@@ -66,7 +66,7 @@ func (h *AssetHandler) generateTriggers(ctx context.Context, id, content string)
 		return nil, nil
 	}
 
-	// Get existing frontmatter for description and biz_line
+	// Get existing frontmatter for description and asset_type
 	fm, err := h.fileManager.GetFrontmatter(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get frontmatter: %w", err)
@@ -76,7 +76,7 @@ func (h *AssetHandler) generateTriggers(ctx context.Context, id, content string)
 	result, err := h.semanticAnalyzer.AnalyzeContent(ctx, service.AnalyzeContentRequest{
 		Content:     content,
 		Description: fm.Description,
-		BizLine:     fm.BizLine,
+		AssetType:     fm.AssetType,
 	})
 	if err != nil || result == nil {
 		return nil, err
@@ -148,7 +148,7 @@ type AssetResponse struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`
 	Description string             `json:"description,omitempty"`
-	BizLine     string             `json:"biz_line,omitempty"`
+	AssetType     string             `json:"asset_type,omitempty"`
 	Tags        []string           `json:"tags,omitempty"`
 	State       string             `json:"state,omitempty"`
 	Labels      map[string]string  `json:"labels,omitempty"`
@@ -174,7 +174,7 @@ type SnapshotResponse struct {
 //	@Tags assets
 //	@Accept json
 //	@Produce json
-//	@Param biz_line query string false "Business line filter"
+//	@Param asset_type query string false "Business line filter"
 //	@Param tag query string false "Tag filter"
 //	@Param state query string false "State filter"
 //	@Success 200 {object} map[string]interface{}
@@ -182,13 +182,13 @@ type SnapshotResponse struct {
 func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	bizLine := r.URL.Query().Get("biz_line")
+	bizLine := r.URL.Query().Get("asset_type")
 	tag := r.URL.Query().Get("tag")
 	state := r.URL.Query().Get("state")
 
 	filters := service.SearchFilters{
 		RepoPath: h.getCurrentRepoPath(),
-		BizLine:  bizLine,
+		AssetType:  bizLine,
 		State:    state,
 	}
 	if tag != "" {
@@ -207,7 +207,7 @@ func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 			ID:          r.ID,
 			Name:        r.Name,
 			Description: r.Description,
-			BizLine:     r.BizLine,
+			AssetType:     r.AssetType,
 			Tags:        r.Tags,
 			State:       r.State,
 		}
@@ -268,7 +268,7 @@ func (h *AssetHandler) GetAsset(w http.ResponseWriter, r *http.Request) {
 		ID:          detail.ID,
 		Name:        detail.Name,
 		Description: detail.Description,
-		BizLine:     detail.BizLine,
+		AssetType:     detail.AssetType,
 		Tags:        detail.Tags,
 		State:       detail.State,
 		Snapshots:   snapshots,
@@ -283,7 +283,7 @@ type CreateAssetRequest struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
 	Description string   `json:"description,omitempty"`
-	BizLine     string   `json:"biz_line,omitempty"`
+	AssetType     string   `json:"asset_type,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	Content     string   `json:"content,omitempty"`
 }
@@ -318,7 +318,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
-		BizLine:     req.BizLine,
+		AssetType:     req.AssetType,
 		Tags:        req.Tags,
 		State:       "created",
 		RepoPath:    h.getCurrentRepoPath(),
@@ -330,7 +330,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create placeholder file and commit to Git (best effort — non-fatal if git unavailable)
-	if err := h.indexer.CreatePlaceholder(ctx, req.ID, req.Name, req.BizLine, req.Tags); err != nil {
+	if err := h.indexer.CreatePlaceholder(ctx, req.ID, req.Name, req.AssetType, req.Tags); err != nil {
 		// Log but don't fail — placeholder is a courtesy for Git users
 		h.logger.Warn("failed to create placeholder file", "asset_id", req.ID, "error", err, "layer", "L5")
 	}
@@ -347,7 +347,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 type UpdateAssetRequest struct {
 	Name        *string  `json:"name,omitempty"`
 	Description *string  `json:"description,omitempty"`
-	BizLine     *string  `json:"biz_line,omitempty"`
+	AssetType     *string  `json:"asset_type,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	State       *string  `json:"state,omitempty"`
 }
@@ -395,8 +395,8 @@ func (h *AssetHandler) UpdateAsset(w http.ResponseWriter, r *http.Request) {
 	if req.Description != nil {
 		detail.Description = *req.Description
 	}
-	if req.BizLine != nil {
-		detail.BizLine = *req.BizLine
+	if req.AssetType != nil {
+		detail.AssetType = *req.AssetType
 	}
 	if req.Tags != nil {
 		detail.Tags = req.Tags
@@ -409,7 +409,7 @@ func (h *AssetHandler) UpdateAsset(w http.ResponseWriter, r *http.Request) {
 		ID:          detail.ID,
 		Name:        detail.Name,
 		Description: detail.Description,
-		BizLine:     detail.BizLine,
+		AssetType:     detail.AssetType,
 		Tags:        detail.Tags,
 		State:       detail.State,
 	}
@@ -611,7 +611,7 @@ func (h *AssetHandler) ArchiveAsset(w http.ResponseWriter, r *http.Request) {
 			ID:          fm.ID,
 			Name:        fm.Name,
 			Description: fm.Description,
-			BizLine:     fm.BizLine,
+			AssetType:     fm.AssetType,
 			Tags:        fm.Tags,
 			ContentHash: fm.ContentHash,
 			State:       fm.State,
@@ -670,7 +670,7 @@ func (h *AssetHandler) RestoreAsset(w http.ResponseWriter, r *http.Request) {
 			ID:          fm.ID,
 			Name:        fm.Name,
 			Description: fm.Description,
-			BizLine:     fm.BizLine,
+			AssetType:     fm.AssetType,
 			Tags:        fm.Tags,
 			ContentHash: fm.ContentHash,
 			State:       fm.State,

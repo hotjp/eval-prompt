@@ -57,7 +57,7 @@ var assetListCmd = &cobra.Command{
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		filters := service.SearchFilters{
-			BizLine: bizLine,
+			AssetType: bizLine,
 		}
 		if tag != "" {
 			filters.Tags = []string{tag}
@@ -82,7 +82,7 @@ var assetListCmd = &cobra.Command{
 			if len(r.Tags) > 0 {
 				tags = r.Tags[0]
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.ID, r.Name, r.BizLine, r.State, tags)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.ID, r.Name, r.AssetType, r.State, tags)
 		}
 		return w.Flush()
 	},
@@ -212,7 +212,7 @@ var assetCreateCmd = &cobra.Command{
 			ID:          id,
 			Name:        name,
 			Description: content,
-			BizLine:     bizLine,
+			AssetType:     bizLine,
 			ContentHash: contentHash,
 			FilePath:    filePath,
 			State:       "created",

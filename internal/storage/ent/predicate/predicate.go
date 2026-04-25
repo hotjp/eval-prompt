@@ -15,8 +15,14 @@ type AuditLog func(*sql.Selector)
 // EvalCase is the predicate function for evalcase builders.
 type EvalCase func(*sql.Selector)
 
+// EvalExecution is the predicate function for evalexecution builders.
+type EvalExecution func(*sql.Selector)
+
 // EvalRun is the predicate function for evalrun builders.
 type EvalRun func(*sql.Selector)
+
+// EvalWorkItem is the predicate function for evalworkitem builders.
+type EvalWorkItem func(*sql.Selector)
 
 // Label is the predicate function for label builders.
 type Label func(*sql.Selector)

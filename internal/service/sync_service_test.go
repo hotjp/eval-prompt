@@ -50,6 +50,22 @@ func (m *mockSyncIndexer) Reconcile(ctx context.Context) (ReconcileReport, error
 	return ReconcileReport{}, nil
 }
 
+func (m *mockSyncIndexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+	return "", nil
+}
+
+func (m *mockSyncIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *mockSyncIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *mockSyncIndexer) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 func TestSyncService_Reconcile(t *testing.T) {
 	mockIndexer := &mockSyncIndexer{
 		ReconcileFunc: func(ctx context.Context) (ReconcileReport, error) {
@@ -153,7 +169,7 @@ func TestSyncService_Export_JSON(t *testing.T) {
 					ID:          "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 					Name:        "Test Asset",
 					Description: "Test description",
-					BizLine:     "test",
+					AssetType:     "test",
 					Tags:        []string{"test"},
 					State:       "created",
 				},
@@ -182,7 +198,7 @@ func TestSyncService_Export_YAML(t *testing.T) {
 					ID:          "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 					Name:        "Test Asset",
 					Description: "Test description",
-					BizLine:     "test",
+					AssetType:     "test",
 					Tags:        []string{"test"},
 					State:       "created",
 				},

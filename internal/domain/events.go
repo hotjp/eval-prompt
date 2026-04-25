@@ -162,7 +162,7 @@ type PromptAssetCreatedEvent struct {
 	BaseEvent
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
-	BizLine     string   `json:"biz_line"`
+	AssetType     string   `json:"asset_type"`
 	Tags        []string `json:"tags"`
 	FilePath    string   `json:"file_path"`
 }
@@ -173,7 +173,7 @@ func NewPromptAssetCreatedEvent(assetID ID, name, description, bizLine string, t
 		BaseEvent:   NewBaseEvent("Asset", assetID, EventPromptAssetCreated, version),
 		Name:        name,
 		Description: description,
-		BizLine:     bizLine,
+		AssetType:     bizLine,
 		Tags:        tags,
 		FilePath:    filePath,
 	}
@@ -184,7 +184,7 @@ func (e *PromptAssetCreatedEvent) ToMap() map[string]interface{} {
 	m := e.BaseEvent.ToMap()
 	m["name"] = e.Name
 	m["description"] = e.Description
-	m["biz_line"] = e.BizLine
+	m["asset_type"] = e.AssetType
 	m["tags"] = e.Tags
 	m["file_path"] = e.FilePath
 	return m

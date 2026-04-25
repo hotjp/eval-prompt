@@ -23,7 +23,7 @@ func TestAssetService_CreateAsset(t *testing.T) {
 	req := &CreateAssetRequest{
 		Name:        "Test Asset",
 		Description: "A test asset",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test", "unit"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "abc123",
@@ -101,7 +101,7 @@ func TestAssetService_UpdateAsset(t *testing.T) {
 	createResp, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 		Name:        "Original Name",
 		Description: "Original description",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "originalhash",
@@ -141,7 +141,7 @@ func TestAssetService_UpdateAsset_UnchangedHash(t *testing.T) {
 	createResp, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 		Name:        "Test",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "samehash",
@@ -171,7 +171,7 @@ func TestAssetService_GetAsset(t *testing.T) {
 	createResp, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 		Name:        "Test Asset",
 		Description: "Test description",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "abc123",
@@ -215,7 +215,7 @@ func TestAssetService_ListAssets(t *testing.T) {
 		_, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			FilePath:    "/prompts/asset.md",
 			ContentHash: "hash",
@@ -247,7 +247,7 @@ func TestAssetService_ListAssets_Pagination(t *testing.T) {
 		_, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			FilePath:    "/prompts/asset.md",
 			ContentHash: "hash",
@@ -278,7 +278,7 @@ func TestAssetService_SetLabel(t *testing.T) {
 	createResp, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 		Name:        "Test",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "abc123",
@@ -319,7 +319,7 @@ func TestAssetService_UnsetLabel(t *testing.T) {
 	createResp, err := svc.CreateAsset(ctx, &CreateAssetRequest{
 		Name:        "Test",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		FilePath:    "/prompts/test.md",
 		ContentHash: "abc123",

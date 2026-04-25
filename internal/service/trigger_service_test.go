@@ -49,6 +49,22 @@ func (m *mockAssetIndexer) Reconcile(ctx context.Context) (ReconcileReport, erro
 	return ReconcileReport{}, nil
 }
 
+func (m *mockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
+func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+	return "", nil
+}
+
+func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	return nil
+}
+
+func (m *mockAssetIndexer) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 func TestTriggerService_MatchTrigger(t *testing.T) {
 	mockIndexer := &mockAssetIndexer{
 		SearchFunc: func(ctx context.Context, query string, filters SearchFilters) ([]AssetSummary, error) {
@@ -57,7 +73,7 @@ func TestTriggerService_MatchTrigger(t *testing.T) {
 					ID:          "01ARZ3NDEKTSV4RRFFQ69G5FAV",
 					Name:        "Code Review",
 					Description: "Review code changes",
-					BizLine:     "engineering",
+					AssetType:     "engineering",
 					Tags:        []string{"code", "review"},
 					State:       "created",
 				},
@@ -65,7 +81,7 @@ func TestTriggerService_MatchTrigger(t *testing.T) {
 					ID:          "01ARZ3NDEKTSV4RRFFQ69G5FAW",
 					Name:        "Documentation Writer",
 					Description: "Write documentation",
-					BizLine:     "docs",
+					AssetType:     "docs",
 					Tags:        []string{"docs", "writing"},
 					State:       "created",
 				},

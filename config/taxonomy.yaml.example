@@ -1,7 +1,7 @@
 # Taxonomy configuration - sync via Git
 # Edit through Settings UI or directly here
 
-biz_lines:
+asset_types:
   - name: common
     description: Common prompts
     color: default

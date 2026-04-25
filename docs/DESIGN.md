@@ -168,7 +168,7 @@ type Asset struct {
     ID          string
     Name        string
     Description string
-    BizLine     string
+    AssetType     string
     Tags        []string
     ContentHash string
     FilePath    string
@@ -254,7 +254,7 @@ func NewSQLite(cfg DatabaseConfig) (*Client, error) {
 
 **表结构（ent schema）**：
 
-- `Asset`：id(PK), name, description, biz_line, tags(JSON), content_hash, file_path, state, created_at, updated_at
+- `Asset`：id(PK), name, description, asset_type, tags(JSON), content_hash, file_path, state, created_at, updated_at
 - `Snapshot`：id, asset_id(FK), version, content_hash, commit_hash, author, reason, model, temperature, metrics(JSON), created_at
 - `Label`：id, asset_id(FK), name, snapshot_id(FK), updated_at
 - `EvalCase`：id(PK), asset_id(FK), name, prompt, should_trigger, expected_output, rubric(JSON), created_at
@@ -628,7 +628,7 @@ ep serve --port 8080 &
 
 **方法**：
 
-`prompts/list`：返回可用 Prompt 列表，支持 `biz_line` 和 `tag` 过滤。  
+`prompts/list`：返回可用 Prompt 列表，支持 `asset_type` 和 `tag` 过滤。  
 `prompts/get`：获取指定 Prompt 渲染后内容。参数：`id`、`variables`、`label`（默认 `prod`）。  
 `prompts/eval`：触发 Eval。参数：`id`、`snapshot_version`、`case_id`。
 
@@ -770,7 +770,7 @@ func (Asset) Fields() []ent.Field {
         field.String("id").MaxLen(128).NotEmpty().Unique(),
         field.String("name").MaxLen(100).NotEmpty(),
         field.Text("description"),
-        field.String("biz_line").MaxLen(64).Optional(),
+        field.String("asset_type").MaxLen(64).Optional(),
         field.JSON("tags", []string{}).Optional(),
         field.String("content_hash").MaxLen(64).NotEmpty(),
         field.String("file_path").MaxLen(512).NotEmpty(),
@@ -988,7 +988,7 @@ type LLMPluginConfig struct {
 slog.Info("asset_created",
     "layer", "L4",
     "asset_id", req.ID,
-    "biz_line", req.BizLine,
+    "asset_type", req.AssetType,
     "trace_id", span.SpanContext().TraceID(),
 )
 
@@ -1000,7 +1000,7 @@ fmt.Println(req)
 ### 10.2 OpenTelemetry
 
 **Trace**：覆盖 Gateway → Service → Domain → Storage 全链路，Span 标签携带 `asset_id`、`eval_case_id`。  
-**Metrics**：`prompt_assets_total`（按 biz_line）、`eval_runs_total`（按 status）、`eval_duration_seconds`（Histogram）。  
+**Metrics**：`prompt_assets_total`（按 asset_type）、`eval_runs_total`（按 status）、`eval_duration_seconds`（Histogram）。  
 **健康检查**：`/healthz`（存活）、`/readyz`（就绪，检查 SQLite）。
 
 ---
@@ -1256,7 +1256,7 @@ description: 对 Go 代码进行结构化评审...
 version: 1.2.3
 model: claude-3-5-sonnet
 temperature: 0.1
-biz_line: common
+asset_type: common
 tags: ["go", "review", "quality"]
 author: "dev-lead"
 eval_required: true

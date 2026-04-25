@@ -5,7 +5,7 @@ import type { MenuProps } from 'antd'
 import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
-import { getBizLines, getBizLineColor } from '../config/bizLines'
+import { getAssetTypes, getAssetTypeColor } from '../config/bizLines'
 import { getTagColor } from '../config/tags'
 
 const { Search } = Input
@@ -23,7 +23,7 @@ function AssetListView() {
   const navigate = useNavigate()
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedBizLine, setSelectedBizLine] = useState<string>('all')
+  const [selectedAssetType, setSelectedAssetType] = useState<string>('all')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('active')
@@ -120,7 +120,7 @@ function AssetListView() {
   const archivedAssets = assets.filter(a => a.state === 'archived')
 
   const filteredAssets = (viewMode === 'archived' ? archivedAssets : activeAssets).filter((asset) => {
-    const matchBiz = selectedBizLine === 'all' || asset.biz_line === selectedBizLine
+    const matchBiz = selectedAssetType === 'all' || asset.asset_type === selectedAssetType
     const matchTags = selectedTags.length === 0 || selectedTags.every((t) => asset.tags?.includes(t))
     const matchSearch =
       !searchText ||
@@ -129,8 +129,8 @@ function AssetListView() {
     return matchBiz && matchTags && matchSearch
   })
 
-  const getCountByBizLine = (biz: string) =>
-    biz === 'all' ? activeAssets.length : activeAssets.filter((a) => a.biz_line === biz).length
+  const getCountByAssetType = (biz: string) =>
+    biz === 'all' ? activeAssets.length : activeAssets.filter((a) => a.asset_type === biz).length
 
   const getCountByTag = (tag: string) => activeAssets.filter((a) => a.tags?.includes(tag)).length
 
@@ -193,23 +193,23 @@ function AssetListView() {
           <>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>BIZ LINE</div>
-              {['all', ...getBizLines().map((b) => b.name)].map((biz) => (
+              {['all', ...getAssetTypes().map((b) => b.name)].map((biz) => (
                 <div
                   key={biz}
-                  onClick={() => setSelectedBizLine(biz)}
+                  onClick={() => setSelectedAssetType(biz)}
                   style={{
                     padding: '6px 8px',
                     cursor: 'pointer',
                     borderRadius: 4,
-                    background: selectedBizLine === biz ? '#e6f7ff' : 'transparent',
-                    color: selectedBizLine === biz ? '#1890ff' : '#333',
-                    fontWeight: selectedBizLine === biz ? 600 : 400,
+                    background: selectedAssetType === biz ? '#e6f7ff' : 'transparent',
+                    color: selectedAssetType === biz ? '#1890ff' : '#333',
+                    fontWeight: selectedAssetType === biz ? 600 : 400,
                     display: 'flex',
                     justifyContent: 'space-between',
                   }}
                 >
                   <span>{biz === 'all' ? 'All Assets' : biz}</span>
-                  <span style={{ fontSize: 12, color: '#888' }}>{getCountByBizLine(biz)}</span>
+                  <span style={{ fontSize: 12, color: '#888' }}>{getCountByAssetType(biz)}</span>
                 </div>
               ))}
             </div>
@@ -288,8 +288,8 @@ function AssetListView() {
                 >
                   {/* Biz Line corner badge */}
                   <div style={{ position: 'absolute', top: 8, left: 8 }}>
-                    <Tag color={getBizLineColor(asset.biz_line)} style={{ margin: 0 }}>
-                      {asset.biz_line}
+                    <Tag color={getAssetTypeColor(asset.asset_type)} style={{ margin: 0 }}>
+                      {asset.asset_type}
                     </Tag>
                   </div>
                   <div style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', paddingTop: 20, marginBottom: 6 }} onClick={() => navigate(`/assets/${asset.id}/edit`)}>

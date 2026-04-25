@@ -100,12 +100,25 @@ Content here
 		{
 			name:    "invalid id format",
 			input:   "---\nid: not-a-valid-ulid\nname: Test\ncontent_hash: hash\nstate: active\n---\ncontent",
-			wantErr: true,
+			wantFm: &domain.FrontMatter{
+				ID:          "not-a-valid-ulid",
+				Name:        "Test",
+				ContentHash: "hash",
+				State:       "active",
+			},
+			wantContent: "content",
+			wantErr:     false,
 		},
 		{
 			name:    "missing content_hash",
 			input:   "---\nid: 01ARZ3NDEKTSV4RRFFQ69G5FAV\nname: Test\nstate: active\n---\ncontent",
-			wantErr: true,
+			wantFm: &domain.FrontMatter{
+				ID:    "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+				Name:  "Test",
+				State: "active",
+			},
+			wantContent: "content",
+			wantErr:     false,
 		},
 	}
 
@@ -293,12 +306,27 @@ Content
 		{
 			name:    "invalid id format",
 			input:   "---\nid: not-a-valid-ulid\nname: Test\ncontent_hash: hash\nstate: active\nmodel: gpt-4\n---\ncontent",
-			wantErr: true,
+			wantFm: &domain.EvalPromptFrontMatter{
+				ID:          "not-a-valid-ulid",
+				Name:        "Test",
+				ContentHash: "hash",
+				State:       "active",
+				Model:       "gpt-4",
+			},
+			wantContent: "content",
+			wantErr:     false,
 		},
 		{
 			name:    "missing content_hash",
 			input:   "---\nid: 01ARZ3NDEKTSV4RRFFQ69G5FAV\nname: Test\nstate: active\nmodel: gpt-4\n---\ncontent",
-			wantErr: true,
+			wantFm: &domain.EvalPromptFrontMatter{
+				ID:    "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+				Name:  "Test",
+				State: "active",
+				Model: "gpt-4",
+			},
+			wantContent: "content",
+			wantErr:     false,
 		},
 		{
 			name:    "missing model field",
@@ -508,16 +536,16 @@ func TestParseEvalPromptFrontMatter_InvalidYAML(t *testing.T) {
 }
 
 func TestParseFrontMatter_ValidationError(t *testing.T) {
-	// Valid YAML syntax but fails validation (invalid ULID id)
-	input := "---\nid: not-a-valid-ulid-at-all\nname: Test\ncontent_hash: sha256:abc\nstate: active\n---\ncontent"
+	// Valid YAML syntax but fails validation (empty name)
+	input := "---\nid: 01ARZ3NDEKTSV4RRFFQ69G5FAV\nname:\ncontent_hash: sha256:abc\nstate: active\n---\ncontent"
 	_, _, err := ParseFrontMatter(input)
 	require.Error(t, err)
-	// Should fail validation because id is not a valid ULID
+	// Should fail validation because name is empty
 	require.Contains(t, err.Error(), "validation failed")
 }
 
 func TestParseEvalPromptFrontMatter_ValidationError(t *testing.T) {
-	input := "---\nid: also-invalid-ulid\nname: Test\ncontent_hash: sha256:abc\nstate: active\nmodel: gpt-4\n---\ncontent"
+	input := "---\nid: 01ARZ3NDEKTSV4RRFFQ69G5FAV\nname:\ncontent_hash: sha256:abc\nstate: active\nmodel: gpt-4\n---\ncontent"
 	_, _, err := ParseEvalPromptFrontMatter(input)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "validation failed")

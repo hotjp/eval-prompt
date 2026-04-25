@@ -1,16 +1,25 @@
-bizlines:
-    - name: tech
-      description: 技术研发
+asset_types:
+    - name: prompt
+      description: 提示词
       color: blue
-    - name: opinion
-      description: 舆情业务
-      color: red
-    - name: marketing
-      description: 营销业务
-      color: green
-    - name: content
-      description: 内容创作
+    - name: agent
+      description: Agent 描述文件
       color: purple
+    - name: skill
+      description: Skill
+      color: green
+    - name: knowledge
+      description: 知识库
+      color: orange
+    - name: system
+      description: 系统配置
+      color: red
+    - name: workflow
+      description: 工作流
+      color: cyan
+    - name: tool
+      description: 工具描述
+      color: geekblue
 tags:
     - name: prod
       color: green

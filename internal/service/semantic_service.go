@@ -65,7 +65,7 @@ Respond with a JSON object containing:
 - issues: array of issues with severity (high/medium/low), location, problem, and suggestion
 - score: object with overall, clarity, and completeness scores (0-100)
 
-Respond with ONLY the JSON object.`, req.Content, req.Description, req.BizLine)
+Respond with ONLY the JSON object.`, req.Content, req.Description, req.AssetType)
 
 	// Use configured model, error if not set
 	model := s.model

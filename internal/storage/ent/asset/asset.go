@@ -23,6 +23,8 @@ const (
 	FieldContentHash = "content_hash"
 	// FieldFilePath holds the string denoting the file_path field in the database.
 	FieldFilePath = "file_path"
+	// FieldRepoPath holds the string denoting the repo_path field in the database.
+	FieldRepoPath = "repo_path"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
 	// Table holds the table name of the asset in the database.
@@ -37,6 +39,7 @@ var Columns = []string{
 	FieldTags,
 	FieldContentHash,
 	FieldFilePath,
+	FieldRepoPath,
 	FieldState,
 }
 
@@ -57,6 +60,8 @@ var (
 	ContentHashValidator func(string) error
 	// FilePathValidator is a validator for the "file_path" field. It is called by the builders before save.
 	FilePathValidator func(string) error
+	// RepoPathValidator is a validator for the "repo_path" field. It is called by the builders before save.
+	RepoPathValidator func(string) error
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -116,6 +121,11 @@ func ByContentHash(opts ...sql.OrderTermOption) OrderOption {
 // ByFilePath orders the results by the file_path field.
 func ByFilePath(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFilePath, opts...).ToFunc()
+}
+
+// ByRepoPath orders the results by the repo_path field.
+func ByRepoPath(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRepoPath, opts...).ToFunc()
 }
 
 // ByState orders the results by the state field.

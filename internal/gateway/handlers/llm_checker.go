@@ -31,3 +31,8 @@ func (c *LLMCheckerAdapter) Ping(ctx context.Context) error {
 
 	return c.invoker.Ping(pingCtx)
 }
+
+// SetInvoker updates the underlying LLM invoker (allows hot reload of config).
+func (c *LLMCheckerAdapter) SetInvoker(invoker llm.Interface) {
+	c.invoker = invoker
+}

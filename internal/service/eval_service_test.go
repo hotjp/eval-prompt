@@ -10,7 +10,7 @@ func TestEvalService_RunEval_NotImplemented(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
-	_, err := svc.RunEval(ctx, "asset-id", "v1.0.0", nil)
+	_, err := svc.RunEval(ctx, &RunEvalRequest{AssetID: "asset-id", SnapshotVersion: "v1.0.0"})
 	if err == nil {
 		t.Error("expected error for not implemented")
 	}

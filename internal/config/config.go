@@ -29,14 +29,14 @@ type Config struct {
 	Taxonomy     TaxonomyConfig     `koanf:"taxonomy"`
 }
 
-// TaxonomyConfig holds biz_line and tag taxonomy definitions.
+// TaxonomyConfig holds asset_type and tag taxonomy definitions.
 type TaxonomyConfig struct {
-	BizLines []BizLineConfig `koanf:"biz_lines"`
+	AssetTypes []AssetTypeConfig `koanf:"asset_types"`
 	Tags     []TagConfig     `koanf:"tags"`
 }
 
-// BizLineConfig holds a single biz_line definition.
-type BizLineConfig struct {
+// AssetTypeConfig holds a single asset_type definition.
+type AssetTypeConfig struct {
 	Name        string `koanf:"name"`
 	Description string `koanf:"description"`
 	Color       string `koanf:"color"`
@@ -240,11 +240,14 @@ func getDefaults() map[string]interface{} {
 		"plugins.search.api_key": "",
 
 		// Taxonomy defaults
-		"taxonomy.biz_lines": []map[string]string{
-			{"name": "tech", "description": "技术研发", "color": "blue"},
-			{"name": "opinion", "description": "舆情业务", "color": "red"},
-			{"name": "marketing", "description": "营销业务", "color": "green"},
-			{"name": "content", "description": "内容创作", "color": "purple"},
+		"taxonomy.asset_types": []map[string]string{
+			{"name": "prompt", "description": "提示词", "color": "blue"},
+			{"name": "agent", "description": "Agent 描述文件", "color": "purple"},
+			{"name": "skill", "description": "Skill", "color": "green"},
+			{"name": "knowledge", "description": "知识库", "color": "orange"},
+			{"name": "system", "description": "系统配置", "color": "red"},
+			{"name": "workflow", "description": "工作流", "color": "cyan"},
+			{"name": "tool", "description": "工具描述", "color": "geekblue"},
 		},
 		"taxonomy.tags": []map[string]string{
 			{"name": "prod", "color": "green"},
@@ -345,16 +348,16 @@ func LoadTaxonomy(path string) (*TaxonomyConfig, error) {
 	}
 
 	// Merge user config: override built-in by name, append new user items
-	merged.BizLines = mergeBizLines(merged.BizLines, userTaxonomy.BizLines)
+	merged.AssetTypes = mergeAssetTypes(merged.AssetTypes, userTaxonomy.AssetTypes)
 	merged.Tags = mergeTags(merged.Tags, userTaxonomy.Tags)
 
 	return merged, nil
 }
 
-// mergeBizLines merges user biz_lines into built-in ones.
+// mergeAssetTypes merges user asset_types into built-in ones.
 // User items override built-in by name (case-sensitive).
-func mergeBizLines(builtIn, user []BizLineConfig) []BizLineConfig {
-	result := make([]BizLineConfig, 0, len(builtIn)+len(user))
+func mergeAssetTypes(builtIn, user []AssetTypeConfig) []AssetTypeConfig {
+	result := make([]AssetTypeConfig, 0, len(builtIn)+len(user))
 	seen := make(map[string]bool)
 
 	// First add all built-in
@@ -366,7 +369,7 @@ func mergeBizLines(builtIn, user []BizLineConfig) []BizLineConfig {
 
 	// Then add user items (override or append)
 	for _, u := range user {
-		if overridden, exists := findBizLineByName(result, u.Name); exists {
+		if overridden, exists := findAssetTypeByName(result, u.Name); exists {
 			// Override: keep BuiltIn=true but update description/color
 			overridden.Description = u.Description
 			overridden.Color = u.Color
@@ -406,7 +409,7 @@ func mergeTags(builtIn, user []TagConfig) []TagConfig {
 	return result
 }
 
-func findBizLineByName(list []BizLineConfig, name string) (*BizLineConfig, bool) {
+func findAssetTypeByName(list []AssetTypeConfig, name string) (*AssetTypeConfig, bool) {
 	for i := range list {
 		if list[i].Name == name {
 			return &list[i], true
@@ -451,11 +454,14 @@ func SaveTaxonomy(path string, taxonomy *TaxonomyConfig) error {
 // defaultTaxonomy returns the default taxonomy configuration.
 func defaultTaxonomy() *TaxonomyConfig {
 	return &TaxonomyConfig{
-		BizLines: []BizLineConfig{
-			{Name: "tech", Description: "技术研发", Color: "blue", BuiltIn: true},
-			{Name: "opinion", Description: "舆情业务", Color: "red", BuiltIn: true},
-			{Name: "marketing", Description: "营销业务", Color: "green", BuiltIn: true},
-			{Name: "content", Description: "内容创作", Color: "purple", BuiltIn: true},
+		AssetTypes: []AssetTypeConfig{
+			{Name: "prompt", Description: "提示词", Color: "blue", BuiltIn: true},
+			{Name: "agent", Description: "Agent 描述文件", Color: "purple", BuiltIn: true},
+			{Name: "skill", Description: "Skill", Color: "green", BuiltIn: true},
+			{Name: "knowledge", Description: "知识库", Color: "orange", BuiltIn: true},
+			{Name: "system", Description: "系统配置", Color: "red", BuiltIn: true},
+			{Name: "workflow", Description: "工作流", Color: "cyan", BuiltIn: true},
+			{Name: "tool", Description: "工具描述", Color: "geekblue", BuiltIn: true},
 		},
 		Tags: []TagConfig{
 			{Name: "prod", Color: "green", BuiltIn: true},

@@ -32,7 +32,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Business line filter",
-                        "name": "biz_line",
+                        "name": "asset_type",
                         "in": "query"
                     },
                     {
@@ -704,7 +704,7 @@ const docTemplate = `{
         "handlers.AssetResponse": {
             "type": "object",
             "properties": {
-                "biz_line": {
+                "asset_type": {
                     "type": "string"
                 },
                 "created_at": {
@@ -762,7 +762,7 @@ const docTemplate = `{
         "handlers.CreateAssetRequest": {
             "type": "object",
             "properties": {
-                "biz_line": {
+                "asset_type": {
                     "type": "string"
                 },
                 "content": {
@@ -889,7 +889,7 @@ const docTemplate = `{
         "handlers.UpdateAssetRequest": {
             "type": "object",
             "properties": {
-                "biz_line": {
+                "asset_type": {
                     "type": "string"
                 },
                 "description": {

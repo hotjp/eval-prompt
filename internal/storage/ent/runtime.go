@@ -8,7 +8,9 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/auditlog"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
+	"github.com/eval-prompt/internal/storage/ent/evalexecution"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
+	"github.com/eval-prompt/internal/storage/ent/evalworkitem"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
@@ -75,6 +77,10 @@ func init() {
 			return nil
 		}
 	}()
+	// assetDescRepoPath is the schema descriptor for repo_path field.
+	assetDescRepoPath := assetFields[6].Descriptor()
+	// asset.RepoPathValidator is a validator for the "repo_path" field. It is called by the builders before save.
+	asset.RepoPathValidator = assetDescRepoPath.Validators[0].(func(string) error)
 	// assetDescID is the schema descriptor for id field.
 	assetDescID := assetFields[0].Descriptor()
 	// asset.IDValidator is a validator for the "id" field. It is called by the builders before save.
@@ -193,6 +199,76 @@ func init() {
 			return nil
 		}
 	}()
+	evalexecutionFields := schema.EvalExecution{}.Fields()
+	_ = evalexecutionFields
+	// evalexecutionDescAssetID is the schema descriptor for asset_id field.
+	evalexecutionDescAssetID := evalexecutionFields[1].Descriptor()
+	// evalexecution.AssetIDValidator is a validator for the "asset_id" field. It is called by the builders before save.
+	evalexecution.AssetIDValidator = func() func(string) error {
+		validators := evalexecutionDescAssetID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(asset_id string) error {
+			for _, fn := range fns {
+				if err := fn(asset_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// evalexecutionDescSnapshotID is the schema descriptor for snapshot_id field.
+	evalexecutionDescSnapshotID := evalexecutionFields[2].Descriptor()
+	// evalexecution.SnapshotIDValidator is a validator for the "snapshot_id" field. It is called by the builders before save.
+	evalexecution.SnapshotIDValidator = evalexecutionDescSnapshotID.Validators[0].(func(string) error)
+	// evalexecutionDescRunsPerCase is the schema descriptor for runs_per_case field.
+	evalexecutionDescRunsPerCase := evalexecutionFields[4].Descriptor()
+	// evalexecution.DefaultRunsPerCase holds the default value on creation for the runs_per_case field.
+	evalexecution.DefaultRunsPerCase = evalexecutionDescRunsPerCase.Default.(int)
+	// evalexecutionDescCompletedRuns is the schema descriptor for completed_runs field.
+	evalexecutionDescCompletedRuns := evalexecutionFields[7].Descriptor()
+	// evalexecution.DefaultCompletedRuns holds the default value on creation for the completed_runs field.
+	evalexecution.DefaultCompletedRuns = evalexecutionDescCompletedRuns.Default.(int)
+	// evalexecutionDescFailedRuns is the schema descriptor for failed_runs field.
+	evalexecutionDescFailedRuns := evalexecutionFields[8].Descriptor()
+	// evalexecution.DefaultFailedRuns holds the default value on creation for the failed_runs field.
+	evalexecution.DefaultFailedRuns = evalexecutionDescFailedRuns.Default.(int)
+	// evalexecutionDescConcurrency is the schema descriptor for concurrency field.
+	evalexecutionDescConcurrency := evalexecutionFields[10].Descriptor()
+	// evalexecution.DefaultConcurrency holds the default value on creation for the concurrency field.
+	evalexecution.DefaultConcurrency = evalexecutionDescConcurrency.Default.(int)
+	// evalexecutionDescModel is the schema descriptor for model field.
+	evalexecutionDescModel := evalexecutionFields[11].Descriptor()
+	// evalexecution.ModelValidator is a validator for the "model" field. It is called by the builders before save.
+	evalexecution.ModelValidator = evalexecutionDescModel.Validators[0].(func(string) error)
+	// evalexecutionDescTemperature is the schema descriptor for temperature field.
+	evalexecutionDescTemperature := evalexecutionFields[12].Descriptor()
+	// evalexecution.DefaultTemperature holds the default value on creation for the temperature field.
+	evalexecution.DefaultTemperature = evalexecutionDescTemperature.Default.(float64)
+	// evalexecutionDescCreatedAt is the schema descriptor for created_at field.
+	evalexecutionDescCreatedAt := evalexecutionFields[13].Descriptor()
+	// evalexecution.DefaultCreatedAt holds the default value on creation for the created_at field.
+	evalexecution.DefaultCreatedAt = evalexecutionDescCreatedAt.Default.(func() time.Time)
+	// evalexecutionDescID is the schema descriptor for id field.
+	evalexecutionDescID := evalexecutionFields[0].Descriptor()
+	// evalexecution.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	evalexecution.IDValidator = func() func(string) error {
+		validators := evalexecutionDescID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(id string) error {
+			for _, fn := range fns {
+				if err := fn(id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	evalrunFields := schema.EvalRun{}.Fields()
 	_ = evalrunFields
 	// evalrunDescTracePath is the schema descriptor for trace_path field.
@@ -208,6 +284,94 @@ func init() {
 	// evalrun.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	evalrun.IDValidator = func() func(string) error {
 		validators := evalrunDescID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(id string) error {
+			for _, fn := range fns {
+				if err := fn(id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	evalworkitemFields := schema.EvalWorkItem{}.Fields()
+	_ = evalworkitemFields
+	// evalworkitemDescExecutionID is the schema descriptor for execution_id field.
+	evalworkitemDescExecutionID := evalworkitemFields[1].Descriptor()
+	// evalworkitem.ExecutionIDValidator is a validator for the "execution_id" field. It is called by the builders before save.
+	evalworkitem.ExecutionIDValidator = func() func(string) error {
+		validators := evalworkitemDescExecutionID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(execution_id string) error {
+			for _, fn := range fns {
+				if err := fn(execution_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// evalworkitemDescEvalCaseID is the schema descriptor for eval_case_id field.
+	evalworkitemDescEvalCaseID := evalworkitemFields[2].Descriptor()
+	// evalworkitem.EvalCaseIDValidator is a validator for the "eval_case_id" field. It is called by the builders before save.
+	evalworkitem.EvalCaseIDValidator = func() func(string) error {
+		validators := evalworkitemDescEvalCaseID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(eval_case_id string) error {
+			for _, fn := range fns {
+				if err := fn(eval_case_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// evalworkitemDescRunNumber is the schema descriptor for run_number field.
+	evalworkitemDescRunNumber := evalworkitemFields[3].Descriptor()
+	// evalworkitem.DefaultRunNumber holds the default value on creation for the run_number field.
+	evalworkitem.DefaultRunNumber = evalworkitemDescRunNumber.Default.(int)
+	// evalworkitemDescPromptHash is the schema descriptor for prompt_hash field.
+	evalworkitemDescPromptHash := evalworkitemFields[5].Descriptor()
+	// evalworkitem.PromptHashValidator is a validator for the "prompt_hash" field. It is called by the builders before save.
+	evalworkitem.PromptHashValidator = evalworkitemDescPromptHash.Validators[0].(func(string) error)
+	// evalworkitemDescModel is the schema descriptor for model field.
+	evalworkitemDescModel := evalworkitemFields[8].Descriptor()
+	// evalworkitem.ModelValidator is a validator for the "model" field. It is called by the builders before save.
+	evalworkitem.ModelValidator = evalworkitemDescModel.Validators[0].(func(string) error)
+	// evalworkitemDescTemperature is the schema descriptor for temperature field.
+	evalworkitemDescTemperature := evalworkitemFields[9].Descriptor()
+	// evalworkitem.DefaultTemperature holds the default value on creation for the temperature field.
+	evalworkitem.DefaultTemperature = evalworkitemDescTemperature.Default.(float64)
+	// evalworkitemDescTokensIn is the schema descriptor for tokens_in field.
+	evalworkitemDescTokensIn := evalworkitemFields[10].Descriptor()
+	// evalworkitem.DefaultTokensIn holds the default value on creation for the tokens_in field.
+	evalworkitem.DefaultTokensIn = evalworkitemDescTokensIn.Default.(int)
+	// evalworkitemDescTokensOut is the schema descriptor for tokens_out field.
+	evalworkitemDescTokensOut := evalworkitemFields[11].Descriptor()
+	// evalworkitem.DefaultTokensOut holds the default value on creation for the tokens_out field.
+	evalworkitem.DefaultTokensOut = evalworkitemDescTokensOut.Default.(int)
+	// evalworkitemDescDurationMs is the schema descriptor for duration_ms field.
+	evalworkitemDescDurationMs := evalworkitemFields[12].Descriptor()
+	// evalworkitem.DefaultDurationMs holds the default value on creation for the duration_ms field.
+	evalworkitem.DefaultDurationMs = evalworkitemDescDurationMs.Default.(int)
+	// evalworkitemDescCreatedAt is the schema descriptor for created_at field.
+	evalworkitemDescCreatedAt := evalworkitemFields[14].Descriptor()
+	// evalworkitem.DefaultCreatedAt holds the default value on creation for the created_at field.
+	evalworkitem.DefaultCreatedAt = evalworkitemDescCreatedAt.Default.(func() time.Time)
+	// evalworkitemDescID is the schema descriptor for id field.
+	evalworkitemDescID := evalworkitemFields[0].Descriptor()
+	// evalworkitem.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	evalworkitem.IDValidator = func() func(string) error {
+		validators := evalworkitemDescID.Validators
 		fns := [...]func(string) error{
 			validators[0].(func(string) error),
 			validators[1].(func(string) error),

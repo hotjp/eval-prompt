@@ -20,24 +20,25 @@ import (
 
 // mockEvalServiceer is a mock implementation of EvalServiceer for E2E testing.
 type mockEvalServiceer struct {
-	RunEvalFunc        func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error)
-	GetEvalRunFunc     func(ctx context.Context, runID string) (*svc.EvalRun, error)
-	ListEvalRunsFunc   func(ctx context.Context, assetID string) ([]*svc.EvalRun, error)
-	CompareEvalFunc    func(ctx context.Context, assetID string, v1, v2 string) (*svc.CompareResult, error)
-	GenerateReportFunc func(ctx context.Context, runID string) (*svc.EvalReport, error)
-	DiagnoseEvalFunc   func(ctx context.Context, runID string) (*svc.Diagnosis, error)
-	ListEvalCasesFunc  func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
+	RunEvalFunc         func(ctx context.Context, req *svc.RunEvalRequest) (*domain.EvalExecution, error)
+	GetEvalRunFunc      func(ctx context.Context, runID string) (*svc.EvalRun, error)
+	ListEvalRunsFunc    func(ctx context.Context, assetID string) ([]*svc.EvalRun, error)
+	CompareEvalFunc     func(ctx context.Context, assetID string, v1, v2 string) (*svc.CompareResult, error)
+	GenerateReportFunc  func(ctx context.Context, runID string) (*svc.EvalReport, error)
+	DiagnoseEvalFunc    func(ctx context.Context, runID string) (*svc.Diagnosis, error)
+	ListEvalCasesFunc   func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
+	GetExecutionFunc    func(ctx context.Context, executionID string) (*domain.EvalExecution, error)
+	CancelExecutionFunc func(ctx context.Context, executionID string) error
+	ListExecutionsFunc  func(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error)
 }
 
-func (m *mockEvalServiceer) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error) {
+func (m *mockEvalServiceer) RunEval(ctx context.Context, req *svc.RunEvalRequest) (*domain.EvalExecution, error) {
 	if m.RunEvalFunc != nil {
-		return m.RunEvalFunc(ctx, assetID, snapshotVersion, caseIDs)
+		return m.RunEvalFunc(ctx, req)
 	}
-	return &svc.EvalRun{
-		ID:        "run-e2e-001",
-		AssetID:   assetID,
-		Status:    svc.EvalRunStatusRunning,
-		CreatedAt: time.Now(),
+	return &domain.EvalExecution{
+		ID:     "execution-e2e-001",
+		Status: domain.ExecutionStatusRunning,
 	}, nil
 }
 
@@ -107,13 +108,37 @@ func (m *mockEvalServiceer) ListEvalCases(ctx context.Context, assetID string) (
 	}, nil
 }
 
+func (m *mockEvalServiceer) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
+	if m.GetExecutionFunc != nil {
+		return m.GetExecutionFunc(ctx, executionID)
+	}
+	return &domain.EvalExecution{
+		ID:     executionID,
+		Status: domain.ExecutionStatusRunning,
+	}, nil
+}
+
+func (m *mockEvalServiceer) CancelExecution(ctx context.Context, executionID string) error {
+	if m.CancelExecutionFunc != nil {
+		return m.CancelExecutionFunc(ctx, executionID)
+	}
+	return nil
+}
+
+func (m *mockEvalServiceer) ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error) {
+	if m.ListExecutionsFunc != nil {
+		return m.ListExecutionsFunc(ctx, offset, limit)
+	}
+	return []*domain.EvalExecution{}, 0, nil
+}
+
 // setupTestRouter creates a test router with real implementations for search and mock for eval.
 func setupTestRouter(t *testing.T) http.Handler {
 	logger := slog.Default()
 	indexer := search.NewIndexer()
 	mockEval := &mockEvalServiceer{}
 
-	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger, nil)
 	evalHandler := handlers.NewEvalHandler(mockEval, indexer, logger)
 
 	mux := http.NewServeMux()
@@ -135,7 +160,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 	ctx := context.Background()
 	indexer := search.NewIndexer()
 	logger := slog.Default()
-	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger, nil)
 	evalHandler := handlers.NewEvalHandler(&mockEvalServiceer{}, indexer, logger)
 
 	// Register routes with the mux
@@ -162,7 +187,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 			"id": "` + assetID + `",
 			"name": "` + assetName + `",
 			"description": "` + assetDescription + `",
-			"biz_line": "` + bizLine + `",
+			"asset_type": "` + bizLine + `",
 			"tags": ["e2e", "test"]
 		}`
 		req := httptest.NewRequest("POST", "/api/v1/assets", strings.NewReader(body))
@@ -217,7 +242,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 		require.Equal(t, assetID, resp.ID)
 		require.Equal(t, assetName, resp.Name)
 		require.Equal(t, assetDescription, resp.Description)
-		require.Equal(t, bizLine, resp.BizLine)
+		require.Equal(t, bizLine, resp.AssetType)
 	})
 
 	// Step 4: PUT /api/v1/assets/{id} - Update asset
@@ -272,7 +297,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 		var resp handlers.RunEvalResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &resp)
 		require.NoError(t, err)
-		require.NotEmpty(t, resp.RunID)
+		require.NotEmpty(t, resp.ExecutionID)
 		require.Equal(t, "running", resp.Status)
 	})
 
@@ -345,7 +370,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 			"id": "` + newAssetID + `",
 			"name": "New Test Asset",
 			"description": "Testing new asset workflow",
-			"biz_line": "data"
+			"asset_type": "data"
 		}`
 
 		// Create
@@ -376,7 +401,7 @@ func TestRESTAPI_E2E_FullWorkflow(t *testing.T) {
 func TestRESTAPI_E2E_ErrorHandling(t *testing.T) {
 	logger := slog.Default()
 	indexer := search.NewIndexer()
-	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger, nil)
 
 	testMux := http.NewServeMux()
 	testMux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
@@ -452,7 +477,7 @@ func TestRESTAPI_E2E_ErrorHandling(t *testing.T) {
 func TestRESTAPI_E2E_Filters(t *testing.T) {
 	logger := slog.Default()
 	indexer := search.NewIndexer()
-	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger)
+	assetHandler := handlers.NewAssetHandler(indexer, indexer, logger, nil)
 
 	testMux := http.NewServeMux()
 	testMux.HandleFunc("POST /api/v1/assets", assetHandler.CreateAsset)
@@ -472,7 +497,7 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 	}
 
 	for _, a := range assets {
-		body := `{"id":"` + a.id + `","name":"` + a.name + `","biz_line":"` + a.bizLine + `","tags":[` + strings.Join(func() []string {
+		body := `{"id":"` + a.id + `","name":"` + a.name + `","asset_type":"` + a.bizLine + `","tags":[` + strings.Join(func() []string {
 			var tags []string
 			for _, t := range a.tags {
 				tags = append(tags, `"`+t+`"`)
@@ -486,8 +511,8 @@ func TestRESTAPI_E2E_Filters(t *testing.T) {
 		require.Equal(t, http.StatusCreated, rec.Code)
 	}
 
-	t.Run("FilterByBizLine", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/assets?biz_line=ml", nil)
+	t.Run("FilterByAssetType", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/assets?asset_type=ml", nil)
 		rec := httptest.NewRecorder()
 
 		testMux.ServeHTTP(rec, req)
@@ -545,12 +570,10 @@ func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer,
 	logger := slog.Default()
 
 	mockEval := &mockEvalServiceer{
-		RunEvalFunc: func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*svc.EvalRun, error) {
-			return &svc.EvalRun{
-				ID:        "run-e2e-001",
-				AssetID:   assetID,
-				Status:    svc.EvalRunStatusRunning,
-				CreatedAt: time.Now(),
+		RunEvalFunc: func(ctx context.Context, req *svc.RunEvalRequest) (*domain.EvalExecution, error) {
+			return &domain.EvalExecution{
+				ID:     "execution-e2e-001",
+				Status: domain.ExecutionStatusRunning,
 			}, nil
 		},
 		GetEvalRunFunc: func(ctx context.Context, runID string) (*svc.EvalRun, error) {
@@ -577,7 +600,7 @@ func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer,
 				ID:          id,
 				Name:        "Test Asset",
 				Description: "A test asset",
-				BizLine:     "ai",
+				AssetType:     "ai",
 				Tags:        []string{"test"},
 				State:       "created",
 				Snapshots:   []svc.SnapshotSummary{},
@@ -586,7 +609,7 @@ func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer,
 		},
 		SearchFunc: func(ctx context.Context, query string, filters svc.SearchFilters) ([]svc.AssetSummary, error) {
 			return []svc.AssetSummary{
-				{ID: "common/test", Name: "Test Asset", Description: "A test asset", BizLine: "ai", Tags: []string{"test"}, State: "created"},
+				{ID: "common/test", Name: "Test Asset", Description: "A test asset", AssetType: "ai", Tags: []string{"test"}, State: "created"},
 			}, nil
 		},
 		SaveFunc: func(ctx context.Context, asset svc.Asset) error {
@@ -610,7 +633,7 @@ func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer,
 
 	// Create handlers
 	mcpHandler := handlers.NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
-	assetHandler := handlers.NewAssetHandler(mockIndexer, mockIndexer, logger)
+	assetHandler := handlers.NewAssetHandler(mockIndexer, mockIndexer, logger, nil)
 	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
 
 	// Build middleware chain
@@ -718,6 +741,10 @@ func (m *e2eMockAssetIndexer) WriteContent(ctx context.Context, id string, updat
 
 func (m *e2eMockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
 	return "# Test Content", nil
+}
+
+func (m *e2eMockAssetIndexer) ReInit(ctx context.Context, path string) error {
+	return nil
 }
 
 // e2eMockTriggerService is a mock implementation of TriggerServicer for E2E testing.

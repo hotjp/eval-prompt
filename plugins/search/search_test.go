@@ -32,7 +32,7 @@ func TestIndexer_Search(t *testing.T) {
 			ID:          "asset-1",
 			Name:        "Test Asset One",
 			Description: "This is a test asset for unit testing",
-			BizLine:     "ml",
+			AssetType:     "ml",
 			Tags:        []string{"test", "unit"},
 			State:       "created",
 		},
@@ -40,7 +40,7 @@ func TestIndexer_Search(t *testing.T) {
 			ID:          "asset-2",
 			Name:        "Production Prompt",
 			Description: "A prompt for production use",
-			BizLine:     "ml",
+			AssetType:     "ml",
 			Tags:        []string{"prod"},
 			State:       "evaluated",
 		},
@@ -48,7 +48,7 @@ func TestIndexer_Search(t *testing.T) {
 			ID:          "asset-3",
 			Name:        "Another Asset",
 			Description: "Different content",
-			BizLine:     "data",
+			AssetType:     "data",
 			Tags:        []string{"data"},
 			State:       "created",
 		},
@@ -97,7 +97,7 @@ func TestIndexer_Search(t *testing.T) {
 		{
 			name:          "filter by biz line",
 			query:         "",
-			filters:       service.SearchFilters{BizLine: "ml"},
+			filters:       service.SearchFilters{AssetType: "ml"},
 			expectedCount: 2,
 		},
 		{
@@ -110,7 +110,7 @@ func TestIndexer_Search(t *testing.T) {
 		{
 			name:          "filter by biz line no match",
 			query:         "",
-			filters:       service.SearchFilters{BizLine: "hr"},
+			filters:       service.SearchFilters{AssetType: "hr"},
 			expectedCount: 0,
 		},
 		{
@@ -166,7 +166,7 @@ func TestIndexer_GetByID(t *testing.T) {
 		ID:          "asset-1",
 		Name:        "Test Asset",
 		Description: "A test asset",
-		BizLine:     "ml",
+		AssetType:     "ml",
 		Tags:        []string{"test"},
 		State:       "created",
 	}
@@ -213,7 +213,7 @@ func TestIndexer_Save(t *testing.T) {
 		ID:          "asset-1",
 		Name:        "Test Asset",
 		Description: "Description",
-		BizLine:     "ml",
+		AssetType:     "ml",
 		Tags:        []string{"test"},
 		State:       "created",
 	}
@@ -226,7 +226,7 @@ func TestIndexer_Save(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Test Asset", detail.Name)
 	require.Equal(t, "Description", detail.Description)
-	require.Equal(t, "ml", detail.BizLine)
+	require.Equal(t, "ml", detail.AssetType)
 }
 
 func TestIndexer_Save_UpdatesExisting(t *testing.T) {
@@ -236,7 +236,7 @@ func TestIndexer_Save_UpdatesExisting(t *testing.T) {
 		ID:          "asset-1",
 		Name:        "Original Name",
 		Description: "Original Description",
-		BizLine:     "ml",
+		AssetType:     "ml",
 		Tags:        []string{"test"},
 		State:       "created",
 	}
@@ -248,7 +248,7 @@ func TestIndexer_Save_UpdatesExisting(t *testing.T) {
 		ID:          "asset-1",
 		Name:        "Updated Name",
 		Description: "Updated Description",
-		BizLine:     "ml",
+		AssetType:     "ml",
 		Tags:        []string{"test", "updated"},
 		State:       "evaluated",
 	}
@@ -269,7 +269,7 @@ func TestIndexer_Delete(t *testing.T) {
 		ID:          "asset-1",
 		Name:        "Test Asset",
 		Description: "A test asset",
-		BizLine:     "ml",
+		AssetType:     "ml",
 		Tags:        []string{"test"},
 		State:       "created",
 	}

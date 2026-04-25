@@ -148,8 +148,7 @@ content_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b785
 	require.Contains(t, string(out), "新增:", "should detect Added assets")
 
 	// ep sync export should contain both assets
-	cmd = exec.Command(ep, "sync", "export")
-	cmd.Dir = tmpDir
+	cmd = exec.Command(ep, "sync", "export", "--dir", tmpDir)
 	out, err = cmd.CombinedOutput()
 	t.Logf("sync export (multiple) output: %s", string(out))
 	require.NoError(t, err, "ep sync export should succeed")

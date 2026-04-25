@@ -22,7 +22,7 @@ func TestAssetRepository_Create_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset Require",
 		Description: "A test asset with require",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test", "require"},
 		ContentHash: "hashabc",
 		FilePath:    "/prompts/test.md",
@@ -51,7 +51,7 @@ func TestAssetRepository_Update_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Original Name",
 		Description: "Original description",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/update.md",
@@ -85,7 +85,7 @@ func TestAssetRepository_Delete_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Delete Test Require",
 		Description: "Test delete with require",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash123",
 		FilePath:    "/prompts/delete.md",
@@ -115,7 +115,7 @@ func TestAssetRepository_List_Require(t *testing.T) {
 			ID:          domain.NewAutoID(),
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			ContentHash: "hash",
 			FilePath:    "/prompts/asset.md",
@@ -125,7 +125,7 @@ func TestAssetRepository_List_Require(t *testing.T) {
 		require.NoError(t, err, "Create should not return error")
 	}
 
-	assets, total, err := repo.List(ctx, 0, 10)
+	assets, total, err := repo.List(ctx, "", 0, 10)
 	require.NoError(t, err, "List should not return error")
 	require.Equal(t, 3, total, "Total should be 3")
 	require.Len(t, assets, 3, "Should return 3 assets")
@@ -145,7 +145,7 @@ func TestAssetRepository_ListByState_Require(t *testing.T) {
 			ID:          domain.NewAutoID(),
 			Name:        "Asset",
 			Description: "Test",
-			BizLine:     "test",
+			AssetType:     "test",
 			Tags:        []string{"test"},
 			ContentHash: "hash",
 			FilePath:    "/prompts/asset.md",
@@ -155,7 +155,7 @@ func TestAssetRepository_ListByState_Require(t *testing.T) {
 		require.NoError(t, err, "Create should not return error for asset %d", i)
 	}
 
-	assets, total, err := repo.ListByState(ctx, domain.AssetStateCreated, 0, 10)
+	assets, total, err := repo.ListByState(ctx, "", domain.AssetStateCreated, 0, 10)
 	require.NoError(t, err, "ListByState should not return error")
 	require.Equal(t, 2, total, "Total Created should be 2")
 	require.Len(t, assets, 2, "Should return 2 assets in Created state")
@@ -172,7 +172,7 @@ func TestAssetRepository_UpdateState_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "State Test Require",
 		Description: "Test state update with require",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "hash",
 		FilePath:    "/prompts/state.md",
@@ -259,7 +259,7 @@ func TestLabelRepository_SetLabel_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset Require",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -305,7 +305,7 @@ func TestLabelRepository_UnsetLabel_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -352,7 +352,7 @@ func TestLabelRepository_GetByName_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",
@@ -395,7 +395,7 @@ func TestLabelRepository_Delete_Require(t *testing.T) {
 		ID:          domain.MustNewID("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
 		Name:        "Test Asset",
 		Description: "Test",
-		BizLine:     "test",
+		AssetType:     "test",
 		Tags:        []string{"test"},
 		ContentHash: "abc123",
 		FilePath:    "/prompts/test.md",

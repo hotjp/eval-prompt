@@ -1,7 +1,7 @@
 definitions:
   handlers.AssetResponse:
     properties:
-      biz_line:
+      asset_type:
         type: string
       created_at:
         type: string
@@ -39,7 +39,7 @@ definitions:
     type: object
   handlers.CreateAssetRequest:
     properties:
-      biz_line:
+      asset_type:
         type: string
       content:
         type: string
@@ -121,7 +121,7 @@ definitions:
     type: object
   handlers.UpdateAssetRequest:
     properties:
-      biz_line:
+      asset_type:
         type: string
       description:
         type: string
@@ -182,7 +182,7 @@ paths:
       parameters:
       - description: Business line filter
         in: query
-        name: biz_line
+        name: asset_type
         type: string
       - description: Tag filter
         in: query

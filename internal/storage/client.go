@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 // Client wraps the ent client with additional functionality.
 type Client struct {
 	ent *ent.Client
+	db  *sql.DB
 }
 
 // NewClient creates a new storage client with SQLite.
@@ -24,23 +26,31 @@ func NewClient(cfg config.DatabaseConfig) (*Client, error) {
 	}
 
 	// Append SQLite-specific options for WAL mode and foreign keys
-	dsn = fmt.Sprintf("%s?_fk=1&_journal_mode=WAL", dsn)
+	dsnFull := fmt.Sprintf("%s?_fk=1&_journal_mode=WAL", dsn)
 
 	// Create ent client using SQLite driver
-	client, err := ent.Open("sqlite3", dsn)
+	entClient, err := ent.Open("sqlite3", dsnFull)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+	}
+
+	// Open a separate sql.DB for raw SQL access (shares the same SQLite connection via WAL mode)
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		entClient.Close()
+		return nil, fmt.Errorf("failed to open raw sqlite: %w", err)
 	}
 
 	// Auto-migrate schema
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := client.Schema.Create(ctx); err != nil {
+	if err := entClient.Schema.Create(ctx); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	return &Client{ent: client}, nil
+	return &Client{ent: entClient, db: db}, nil
 }
 
 // NewClientForTest creates a new storage client wrapping an existing ent.Client.
@@ -52,24 +62,36 @@ func NewClientForTest(entClient *ent.Client) *Client {
 
 // NewClientWithDSN creates a new storage client with a specific DSN.
 func NewClientWithDSN(dsn string) (*Client, error) {
+	// Use default database if DSN is empty
+	if dsn == "" {
+		dsn = "eval.db"
+	}
 	// Append SQLite-specific options for WAL mode and foreign keys
-	dsn = fmt.Sprintf("%s?_fk=1&_journal_mode=WAL", dsn)
+	dsnFull := fmt.Sprintf("%s?_fk=1&_journal_mode=WAL", dsn)
 
 	// Create ent client using SQLite driver
-	client, err := ent.Open("sqlite3", dsn)
+	entClient, err := ent.Open("sqlite3", dsnFull)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+	}
+
+	// Open a separate sql.DB for raw SQL access
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		entClient.Close()
+		return nil, fmt.Errorf("failed to open raw sqlite: %w", err)
 	}
 
 	// Auto-migrate schema
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := client.Schema.Create(ctx); err != nil {
+	if err := entClient.Schema.Create(ctx); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	return &Client{ent: client}, nil
+	return &Client{ent: entClient, db: db}, nil
 }
 
 // Ent returns the underlying ent client.
@@ -77,8 +99,16 @@ func (c *Client) Ent() *ent.Client {
 	return c.ent
 }
 
-// Close closes the database connection.
+// DB returns the underlying database/sql.DB for raw SQL access.
+func (c *Client) DB() *sql.DB {
+	return c.db
+}
+
+// Close closes the database connections.
 func (c *Client) Close() error {
+	if c.db != nil {
+		c.db.Close()
+	}
 	return c.ent.Close()
 }
 
@@ -120,4 +150,14 @@ func (c *Client) AuditLogClient() *ent.AuditLogClient {
 // ModelAdaptationClient returns the ModelAdaptation client.
 func (c *Client) ModelAdaptationClient() *ent.ModelAdaptationClient {
 	return c.ent.ModelAdaptation
+}
+
+// EvalExecutionClient returns the EvalExecution client.
+func (c *Client) EvalExecutionClient() *ent.EvalExecutionClient {
+	return c.ent.EvalExecution
+}
+
+// EvalWorkItemClient returns the EvalWorkItem client.
+func (c *Client) EvalWorkItemClient() *ent.EvalWorkItemClient {
+	return c.ent.EvalWorkItem
 }

@@ -313,7 +313,7 @@ function EditorView() {
           title={asset?.name || id}
           extra={
             <Space>
-              {asset?.biz_line && <Tag>{asset.biz_line}</Tag>}
+              {asset?.asset_type && <Tag>{asset.asset_type}</Tag>}
               {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
               {updatedAt && <Tag color="blue">Saved {formatUpdatedAt(updatedAt)}</Tag>}
             </Space>

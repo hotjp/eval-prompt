@@ -17,7 +17,9 @@ import (
 	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/auditlog"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
+	"github.com/eval-prompt/internal/storage/ent/evalexecution"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
+	"github.com/eval-prompt/internal/storage/ent/evalworkitem"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/outboxevent"
@@ -34,8 +36,12 @@ type Client struct {
 	AuditLog *AuditLogClient
 	// EvalCase is the client for interacting with the EvalCase builders.
 	EvalCase *EvalCaseClient
+	// EvalExecution is the client for interacting with the EvalExecution builders.
+	EvalExecution *EvalExecutionClient
 	// EvalRun is the client for interacting with the EvalRun builders.
 	EvalRun *EvalRunClient
+	// EvalWorkItem is the client for interacting with the EvalWorkItem builders.
+	EvalWorkItem *EvalWorkItemClient
 	// Label is the client for interacting with the Label builders.
 	Label *LabelClient
 	// ModelAdaptation is the client for interacting with the ModelAdaptation builders.
@@ -56,7 +62,9 @@ func (c *Client) init() {
 	c.Asset = NewAssetClient(c.config)
 	c.AuditLog = NewAuditLogClient(c.config)
 	c.EvalCase = NewEvalCaseClient(c.config)
+	c.EvalExecution = NewEvalExecutionClient(c.config)
 	c.EvalRun = NewEvalRunClient(c.config)
+	c.EvalWorkItem = NewEvalWorkItemClient(c.config)
 	c.Label = NewLabelClient(c.config)
 	c.ModelAdaptation = NewModelAdaptationClient(c.config)
 	c.OutboxEvent = NewOutboxEventClient(c.config)
@@ -155,7 +163,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Asset:           NewAssetClient(cfg),
 		AuditLog:        NewAuditLogClient(cfg),
 		EvalCase:        NewEvalCaseClient(cfg),
+		EvalExecution:   NewEvalExecutionClient(cfg),
 		EvalRun:         NewEvalRunClient(cfg),
+		EvalWorkItem:    NewEvalWorkItemClient(cfg),
 		Label:           NewLabelClient(cfg),
 		ModelAdaptation: NewModelAdaptationClient(cfg),
 		OutboxEvent:     NewOutboxEventClient(cfg),
@@ -181,7 +191,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Asset:           NewAssetClient(cfg),
 		AuditLog:        NewAuditLogClient(cfg),
 		EvalCase:        NewEvalCaseClient(cfg),
+		EvalExecution:   NewEvalExecutionClient(cfg),
 		EvalRun:         NewEvalRunClient(cfg),
+		EvalWorkItem:    NewEvalWorkItemClient(cfg),
 		Label:           NewLabelClient(cfg),
 		ModelAdaptation: NewModelAdaptationClient(cfg),
 		OutboxEvent:     NewOutboxEventClient(cfg),
@@ -214,8 +226,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Asset, c.AuditLog, c.EvalCase, c.EvalRun, c.Label, c.ModelAdaptation,
-		c.OutboxEvent,
+		c.Asset, c.AuditLog, c.EvalCase, c.EvalExecution, c.EvalRun, c.EvalWorkItem,
+		c.Label, c.ModelAdaptation, c.OutboxEvent,
 	} {
 		n.Use(hooks...)
 	}
@@ -225,8 +237,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Asset, c.AuditLog, c.EvalCase, c.EvalRun, c.Label, c.ModelAdaptation,
-		c.OutboxEvent,
+		c.Asset, c.AuditLog, c.EvalCase, c.EvalExecution, c.EvalRun, c.EvalWorkItem,
+		c.Label, c.ModelAdaptation, c.OutboxEvent,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -241,8 +253,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AuditLog.mutate(ctx, m)
 	case *EvalCaseMutation:
 		return c.EvalCase.mutate(ctx, m)
+	case *EvalExecutionMutation:
+		return c.EvalExecution.mutate(ctx, m)
 	case *EvalRunMutation:
 		return c.EvalRun.mutate(ctx, m)
+	case *EvalWorkItemMutation:
+		return c.EvalWorkItem.mutate(ctx, m)
 	case *LabelMutation:
 		return c.Label.mutate(ctx, m)
 	case *ModelAdaptationMutation:
@@ -653,6 +669,139 @@ func (c *EvalCaseClient) mutate(ctx context.Context, m *EvalCaseMutation) (Value
 	}
 }
 
+// EvalExecutionClient is a client for the EvalExecution schema.
+type EvalExecutionClient struct {
+	config
+}
+
+// NewEvalExecutionClient returns a client for the EvalExecution from the given config.
+func NewEvalExecutionClient(c config) *EvalExecutionClient {
+	return &EvalExecutionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `evalexecution.Hooks(f(g(h())))`.
+func (c *EvalExecutionClient) Use(hooks ...Hook) {
+	c.hooks.EvalExecution = append(c.hooks.EvalExecution, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `evalexecution.Intercept(f(g(h())))`.
+func (c *EvalExecutionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.EvalExecution = append(c.inters.EvalExecution, interceptors...)
+}
+
+// Create returns a builder for creating a EvalExecution entity.
+func (c *EvalExecutionClient) Create() *EvalExecutionCreate {
+	mutation := newEvalExecutionMutation(c.config, OpCreate)
+	return &EvalExecutionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of EvalExecution entities.
+func (c *EvalExecutionClient) CreateBulk(builders ...*EvalExecutionCreate) *EvalExecutionCreateBulk {
+	return &EvalExecutionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EvalExecutionClient) MapCreateBulk(slice any, setFunc func(*EvalExecutionCreate, int)) *EvalExecutionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EvalExecutionCreateBulk{err: fmt.Errorf("calling to EvalExecutionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EvalExecutionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EvalExecutionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for EvalExecution.
+func (c *EvalExecutionClient) Update() *EvalExecutionUpdate {
+	mutation := newEvalExecutionMutation(c.config, OpUpdate)
+	return &EvalExecutionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EvalExecutionClient) UpdateOne(_m *EvalExecution) *EvalExecutionUpdateOne {
+	mutation := newEvalExecutionMutation(c.config, OpUpdateOne, withEvalExecution(_m))
+	return &EvalExecutionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EvalExecutionClient) UpdateOneID(id string) *EvalExecutionUpdateOne {
+	mutation := newEvalExecutionMutation(c.config, OpUpdateOne, withEvalExecutionID(id))
+	return &EvalExecutionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for EvalExecution.
+func (c *EvalExecutionClient) Delete() *EvalExecutionDelete {
+	mutation := newEvalExecutionMutation(c.config, OpDelete)
+	return &EvalExecutionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EvalExecutionClient) DeleteOne(_m *EvalExecution) *EvalExecutionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EvalExecutionClient) DeleteOneID(id string) *EvalExecutionDeleteOne {
+	builder := c.Delete().Where(evalexecution.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EvalExecutionDeleteOne{builder}
+}
+
+// Query returns a query builder for EvalExecution.
+func (c *EvalExecutionClient) Query() *EvalExecutionQuery {
+	return &EvalExecutionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEvalExecution},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a EvalExecution entity by its id.
+func (c *EvalExecutionClient) Get(ctx context.Context, id string) (*EvalExecution, error) {
+	return c.Query().Where(evalexecution.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EvalExecutionClient) GetX(ctx context.Context, id string) *EvalExecution {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *EvalExecutionClient) Hooks() []Hook {
+	return c.hooks.EvalExecution
+}
+
+// Interceptors returns the client interceptors.
+func (c *EvalExecutionClient) Interceptors() []Interceptor {
+	return c.inters.EvalExecution
+}
+
+func (c *EvalExecutionClient) mutate(ctx context.Context, m *EvalExecutionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EvalExecutionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EvalExecutionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EvalExecutionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EvalExecutionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown EvalExecution mutation op: %q", m.Op())
+	}
+}
+
 // EvalRunClient is a client for the EvalRun schema.
 type EvalRunClient struct {
 	config
@@ -783,6 +932,139 @@ func (c *EvalRunClient) mutate(ctx context.Context, m *EvalRunMutation) (Value, 
 		return (&EvalRunDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown EvalRun mutation op: %q", m.Op())
+	}
+}
+
+// EvalWorkItemClient is a client for the EvalWorkItem schema.
+type EvalWorkItemClient struct {
+	config
+}
+
+// NewEvalWorkItemClient returns a client for the EvalWorkItem from the given config.
+func NewEvalWorkItemClient(c config) *EvalWorkItemClient {
+	return &EvalWorkItemClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `evalworkitem.Hooks(f(g(h())))`.
+func (c *EvalWorkItemClient) Use(hooks ...Hook) {
+	c.hooks.EvalWorkItem = append(c.hooks.EvalWorkItem, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `evalworkitem.Intercept(f(g(h())))`.
+func (c *EvalWorkItemClient) Intercept(interceptors ...Interceptor) {
+	c.inters.EvalWorkItem = append(c.inters.EvalWorkItem, interceptors...)
+}
+
+// Create returns a builder for creating a EvalWorkItem entity.
+func (c *EvalWorkItemClient) Create() *EvalWorkItemCreate {
+	mutation := newEvalWorkItemMutation(c.config, OpCreate)
+	return &EvalWorkItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of EvalWorkItem entities.
+func (c *EvalWorkItemClient) CreateBulk(builders ...*EvalWorkItemCreate) *EvalWorkItemCreateBulk {
+	return &EvalWorkItemCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EvalWorkItemClient) MapCreateBulk(slice any, setFunc func(*EvalWorkItemCreate, int)) *EvalWorkItemCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EvalWorkItemCreateBulk{err: fmt.Errorf("calling to EvalWorkItemClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EvalWorkItemCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EvalWorkItemCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for EvalWorkItem.
+func (c *EvalWorkItemClient) Update() *EvalWorkItemUpdate {
+	mutation := newEvalWorkItemMutation(c.config, OpUpdate)
+	return &EvalWorkItemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EvalWorkItemClient) UpdateOne(_m *EvalWorkItem) *EvalWorkItemUpdateOne {
+	mutation := newEvalWorkItemMutation(c.config, OpUpdateOne, withEvalWorkItem(_m))
+	return &EvalWorkItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EvalWorkItemClient) UpdateOneID(id string) *EvalWorkItemUpdateOne {
+	mutation := newEvalWorkItemMutation(c.config, OpUpdateOne, withEvalWorkItemID(id))
+	return &EvalWorkItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for EvalWorkItem.
+func (c *EvalWorkItemClient) Delete() *EvalWorkItemDelete {
+	mutation := newEvalWorkItemMutation(c.config, OpDelete)
+	return &EvalWorkItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EvalWorkItemClient) DeleteOne(_m *EvalWorkItem) *EvalWorkItemDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EvalWorkItemClient) DeleteOneID(id string) *EvalWorkItemDeleteOne {
+	builder := c.Delete().Where(evalworkitem.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EvalWorkItemDeleteOne{builder}
+}
+
+// Query returns a query builder for EvalWorkItem.
+func (c *EvalWorkItemClient) Query() *EvalWorkItemQuery {
+	return &EvalWorkItemQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEvalWorkItem},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a EvalWorkItem entity by its id.
+func (c *EvalWorkItemClient) Get(ctx context.Context, id string) (*EvalWorkItem, error) {
+	return c.Query().Where(evalworkitem.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EvalWorkItemClient) GetX(ctx context.Context, id string) *EvalWorkItem {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *EvalWorkItemClient) Hooks() []Hook {
+	return c.hooks.EvalWorkItem
+}
+
+// Interceptors returns the client interceptors.
+func (c *EvalWorkItemClient) Interceptors() []Interceptor {
+	return c.inters.EvalWorkItem
+}
+
+func (c *EvalWorkItemClient) mutate(ctx context.Context, m *EvalWorkItemMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EvalWorkItemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EvalWorkItemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EvalWorkItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EvalWorkItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown EvalWorkItem mutation op: %q", m.Op())
 	}
 }
 
@@ -1188,11 +1470,11 @@ func (c *OutboxEventClient) mutate(ctx context.Context, m *OutboxEventMutation) 
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation,
-		OutboxEvent []ent.Hook
+		Asset, AuditLog, EvalCase, EvalExecution, EvalRun, EvalWorkItem, Label,
+		ModelAdaptation, OutboxEvent []ent.Hook
 	}
 	inters struct {
-		Asset, AuditLog, EvalCase, EvalRun, Label, ModelAdaptation,
-		OutboxEvent []ent.Interceptor
+		Asset, AuditLog, EvalCase, EvalExecution, EvalRun, EvalWorkItem, Label,
+		ModelAdaptation, OutboxEvent []ent.Interceptor
 	}
 )

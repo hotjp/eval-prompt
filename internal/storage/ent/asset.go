@@ -27,6 +27,8 @@ type Asset struct {
 	ContentHash string `json:"content_hash,omitempty"`
 	// FilePath holds the value of the "file_path" field.
 	FilePath string `json:"file_path,omitempty"`
+	// RepoPath holds the value of the "repo_path" field.
+	RepoPath string `json:"repo_path,omitempty"`
 	// State holds the value of the "state" field.
 	State        asset.State `json:"state,omitempty"`
 	selectValues sql.SelectValues
@@ -39,7 +41,7 @@ func (*Asset) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case asset.FieldTags:
 			values[i] = new([]byte)
-		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldContentHash, asset.FieldFilePath, asset.FieldState:
+		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldContentHash, asset.FieldFilePath, asset.FieldRepoPath, asset.FieldState:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -93,6 +95,12 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field file_path", values[i])
 			} else if value.Valid {
 				_m.FilePath = value.String
+			}
+		case asset.FieldRepoPath:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field repo_path", values[i])
+			} else if value.Valid {
+				_m.RepoPath = value.String
 			}
 		case asset.FieldState:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -150,6 +158,9 @@ func (_m *Asset) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("file_path=")
 	builder.WriteString(_m.FilePath)
+	builder.WriteString(", ")
+	builder.WriteString("repo_path=")
+	builder.WriteString(_m.RepoPath)
 	builder.WriteString(", ")
 	builder.WriteString("state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.State))
