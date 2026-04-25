@@ -179,6 +179,10 @@ export const adminApi = {
     const { data } = await api.post('/admin/git-pull')
     return data
   },
+  openFolder: async (): Promise<{ status: string; message: string }> => {
+    const { data } = await api.post('/admin/open-folder')
+    return data
+  },
 }
 
 export interface AssetListResponse {

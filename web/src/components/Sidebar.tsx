@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -105,12 +105,25 @@ function Sidebar() {
     }
   }
 
+  const initRef = useRef(false)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
+
     fetchHealth()
     fetchRepoStatus()
     fetchAssetCount()
-    const interval = setInterval(fetchHealth, 30000)
-    return () => clearInterval(interval)
+
+    intervalRef.current = setInterval(fetchHealth, 30000)
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      initRef.current = false
+    }
   }, [])
 
   const handleRestart = async () => {
@@ -540,6 +553,18 @@ function Sidebar() {
                   icon: <BranchesOutlined />,
                   onClick: handleGitPull,
                   disabled: gitSyncing,
+                },
+                {
+                  key: 'openfolder',
+                  label: 'Open in Finder',
+                  icon: <FolderOutlined />,
+                  onClick: async () => {
+                    try {
+                      await adminApi.openFolder()
+                    } catch (e) {
+                      message.error(e instanceof Error ? e.message : 'Failed to open folder')
+                    }
+                  },
                 },
                 { type: 'divider' as const },
                 {

@@ -145,6 +145,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/admin/restart", adminHandler.Restart)
 	mux.HandleFunc("POST /api/v1/admin/reconcile", adminHandler.Reconcile)
 	mux.HandleFunc("POST /api/v1/admin/git-pull", adminHandler.GitPull)
+	mux.HandleFunc("POST /api/v1/admin/open-folder", adminHandler.OpenFolder)
 
 	// Health check endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

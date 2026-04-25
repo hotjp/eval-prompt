@@ -675,6 +675,56 @@ func (h *AdminHandler) GitPull(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "pulled successfully"})
 }
 
+// OpenFolder handles POST /api/v1/admin/open-folder.
+func (h *AdminHandler) OpenFolder(w http.ResponseWriter, r *http.Request) {
+	repoPath := h.config.PromptAssets.RepoPath
+	if repoPath == "" {
+		h.writeError(w, http.StatusBadRequest, "no repo path configured")
+		return
+	}
+
+	// Expand ~ to home directory (filepath.Abs does not do this)
+	absPath := repoPath
+	if strings.HasPrefix(absPath, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			absPath = filepath.Join(home, absPath[2:])
+		}
+	}
+
+	// Validate the path is absolute
+	if !filepath.IsAbs(absPath) {
+		var err error
+		absPath, err = filepath.Abs(absPath)
+		if err != nil {
+			h.writeError(w, http.StatusBadRequest, "invalid path: %v", err)
+			return
+		}
+	}
+
+	h.logger.Info("admin action", "action", "open-folder", "path", absPath, "layer", "L5")
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", absPath)
+	case "linux":
+		cmd = exec.Command("xdg-open", absPath)
+	case "windows":
+		cmd = exec.Command("explorer", absPath)
+	default:
+		h.writeError(w, http.StatusNotImplemented, "open folder not supported on this platform")
+		return
+	}
+
+	if err := cmd.Run(); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to open folder: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "opened successfully"})
+}
+
 // HandleRepoChange handles repo configuration change notifications.
 func (h *AdminHandler) HandleRepoChange(ctx context.Context, domain string, changed []string) {
 	if h.indexer == nil && h.gitBridge == nil {
