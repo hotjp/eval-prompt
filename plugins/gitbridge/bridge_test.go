@@ -126,10 +126,10 @@ func TestBridge_Log(t *testing.T) {
 	err := bridge.InitRepo(context.Background(), repoPath)
 	require.NoError(t, err)
 
-	// Create and commit multiple files
+	// Create and commit multiple versions with different content
 	for i := 0; i < 3; i++ {
 		testFile := filepath.Join(repoPath, "test.txt")
-		content := []byte("content version")
+		content := []byte("content version " + string(rune('0'+i)))
 		err = os.WriteFile(testFile, content, 0644)
 		require.NoError(t, err)
 
