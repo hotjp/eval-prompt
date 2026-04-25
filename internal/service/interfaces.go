@@ -36,8 +36,14 @@ type GitBridger interface {
 	// Status returns the current working tree status: added, modified, and deleted files.
 	Status(ctx context.Context) (added, modified, deleted []string, err error)
 
+	// Pull fetches and merges changes from the remote repository.
+	Pull(ctx context.Context) error
+
 	// RepoPath returns the root path of the Git repository.
 	RepoPath() string
+
+	// SetPath sets the repository path for the Bridge.
+	SetPath(path string)
 }
 
 // AssetIndexer is the interface for indexing and searching prompt assets.
@@ -69,6 +75,10 @@ type AssetIndexer interface {
 	// CreatePlaceholder creates a placeholder .md file with draft state and commits it to Git.
 	// This marks the asset as "claimed" so other Git users know it's taken.
 	CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error
+
+	// ReInit reinitializes the indexer with a new repository path.
+	// It clears the current index and updates the git bridge path.
+	ReInit(ctx context.Context, path string) error
 }
 
 // SearchFilters contains filter criteria for asset search.

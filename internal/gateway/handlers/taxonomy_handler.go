@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -8,22 +9,25 @@ import (
 	"sync"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/internal/service"
 )
 
 // TaxonomyHandler handles taxonomy (biz_line, tag) API endpoints.
 type TaxonomyHandler struct {
-	cfg        *config.TaxonomyConfig
-	logger     *slog.Logger
-	filePath   string
-	mu         sync.RWMutex
+	cfg           *config.TaxonomyConfig
+	logger        *slog.Logger
+	filePath      string
+	mu            sync.RWMutex
+	configManager service.ConfigManager
 }
 
 // NewTaxonomyHandler creates a new TaxonomyHandler.
-func NewTaxonomyHandler(cfg *config.TaxonomyConfig, logger *slog.Logger, filePath string) *TaxonomyHandler {
+func NewTaxonomyHandler(cfg *config.TaxonomyConfig, logger *slog.Logger, filePath string, configManager service.ConfigManager) *TaxonomyHandler {
 	return &TaxonomyHandler{
-		cfg:      cfg,
-		logger:   logger,
-		filePath: filePath,
+		cfg:           cfg,
+		logger:        logger,
+		filePath:      filePath,
+		configManager: configManager,
 	}
 }
 
@@ -39,12 +43,6 @@ func (h *TaxonomyHandler) writeError(w http.ResponseWriter, status int, format s
 }
 
 // GetTaxonomy returns the current taxonomy config.
-// @Summary Get taxonomy
-// @Description Get biz_lines and tags taxonomy
-// @Tags taxonomy
-// @Produce json
-// @Success 200 {object} TaxonomyResponse
-// @Router /api/v1/taxonomy [get]
 func (h *TaxonomyHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -73,15 +71,6 @@ func (h *TaxonomyHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBizLines updates the biz_lines taxonomy.
-// Built-in items cannot be modified via API; only user-defined items are saved.
-// @Summary Update biz_lines
-// @Description Replace user-defined biz_lines (built-in items are preserved)
-// @Tags taxonomy
-// @Accept json
-// @Produce json
-// @Param body body []BizLineResp true "biz_lines"
-// @Success 200 {object} map[string]string
-// @Router /api/v1/taxonomy/biz_lines [put]
 func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request) {
 	var bizLines []BizLineResp
 	if err := json.NewDecoder(r.Body).Decode(&bizLines); err != nil {
@@ -92,7 +81,6 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// Separate built-in and user-defined items from current config
 	var currentBuiltIn []config.BizLineConfig
 	var currentUserDefined []config.BizLineConfig
 	for _, b := range h.cfg.BizLines {
@@ -103,12 +91,11 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Build new user-defined list from request (skip built-in items)
 	newUserDefined := make([]config.BizLineConfig, 0, len(bizLines))
 	newNames := make(map[string]bool)
 	for _, b := range bizLines {
 		if b.BuiltIn {
-			continue // Skip built-in items from request
+			continue
 		}
 		newUserDefined = append(newUserDefined, config.BizLineConfig{
 			Name:        b.Name,
@@ -119,7 +106,6 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		newNames[b.Name] = true
 	}
 
-	// Remove items that were deleted by user (not in request anymore)
 	keptUserDefined := make([]config.BizLineConfig, 0)
 	for _, u := range currentUserDefined {
 		if newNames[u.Name] {
@@ -127,7 +113,6 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Merge: keep built-in + kept user-defined + new user-defined
 	h.cfg.BizLines = append(currentBuiltIn, keptUserDefined...)
 	for _, n := range newUserDefined {
 		if _, exists := func() (config.BizLineConfig, bool) {
@@ -142,7 +127,6 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Save only user-defined items to file (built-in come from code)
 	userOnlyConfig := &config.TaxonomyConfig{
 		BizLines: make([]config.BizLineConfig, 0, len(h.cfg.BizLines)),
 		Tags:     h.cfg.Tags,
@@ -158,20 +142,15 @@ func (h *TaxonomyHandler) UpdateBizLines(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if h.configManager != nil {
+		h.configManager.Notify(r.Context(), "taxonomy", []string{"biz_lines"})
+	}
+
 	h.logger.Info("taxonomy biz_lines updated", "count", len(bizLines), "layer", "L5")
 	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // UpdateTags updates the tags taxonomy.
-// Built-in items cannot be modified via API; only user-defined items are saved.
-// @Summary Update tags
-// @Description Replace user-defined tags (built-in items are preserved)
-// @Tags taxonomy
-// @Accept json
-// @Produce json
-// @Param body body []TagResp true "tags"
-// @Success 200 {object} map[string]string
-// @Router /api/v1/taxonomy/tags [put]
 func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 	var tags []TagResp
 	if err := json.NewDecoder(r.Body).Decode(&tags); err != nil {
@@ -182,7 +161,6 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// Separate built-in and user-defined items from current config
 	var currentBuiltIn []config.TagConfig
 	var currentUserDefined []config.TagConfig
 	for _, t := range h.cfg.Tags {
@@ -193,12 +171,11 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build new user-defined list from request (skip built-in items)
 	newUserDefined := make([]config.TagConfig, 0, len(tags))
 	newNames := make(map[string]bool)
 	for _, t := range tags {
 		if t.BuiltIn {
-			continue // Skip built-in items from request
+			continue
 		}
 		newUserDefined = append(newUserDefined, config.TagConfig{
 			Name:    t.Name,
@@ -208,7 +185,6 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 		newNames[t.Name] = true
 	}
 
-	// Remove items that were deleted by user (not in request anymore)
 	keptUserDefined := make([]config.TagConfig, 0)
 	for _, u := range currentUserDefined {
 		if newNames[u.Name] {
@@ -216,7 +192,6 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Merge: keep built-in + kept user-defined + new user-defined
 	h.cfg.Tags = append(currentBuiltIn, keptUserDefined...)
 	for _, n := range newUserDefined {
 		if _, exists := func() (config.TagConfig, bool) {
@@ -231,7 +206,6 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Save only user-defined items to file (built-in come from code)
 	userOnlyConfig := &config.TaxonomyConfig{
 		BizLines: h.cfg.BizLines,
 		Tags:     make([]config.TagConfig, 0),
@@ -245,6 +219,10 @@ func (h *TaxonomyHandler) UpdateTags(w http.ResponseWriter, r *http.Request) {
 	if err := config.SaveTaxonomy(h.filePath, userOnlyConfig); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "failed to save taxonomy: %v", err)
 		return
+	}
+
+	if h.configManager != nil {
+		h.configManager.Notify(r.Context(), "taxonomy", []string{"tags"})
 	}
 
 	h.logger.Info("taxonomy tags updated", "count", len(tags), "layer", "L5")
@@ -270,4 +248,10 @@ type TagResp struct {
 	Name    string `json:"name"`
 	Color   string `json:"color"`
 	BuiltIn bool   `json:"built_in"`
+}
+
+// HandleTaxonomyChange is the config change handler for the taxonomy domain.
+// Currently a no-op since no downstream components need to react to taxonomy changes.
+func (h *TaxonomyHandler) HandleTaxonomyChange(ctx context.Context, domain string, changed []string) {
+	h.logger.Info("taxonomy config change received", "domain", domain, "changed", changed)
 }

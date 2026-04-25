@@ -665,3 +665,21 @@ func equalIgnoreCase(a, b string) bool {
 	}
 	return true
 }
+
+// ReInit reinitializes the indexer with a new repository path.
+// It clears the current index and sets the new gitBridge path.
+func (i *Indexer) ReInit(ctx context.Context, path string) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	// Clear the current index
+	i.assets = make(map[string]*assetEntry)
+	i.summaries = nil
+
+	// Update gitBridge path if it implements path setting
+	if i.gitBridge != nil {
+		i.gitBridge.SetPath(path)
+	}
+
+	return nil
+}

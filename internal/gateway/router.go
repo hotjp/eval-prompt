@@ -17,21 +17,23 @@ import (
 
 // RouterConfig contains configuration for the router.
 type RouterConfig struct {
-	TriggerService   service.TriggerServicer
-	EvalService      service.EvalServiceer
-	IndexService     service.AssetIndexer
-	FileManager      service.AssetFileManager
-	Logger          *slog.Logger
-	Metrics         *middleware.MetricsCollector
-	CORSOrigins     []string
-	TaxonomyConfig  *config.TaxonomyConfig
-	TaxonomyFilePath string
-	AdminConfig     *config.Config
-	RestartFunc     func() // Function to call for graceful restart
-	StorageClient   handlers.StorageChecker
-	LLMInvoker      handlers.LLMChecker
-	LLMConfig       *[]config.LLMProviderConfig
-	LLMConfigPath   string
+	TriggerService    service.TriggerServicer
+	EvalService       service.EvalServiceer
+	IndexService      service.AssetIndexer
+	FileManager       service.AssetFileManager
+	Logger            *slog.Logger
+	Metrics           *middleware.MetricsCollector
+	CORSOrigins       []string
+	AdminConfig       *config.Config
+	RestartFunc       func() // Function to call for graceful restart
+	StorageClient    handlers.StorageChecker
+	LLMInvoker        *handlers.LLMCheckerAdapter
+	ConfigManager     service.ConfigManager
+	GitBridge         service.GitBridger
+	// Pre-created handlers (optional — if provided, router uses them; otherwise creates its own)
+	AdminHandler      *handlers.AdminHandler
+	LLMConfigHandler  *handlers.LLMConfigHandler
+	TaxonomyHandler   *handlers.TaxonomyHandler
 }
 
 // NewRouter creates a new HTTP router with all middleware and handlers registered.
@@ -46,15 +48,25 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		metrics = middleware.NewMetricsCollector()
 	}
 
-	// Create handler instances
+	// Create handler instances — use pre-created handlers if provided
 	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.EvalService, cfg.IndexService, logger)
 	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger)
 	evalHandler := handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
 	triggerHandler := handlers.NewTriggerHandler(cfg.TriggerService, logger)
-	taxonomyHandler := handlers.NewTaxonomyHandler(cfg.TaxonomyConfig, logger, cfg.TaxonomyFilePath)
-	adminHandler := handlers.NewAdminHandler(logger, cfg.AdminConfig, cfg.RestartFunc)
 	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, logger)
-	llmConfigHandler := handlers.NewLLMConfigHandler(cfg.LLMConfig, logger, cfg.LLMConfigPath)
+
+	adminHandler := cfg.AdminHandler
+	if adminHandler == nil {
+		adminHandler = handlers.NewAdminHandler(logger, cfg.AdminConfig, cfg.RestartFunc, cfg.IndexService, cfg.GitBridge, cfg.ConfigManager)
+	}
+	llmConfigHandler := cfg.LLMConfigHandler
+	if llmConfigHandler == nil {
+		llmConfigHandler = handlers.NewLLMConfigHandler(nil, logger, "", "", nil, cfg.ConfigManager)
+	}
+	taxonomyHandler := cfg.TaxonomyHandler
+	if taxonomyHandler == nil {
+		taxonomyHandler = handlers.NewTaxonomyHandler(nil, logger, "", cfg.ConfigManager)
+	}
 
 	// Build middleware chain
 	chain := func(h http.Handler) http.Handler {

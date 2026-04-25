@@ -3,12 +3,14 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -16,6 +18,9 @@ import (
 	"time"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/internal/lock"
+	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/plugins/gitbridge"
 )
 
 // AdminHandler handles admin API endpoints.
@@ -27,17 +32,44 @@ type AdminHandler struct {
 	pid            int
 	config         *config.Config
 	restartFunc    func()
+	indexer       service.AssetIndexer
+	gitBridge     service.GitBridger
+	configManager service.ConfigManager
 }
 
 // NewAdminHandler creates a new AdminHandler.
-func NewAdminHandler(logger *slog.Logger, cfg *config.Config, restartFunc func()) *AdminHandler {
+func NewAdminHandler(logger *slog.Logger, cfg *config.Config, restartFunc func(), indexer service.AssetIndexer, gitBridge service.GitBridger, configManager service.ConfigManager) *AdminHandler {
 	h := &AdminHandler{
-		logger:    logger,
-		startTime: time.Now(),
-		pid:       os.Getpid(),
-		config:    cfg,
+		logger:       logger,
+		startTime:    time.Now(),
+		pid:          os.Getpid(),
+		config:       cfg,
+		restartFunc:  restartFunc,
+		indexer:     indexer,
+		gitBridge:   gitBridge,
+		configManager: configManager,
 	}
 	h.lastReloadTime.Store(time.Time{})
+
+	if repoLock, err := lock.ReadLock(); err == nil {
+		if current := repoLock.GetCurrent(); current != "" {
+			cfg.PromptAssets.RepoPath = current
+		}
+	}
+
+	if cfg.PromptAssets.RepoPath != "" {
+		repoPath := cfg.PromptAssets.RepoPath
+		if !filepath.IsAbs(repoPath) {
+			repoPath = filepath.Join(".", repoPath)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err := h.runGitWithContext(ctx, []string{"rev-parse", "--git-dir"}, repoPath)
+		if err != nil {
+			h.logger.Warn("repo_path is not a valid git repository", "repo_path", cfg.PromptAssets.RepoPath, "error", err, "layer", "L5")
+		}
+	}
+
 	return h
 }
 
@@ -81,34 +113,32 @@ type GitInfoResponse struct {
 
 // GetGitInfo handles GET /api/v1/admin/git-info.
 func (h *AdminHandler) GetGitInfo(w http.ResponseWriter, r *http.Request) {
-	repoPath := "."
+	repoPath := h.config.PromptAssets.RepoPath
+	if repoPath == "" {
+		repoPath = "."
+	}
 
 	var branch, shortCommit, remote string
 	var dirty bool
 
-	// Get current branch
 	out, err := h.runGit([]string{"rev-parse", "--abbrev-ref", "HEAD"}, repoPath)
 	if err == nil {
 		branch = strings.TrimSpace(out)
 	}
 
-	// Get short commit hash
 	out, err = h.runGit([]string{"rev-parse", "--short", "HEAD"}, repoPath)
 	if err == nil {
 		shortCommit = strings.TrimSpace(out)
 	}
 
-	// Check dirty state
 	out, err = h.runGit([]string{"status", "--porcelain"}, repoPath)
 	if err == nil && strings.TrimSpace(out) != "" {
 		dirty = true
 	}
 
-	// Get remote URL
 	out, err = h.runGit([]string{"remote", "get-url", "origin"}, repoPath)
 	if err == nil {
 		remote = strings.TrimSpace(out)
-		// Shorten common remote URLs
 		if strings.HasPrefix(remote, "git@github.com:") {
 			remote = strings.TrimPrefix(remote, "git@github.com:")
 			remote = strings.TrimSuffix(remote, ".git")
@@ -148,6 +178,129 @@ func (h *AdminHandler) GetRepoConfig(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, resp)
 }
 
+// FirstUseResponse represents the first-use check response.
+type FirstUseResponse struct {
+	FirstUse bool `json:"first_use"`
+}
+
+// GetFirstUse handles GET /api/v1/admin/first-use.
+func (h *AdminHandler) GetFirstUse(w http.ResponseWriter, r *http.Request) {
+	repoLock, err := lock.ReadLock()
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read repo lock: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, FirstUseResponse{
+		FirstUse: len(repoLock.Repos) == 0,
+	})
+}
+
+// RepoStatusResponse represents the repository status response.
+type RepoStatusResponse struct {
+	Current    *RepoStatus `json:"current,omitempty"`
+	Repos      []RepoInfo  `json:"repos"`
+	IsFirstUse bool        `json:"is_first_use"`
+}
+
+// RepoStatus represents the current repository status.
+type RepoStatus struct {
+	Path        string `json:"path"`
+	Valid       bool   `json:"valid"`
+	Branch      string `json:"branch,omitempty"`
+	Dirty       bool   `json:"dirty"`
+	ShortCommit string `json:"short_commit,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+// GetRepoStatus handles GET /api/v1/admin/repo-status.
+func (h *AdminHandler) GetRepoStatus(w http.ResponseWriter, r *http.Request) {
+	repoLock, err := lock.ReadLock()
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read repo lock: %v", err)
+		return
+	}
+
+	knownPaths := make(map[string]bool)
+	for _, entry := range repoLock.Repos {
+		knownPaths[entry.Path] = true
+	}
+
+	configRepoPath := h.config.PromptAssets.RepoPath
+	if configRepoPath != "" {
+		knownPaths[configRepoPath] = true
+	}
+
+	reposMap := make(map[string]RepoInfo)
+	for _, entry := range repoLock.Repos {
+		absPath, _ := filepath.Abs(entry.Path)
+		if _, ok := reposMap[absPath]; !ok {
+			reposMap[absPath] = RepoInfo{
+				Path:   entry.Path,
+				Status: lock.ValidatePath(entry.Path).String(),
+			}
+		}
+	}
+
+	repos := make([]RepoInfo, 0, len(reposMap))
+	for _, info := range reposMap {
+		repos = append(repos, info)
+	}
+	sortSlice(repos)
+
+	currentRepoPath := configRepoPath
+	if currentRepoPath == "" {
+		currentRepoPath = repoLock.GetCurrent()
+	}
+
+	var current *RepoStatus
+	if currentRepoPath != "" {
+		pathStatus := lock.ValidatePath(currentRepoPath)
+		if pathStatus == lock.PathValid {
+			branch, shortCommit, dirty := "", "", false
+
+			out, err := h.runGit([]string{"rev-parse", "--abbrev-ref", "HEAD"}, currentRepoPath)
+			if err == nil {
+				branch = strings.TrimSpace(out)
+			}
+			out, err = h.runGit([]string{"rev-parse", "--short", "HEAD"}, currentRepoPath)
+			if err == nil {
+				shortCommit = strings.TrimSpace(out)
+			}
+			out, err = h.runGit([]string{"status", "--porcelain"}, currentRepoPath)
+			if err == nil && strings.TrimSpace(out) != "" {
+				dirty = true
+			}
+
+			current = &RepoStatus{
+				Path:        currentRepoPath,
+				Valid:       true,
+				Branch:      branch,
+				Dirty:       dirty,
+				ShortCommit: shortCommit,
+			}
+		} else {
+			errMsg := "not a git repository"
+			if pathStatus == lock.PathNotFound {
+				errMsg = "path not found"
+			}
+			current = &RepoStatus{
+				Path:  currentRepoPath,
+				Valid: false,
+				Error: errMsg,
+			}
+		}
+	}
+
+	isFirstUse := len(repoLock.Repos) == 0 && (configRepoPath == "" || !filepath.IsAbs(configRepoPath))
+
+	h.writeJSON(w, http.StatusOK, RepoStatusResponse{
+		Current:    current,
+		Repos:      repos,
+		IsFirstUse: isFirstUse,
+	})
+}
+
 // RepoConfigUpdateRequest represents the request to update repo_path config.
 type RepoConfigUpdateRequest struct {
 	RepoPath  string `json:"repo_path"`
@@ -168,9 +321,36 @@ func (h *AdminHandler) UpdateRepoConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if req.RepoPath == "" {
+		h.writeError(w, http.StatusBadRequest, "repo_path cannot be empty")
+		return
+	}
+
 	h.config.PromptAssets.RepoPath = req.RepoPath
 	h.config.PromptAssets.AssetsDir = req.AssetsDir
 	h.config.PromptAssets.EvalsDir = req.EvalsDir
+
+	if err := h.config.Save(); err != nil {
+		h.logger.Error("failed to save config", "error", err, "layer", "L5")
+	}
+
+	repoLock, err := lock.ReadLock()
+	if err == nil {
+		absPath := req.RepoPath
+		if !filepath.IsAbs(absPath) {
+			absPath, _ = filepath.Abs(absPath)
+		}
+		repoLock.AddRepo(absPath)
+		repoLock.SetCurrent(absPath)
+		if err := lock.WriteLock(repoLock); err != nil {
+			h.writeError(w, http.StatusInternalServerError, "failed to sync lock file: %v", err)
+			return
+		}
+	}
+
+	if h.configManager != nil {
+		h.configManager.Notify(r.Context(), "repo", []string{"repo_path"})
+	}
 
 	h.writeJSON(w, http.StatusOK, RepoConfigResponse{
 		RepoPath:  h.config.PromptAssets.RepoPath,
@@ -179,11 +359,159 @@ func (h *AdminHandler) UpdateRepoConfig(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// RepoInfo represents information about a single repository.
+type RepoInfo struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
+}
+
+// RepoListResponse represents the response for repo list API.
+type RepoListResponse struct {
+	Repos   []RepoInfo `json:"repos"`
+	Current string     `json:"current"`
+}
+
+// GetRepoList handles GET /api/v1/admin/repo-list.
+func (h *AdminHandler) GetRepoList(w http.ResponseWriter, r *http.Request) {
+	repoLock, err := lock.ReadLock()
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read repo lock: %v", err)
+		return
+	}
+
+	infos := make([]RepoInfo, 0, len(repoLock.Repos))
+	for _, entry := range repoLock.Repos {
+		status := lock.ValidatePath(entry.Path)
+		infos = append(infos, RepoInfo{
+			Path:   entry.Path,
+			Status: status.String(),
+		})
+	}
+
+	current := repoLock.GetCurrent()
+	validCurrent := ""
+	for _, entry := range repoLock.Repos {
+		if entry.Path == current && lock.ValidatePath(entry.Path) == lock.PathValid {
+			validCurrent = current
+			break
+		}
+	}
+	h.writeJSON(w, http.StatusOK, RepoListResponse{
+		Repos:   infos,
+		Current: validCurrent,
+	})
+}
+
+// RepoSwitchRequest represents the request to switch the current repo.
+type RepoSwitchRequest struct {
+	Path string `json:"path"`
+}
+
+// RepoSwitchResponse represents the response for repo switch API.
+type RepoSwitchResponse struct {
+	Status string `json:"status"`
+	Path   string `json:"path"`
+}
+
+// PutRepoSwitch handles PUT /api/v1/admin/repo-switch.
+func (h *AdminHandler) PutRepoSwitch(w http.ResponseWriter, r *http.Request) {
+	var req RepoSwitchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if req.Path == "" {
+		h.writeError(w, http.StatusBadRequest, "path cannot be empty")
+		return
+	}
+
+	rawPath := req.Path
+	if strings.HasPrefix(rawPath, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			rawPath = filepath.Join(home, rawPath[2:])
+		}
+	}
+	absPath, err := filepath.Abs(rawPath)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid path: %v", err)
+		return
+	}
+
+	status := lock.ValidatePath(absPath)
+	switch status {
+	case lock.PathNotFound:
+		bridge := gitbridge.NewBridge()
+		if err := bridge.InitRepo(r.Context(), absPath); err != nil {
+			h.writeError(w, http.StatusInternalServerError, "failed to initialize repo: %v", err)
+			return
+		}
+	case lock.PathNotGit:
+		h.writeError(w, http.StatusUnprocessableEntity, "path is not a git repository: %s", absPath)
+		return
+	}
+
+	repoLock, err := lock.ReadLock()
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read repo lock: %v", err)
+		return
+	}
+
+	found := false
+	for _, entry := range repoLock.Repos {
+		if entry.Path == absPath {
+			found = true
+			break
+		}
+	}
+	if !found {
+		repoLock.AddRepo(absPath)
+	}
+
+	repoLock.SetCurrent(absPath)
+	if err := lock.WriteLock(repoLock); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to write repo lock: %v", err)
+		return
+	}
+
+	if h.config != nil {
+		h.config.PromptAssets.RepoPath = absPath
+		if err := h.config.Save(); err != nil {
+			h.logger.Error("failed to save config", "error", err, "layer", "L5")
+		}
+	}
+
+	if h.configManager != nil {
+		h.configManager.Notify(r.Context(), "repo", []string{"repo_path"})
+	}
+
+	h.writeJSON(w, http.StatusOK, RepoSwitchResponse{
+		Status: "ok",
+		Path:   absPath,
+	})
+}
+
 func (h *AdminHandler) runGit(args []string, repoPath string) (string, error) {
 	if repoPath == "" {
 		repoPath = "."
 	}
 	cmd := exec.Command("git", args...)
+	cmd.Dir = repoPath
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), stderr.String(), err)
+	}
+	return string(out), nil
+}
+
+func (h *AdminHandler) runGitWithContext(ctx context.Context, args []string, repoPath string) (string, error) {
+	if repoPath == "" {
+		repoPath = "."
+	}
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = repoPath
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -240,15 +568,14 @@ func (h *AdminHandler) ReloadConfig(w http.ResponseWriter, r *http.Request) {
 
 // RestartRequest represents the restart request body.
 type RestartRequest struct {
-	Graceful      bool `json:"graceful"`
-	TimeoutSeconds int `json:"timeout_seconds"`
+	Graceful       bool `json:"graceful"`
+	TimeoutSeconds int  `json:"timeout_seconds"`
 }
 
 // Restart handles POST /api/v1/admin/restart.
 func (h *AdminHandler) Restart(w http.ResponseWriter, r *http.Request) {
 	var req RestartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// Use defaults if body is empty
 		req = RestartRequest{Graceful: true, TimeoutSeconds: 10}
 	}
 
@@ -260,14 +587,12 @@ func (h *AdminHandler) Restart(w http.ResponseWriter, r *http.Request) {
 
 	h.restartCount.Add(1)
 
-	// Signal restart - this will trigger graceful shutdown and restart
 	if h.restartFunc != nil {
 		go func() {
-			time.Sleep(100 * time.Millisecond) // Give time for response to be sent
+			time.Sleep(100 * time.Millisecond)
 			h.restartFunc()
 		}()
 	} else {
-		// Fallback: send SIGTERM directly
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			syscall.Kill(h.pid, syscall.SIGTERM)
@@ -279,6 +604,85 @@ func (h *AdminHandler) Restart(w http.ResponseWriter, r *http.Request) {
 		Message:   "Restart signal sent",
 		Timestamp: time.Now().Format(time.RFC3339),
 	})
+}
+
+// ReconcileReportResponse represents the reconcile result.
+type ReconcileReportResponse struct {
+	Added   int      `json:"added"`
+	Updated int      `json:"updated"`
+	Deleted int      `json:"deleted"`
+	Errors  []string `json:"errors"`
+}
+
+// Reconcile handles POST /api/v1/admin/reconcile.
+func (h *AdminHandler) Reconcile(w http.ResponseWriter, r *http.Request) {
+	if h.indexer == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "indexer not available")
+		return
+	}
+
+	h.logger.Info("admin action", "action", "reconcile", "layer", "L5")
+
+	report, err := h.indexer.Reconcile(r.Context())
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "reconcile failed: %v", err)
+		return
+	}
+
+	errors := report.Errors
+	if errors == nil {
+		errors = []string{}
+	}
+
+	h.writeJSON(w, http.StatusOK, ReconcileReportResponse{
+		Added:   report.Added,
+		Updated: report.Updated,
+		Deleted: report.Deleted,
+		Errors:  errors,
+	})
+}
+
+// GitPull handles POST /api/v1/admin/git-pull.
+func (h *AdminHandler) GitPull(w http.ResponseWriter, r *http.Request) {
+	if h.gitBridge == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "git bridge not available")
+		return
+	}
+
+	h.logger.Info("admin action", "action", "git-pull", "layer", "L5")
+
+	if err := h.gitBridge.Pull(r.Context()); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "git pull failed: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "pulled successfully"})
+}
+
+// HandleRepoChange handles repo configuration change notifications.
+func (h *AdminHandler) HandleRepoChange(ctx context.Context, domain string, changed []string) {
+	if h.indexer == nil && h.gitBridge == nil {
+		return
+	}
+
+	repoPath := h.config.PromptAssets.RepoPath
+	h.logger.Info("repo config change handler triggered", "domain", domain, "changed", changed, "path", repoPath)
+
+	if h.indexer != nil {
+		if r, ok := h.indexer.(interface{ ReInit(ctx context.Context, path string) error }); ok {
+			if err := r.ReInit(ctx, repoPath); err != nil {
+				h.logger.Error("failed to reinit indexer", "error", err)
+			}
+		}
+	}
+
+	if h.gitBridge != nil {
+		if r, ok := h.gitBridge.(interface{ ReInit(ctx context.Context, path string) error }); ok {
+			if err := r.ReInit(ctx, repoPath); err != nil {
+				h.logger.Error("failed to reinit gitBridge", "error", err)
+			}
+		}
+	}
 }
 
 // writeJSON writes a JSON response.
@@ -295,4 +699,14 @@ func (h *AdminHandler) writeError(w http.ResponseWriter, status int, format stri
 		Status:  "error",
 		Message: fmt.Sprintf(format, args...),
 	})
+}
+
+func sortSlice(repos []RepoInfo) {
+	for i := 0; i < len(repos); i++ {
+		for j := i + 1; j < len(repos); j++ {
+			if repos[i].Path > repos[j].Path {
+				repos[i], repos[j] = repos[j], repos[i]
+			}
+		}
+	}
 }

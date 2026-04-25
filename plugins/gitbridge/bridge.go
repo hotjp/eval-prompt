@@ -25,6 +25,11 @@ func NewBridge() *Bridge {
 	return &Bridge{}
 }
 
+// SetPath sets the repository path for the Bridge.
+func (b *Bridge) SetPath(path string) {
+	b.repoPath = path
+}
+
 // Ensure Bridge implements GitBridger.
 var _ service.GitBridger = (*Bridge)(nil)
 
@@ -45,7 +50,14 @@ func (b *Bridge) runGit(ctx context.Context, args ...string) (string, error) {
 }
 
 // InitRepo initializes a new Git repository at the given path.
+// If the path is already a git repository, it returns nil (idempotent).
 func (b *Bridge) InitRepo(ctx context.Context, path string) error {
+	// Validate path
+	cleanPath := filepath.Clean(path)
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path traversal not allowed: %s", path)
+	}
+
 	// Ensure directory exists
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
@@ -53,9 +65,24 @@ func (b *Bridge) InitRepo(ctx context.Context, path string) error {
 
 	b.repoPath = path
 
+	// Check if already a git repository
+	if _, err := b.runGit(ctx, "rev-parse", "--git-dir"); err == nil {
+		// Already a git repo, nothing to do
+		return nil
+	}
+
 	// Initialize repository
 	if _, err := b.runGit(ctx, "init"); err != nil {
 		return fmt.Errorf("git init: %w", err)
+	}
+
+	// Create standard directory structure
+	dirs := []string{"prompts", ".evals", ".traces"}
+	for _, dir := range dirs {
+		fullPath := filepath.Join(path, dir)
+		if err := os.MkdirAll(fullPath, 0755); err != nil {
+			return fmt.Errorf("create directory %s: %w", dir, err)
+		}
 	}
 
 	// Write default .gitignore
@@ -184,6 +211,27 @@ func (b *Bridge) Status(ctx context.Context) (added, modified, deleted []string,
 	return added, modified, deleted, nil
 }
 
+// Pull fetches and merges changes from the remote repository.
+func (b *Bridge) Pull(ctx context.Context) error {
+	if b.repoPath == "" {
+		return errors.New("repository not initialized")
+	}
+
+	// First get the current branch
+	branch, err := b.runGit(ctx, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return fmt.Errorf("get current branch: %w", err)
+	}
+	branch = strings.TrimSpace(branch)
+
+	// Pull from origin on the current branch
+	if _, err := b.runGit(ctx, "pull", "origin", branch); err != nil {
+		return fmt.Errorf("git pull origin %s: %w", branch, err)
+	}
+
+	return nil
+}
+
 // Open opens an existing Git repository at the given path.
 func (b *Bridge) Open(path string) error {
 	// Verify it's a git repo
@@ -197,4 +245,29 @@ func (b *Bridge) Open(path string) error {
 // RepoPath returns the root path of the Git repository.
 func (b *Bridge) RepoPath() string {
 	return b.repoPath
+}
+
+// ReInit reinitializes the Bridge with a new repository path.
+// It validates the path and updates the internal repoPath.
+func (b *Bridge) ReInit(ctx context.Context, path string) error {
+	if path == "" {
+		return nil
+	}
+
+	cleanPath := path
+	if !filepath.IsAbs(cleanPath) {
+		absPath, err := filepath.Abs(cleanPath)
+		if err != nil {
+			return err
+		}
+		cleanPath = absPath
+	}
+
+	// Verify it's a valid git repo
+	if _, err := os.Stat(filepath.Join(cleanPath, ".git")); err != nil {
+		return err
+	}
+
+	b.repoPath = cleanPath
+	return nil
 }

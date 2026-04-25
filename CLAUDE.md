@@ -103,6 +103,29 @@
 - Archive/Restore 等操作使用 `UpdateFrontmatter` 原子性更新 state 并 commit
 - 不可只改内存 index，必须写盘 + Git commit
 
+### 配置热更新：ConfigManager
+- **问题**：各 Handler 分散处理配置变更的级联更新，导致重复逻辑和遗漏
+- **方案**：`internal/service/config_manager.go` 提供统一的配置变更广播机制
+- **接口**：
+  ```go
+  type ConfigChangeHandler func(ctx context.Context, domain string, changed []string)
+  type ConfigManager interface {
+      Register(domain string, h ConfigChangeHandler)
+      Notify(ctx context.Context, domain string, changed []string)
+  }
+  ```
+- **领域分类**：
+  | domain | 触发时机 | 下游响应 |
+  |--------|---------|---------|
+  | `llm` | LLM 配置 PUT 成功 | 重建 LLM invoker，更新 LLMCheckerAdapter |
+  | `repo` | Repo 路径切换/更新 | 调用 indexer/gitBridge 的 `ReInit` 重新指向新仓库 |
+  | `taxonomy` | Taxonomy PUT 成功 | 当前为 noop 占位，后续有下游时直接加 handler |
+  | `server` | ReloadConfig | 预留（未来可扩展：端口/超时等 server 级配置） |
+- **新增配置域**：在 `serve.go` 中 `Register("新domain", handler)` 即可，无需修改 ConfigManager 本身
+- **ReInit 接口**：插件实现了 `ReInit(ctx context.Context, path string) error`，支持运行时重新初始化路径
+- **注入链路**：`serve.go` 创建 `InMemoryConfigManager` 和所有 Handler，在 `NewRouter` 之前完成 `Register`，Router 和 Handler 使用同一批实例
+- **禁止**：在 Handler 内部直接调用其他 Handler 或插件的重建逻辑，统一经由 `ConfigManager.Notify`
+
 ---
 
 ## 项目结构

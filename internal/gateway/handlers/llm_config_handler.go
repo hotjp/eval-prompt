@@ -1,6 +1,8 @@
+// Package handlers contains HTTP handlers for the gateway layer.
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -8,22 +10,27 @@ import (
 	"sync"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/internal/service"
 )
 
 // LLMConfigHandler handles LLM provider configuration API endpoints.
 type LLMConfigHandler struct {
-	cfg      *[]config.LLMProviderConfig
-	logger   *slog.Logger
-	filePath string
-	mu       sync.RWMutex
+	cfg            *[]config.LLMProviderConfig
+	logger         *slog.Logger
+	mainConfigPath string
+	mu             sync.RWMutex
+	llmChecker    **LLMCheckerAdapter
+	configManager service.ConfigManager
 }
 
 // NewLLMConfigHandler creates a new LLMConfigHandler.
-func NewLLMConfigHandler(cfg *[]config.LLMProviderConfig, logger *slog.Logger, filePath string) *LLMConfigHandler {
+func NewLLMConfigHandler(cfg *[]config.LLMProviderConfig, logger *slog.Logger, filePath, mainConfigPath string, llmChecker **LLMCheckerAdapter, configManager service.ConfigManager) *LLMConfigHandler {
 	return &LLMConfigHandler{
-		cfg:      cfg,
-		logger:   logger,
-		filePath: filePath,
+		cfg:            cfg,
+		logger:         logger,
+		mainConfigPath: mainConfigPath,
+		llmChecker:     llmChecker,
+		configManager:  configManager,
 	}
 }
 
@@ -39,7 +46,6 @@ func (h *LLMConfigHandler) writeError(w http.ResponseWriter, status int, format 
 }
 
 // GetLLMConfig returns the current LLM provider configs.
-// APIKey is masked in the response for security.
 func (h *LLMConfigHandler) GetLLMConfig(w http.ResponseWriter, r *http.Request) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -69,7 +75,6 @@ func (h *LLMConfigHandler) UpdateLLMConfig(w http.ResponseWriter, r *http.Reques
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// Validate: name is required and must be unique
 	nameSeen := make(map[string]bool)
 	for _, c := range configs {
 		if c.Name == "" {
@@ -83,7 +88,6 @@ func (h *LLMConfigHandler) UpdateLLMConfig(w http.ResponseWriter, r *http.Reques
 		nameSeen[c.Name] = true
 	}
 
-	// Update config in memory
 	*h.cfg = make([]config.LLMProviderConfig, len(configs))
 	for i, c := range configs {
 		(*h.cfg)[i] = config.LLMProviderConfig{
@@ -92,20 +96,43 @@ func (h *LLMConfigHandler) UpdateLLMConfig(w http.ResponseWriter, r *http.Reques
 			APIKey:       c.APIKey,
 			Endpoint:     c.Endpoint,
 			DefaultModel: c.DefaultModel,
+			Default:      c.Default,
 		}
 	}
 
-	// Persist to file
-	if err := config.SaveLLMConfig(h.filePath, *h.cfg); err != nil {
+	if err := config.SaveLLMConfigToMain(h.mainConfigPath, *h.cfg); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "failed to save LLM config: %v", err)
 		return
+	}
+
+	if h.configManager != nil {
+		h.configManager.Notify(r.Context(), "llm", []string{"providers"})
 	}
 
 	h.logger.Info("LLM config updated", "count", len(configs), "layer", "L5")
 	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// maskAPIKey masks an API key for security, showing only the first 4 and last 4 characters.
+// HandleLLMChange handles LLM configuration change notifications.
+func (h *LLMConfigHandler) HandleLLMChange(ctx context.Context, domain string, changed []string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	var defaultCfg *config.LLMProviderConfig
+	for i := range *h.cfg {
+		if (*h.cfg)[i].Default {
+			defaultCfg = &(*h.cfg)[i]
+			break
+		}
+	}
+	if defaultCfg == nil && len(*h.cfg) > 0 {
+		defaultCfg = &(*h.cfg)[0]
+	}
+
+	h.logger.Info("LLM config change handler triggered", "changed", changed, "default", defaultCfg.Name)
+}
+
+// maskAPIKey masks an API key for security.
 func maskAPIKey(key string) string {
 	if len(key) <= 8 {
 		return "****"
@@ -117,7 +144,7 @@ func maskAPIKey(key string) string {
 type LLMConfigResp struct {
 	Name         string `json:"name"`
 	Provider     string `json:"provider"`
-	APIKey       string `json:"api_key"` // masked
+	APIKey       string `json:"api_key"`
 	Endpoint     string `json:"endpoint,omitempty"`
 	DefaultModel string `json:"default_model"`
 }
@@ -129,4 +156,5 @@ type LLMConfigReq struct {
 	APIKey       string `json:"api_key"`
 	Endpoint     string `json:"endpoint,omitempty"`
 	DefaultModel string `json:"default_model"`
+	Default     bool   `json:"default"`
 }

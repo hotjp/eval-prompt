@@ -113,7 +113,20 @@ var serveCmd = &cobra.Command{
 		// Create LLM checker for readyz
 		llmChecker := handlers.NewLLMCheckerAdapter(llmInvoker)
 
-		// Create router with dependency injection
+		// Create config manager and register config change handlers
+		configManager := service.NewInMemoryConfigManager()
+
+		// Create all handlers here so they can be registered with ConfigManager before routing
+		adminHandler := handlers.NewAdminHandler(logger, cfg, RequestRestart, indexer, gitBridge, configManager)
+		llmConfigHandler := handlers.NewLLMConfigHandler(&cfg.Plugins.LLM, logger, "config/llm.yaml", "config.yaml", &llmChecker, configManager)
+		taxonomyHandler := handlers.NewTaxonomyHandler(taxonomy, logger, "config/taxonomy.yaml", configManager)
+
+		// Register config change handlers
+		configManager.Register("repo", adminHandler.HandleRepoChange)
+		configManager.Register("llm", llmConfigHandler.HandleLLMChange)
+		configManager.Register("taxonomy", taxonomyHandler.HandleTaxonomyChange)
+
+		// Create router with dependency injection — pass pre-created handlers
 		router := gateway.NewRouter(gateway.RouterConfig{
 			TriggerService:   triggerService,
 			EvalService:     evalService,
@@ -122,14 +135,14 @@ var serveCmd = &cobra.Command{
 			Logger:          logger,
 			Metrics:         middleware.NewMetricsCollector(),
 			CORSOrigins:     []string{"http://localhost:8080", "http://127.0.0.1:8080"},
-			TaxonomyConfig:   taxonomy,
-			TaxonomyFilePath: "config/taxonomy.yaml",
 			AdminConfig:     cfg,
 			RestartFunc:     RequestRestart,
 			StorageClient:   storageChecker,
 			LLMInvoker:     llmChecker,
-			LLMConfig:      &cfg.Plugins.LLM,
-			LLMConfigPath:  "config/llm.yaml",
+			ConfigManager:  configManager,
+			AdminHandler:    adminHandler,
+			LLMConfigHandler: llmConfigHandler,
+			TaxonomyHandler: taxonomyHandler,
 		})
 
 		// Create HTTP server
