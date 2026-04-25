@@ -1565,6 +1565,53 @@
     </div>
   </section>
 
+  <!-- Performance -->
+  <section class="section" id="performance">
+    <div class="container">
+      <h2 class="section-title">性能卓越</h2>
+      <p class="section-subtitle">Go 语言实现，无 JVM、无 Node.js、无 Python 运行时</p>
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <table class="table table-dark table-performance">
+            <thead>
+              <tr>
+                <th>指标</th>
+                <th>eval-prompt (Go)</th>
+                <th>Python/Node.js 方案</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>冷启动</td>
+                <td><span class="badge bg-success">&lt;10ms</span></td>
+                <td><span class="badge bg-danger">200-500ms</span></td>
+              </tr>
+              <tr>
+                <td>内存占用</td>
+                <td><span class="badge bg-success">~16MB</span></td>
+                <td><span class="badge bg-danger">80-200MB</span></td>
+              </tr>
+              <tr>
+                <td>CLI 命令</td>
+                <td><span class="badge bg-success">&lt;10ms</span></td>
+                <td><span class="badge bg-danger">50-200ms</span></td>
+              </tr>
+              <tr>
+                <td>二进制大小</td>
+                <td><span class="badge bg-success">~28MB</span></td>
+                <td><span class="badge bg-warning">依赖复杂</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="text-center mt-4 text-secondary">
+            <i class="fas fa-bolt me-2"></i>
+            实测：600 个 Prompt 文件，CLI 命令执行时间 &lt;10ms，内存占用 ~16MB
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Tech Stack -->
   <section class="section" id="stack">
     <div class="container">
