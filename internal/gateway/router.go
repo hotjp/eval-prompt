@@ -9,6 +9,9 @@ import (
 	"github.com/eval-prompt/internal/gateway/handlers"
 	"github.com/eval-prompt/internal/gateway/middleware"
 	"github.com/eval-prompt/internal/service"
+
+	_ "github.com/eval-prompt/docs" // swagger docs
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // RouterConfig contains configuration for the router.
@@ -63,6 +66,9 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 
 	// Static files (SPA)
 	RegisterStaticRoutes(mux)
+
+	// Swagger UI
+	mux.Handle("/swagger/", httpSwagger.Handler())
 
 	return mux
 }
