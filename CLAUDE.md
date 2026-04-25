@@ -66,6 +66,39 @@
 - 插件可选，未启用时使用 noop 空实现
 - 典型插件：搜索引擎、Git 操作、工作流等
 
+### 文件操作模式：AssetFileManager
+- **目的**：统一 frontmatter 文件的读修改写循环，保证 Git commit 原子性
+- **接口**（`internal/service/asset_file.go`）：
+  - `GetFrontmatter` - 读取并解析 frontmatter
+  - `UpdateFrontmatter` - 读取→应用 updater→写回，保留原 body
+  - `WriteContent` - 读取→应用 updater→替换 body→写回，用于内容更新
+  - `GetBody` - 剥离 frontmatter 返回纯 markdown body
+- **实现**：`plugins/search/search.go` 的 `Indexer` 类型
+- **原则**：所有文件操作必须通过 AssetFileManager，确保 Git 操作原子性
+
+### Frontmatter 与 API 分离
+- **Frontmatter 是 Git/filesystem 内部实现，API 从不直接操作**
+- GET `/assets/{id}/content` 返回剥离 frontmatter 后的纯 body
+- PUT `/assets/{id}/content` 只接收 body，server-side 合并到 frontmatter
+- **好处**：前端不需要理解 frontmatter 格式，避免元数据泄露
+
+### 并发冲突检测：Content Hash 模式
+- **机制**：类似 HTTP ETag，基于内容 SHA256 前 8 字节
+- **流程**：
+  1. GET 返回 `content_hash`
+  2. PUT 时携带 `content_hash` 用于冲突检测
+  3. 服务端对比 hash，不匹配返回 409 Conflict
+- **解决冲突**：localStorage 暂存草稿，冲突时弹出 DiffEditor 让用户选择
+
+### HTTP 语义：Preference-Applied 与 Last-Modified
+- `Preference-Applied: return=representation` - PUT 成功后返回完整资源表示
+- `Last-Modified` - 基于 frontmatter `updated_at` 字段
+- 前端显示"已保存 X 分钟前"
+
+### 状态变更操作必须写 Git
+- Archive/Restore 等操作使用 `UpdateFrontmatter` 原子性更新 state 并 commit
+- 不可只改内存 index，必须写盘 + Git commit
+
 ---
 
 ## 项目结构
