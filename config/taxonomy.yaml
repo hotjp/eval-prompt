@@ -1,0 +1,32 @@
+bizlines:
+    - name: tech
+      description: 技术研发
+      color: blue
+    - name: opinion
+      description: 舆情业务
+      color: red
+    - name: marketing
+      description: 营销业务
+      color: green
+    - name: content
+      description: 内容创作
+      color: purple
+tags:
+    - name: prod
+      color: green
+    - name: draft
+      color: orange
+    - name: llm
+      color: blue
+    - name: rag
+      color: purple
+    - name: agent
+      color: cyan
+    - name: security
+      color: red
+    - name: ops
+      color: geekblue
+    - name: go
+      color: lime
+    - name: review
+      color: gold

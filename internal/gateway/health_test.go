@@ -26,6 +26,10 @@ func (m *MockLLMProvider) Name() string {
 	return "mock"
 }
 
+func (m *MockLLMProvider) Ping(ctx context.Context) error {
+	return nil
+}
+
 func TestHealthz(t *testing.T) {
 	mux := http.NewServeMux()
 	RegisterHealthRoutes(mux, nil, nil)

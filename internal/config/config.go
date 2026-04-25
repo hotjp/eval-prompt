@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
+	goyaml "gopkg.in/yaml.v3"
 )
 
 // DefaultConfigPath is the default path to the config file.
@@ -17,12 +19,35 @@ const DefaultConfigPath = "config.yaml"
 
 // Config is the root configuration structure.
 type Config struct {
+	Path         string             // path to config file (not marshaled)
 	Server       ServerConfig       `koanf:"server"`
 	Database     DatabaseConfig     `koanf:"database"`
 	Telemetry    TelemetryConfig    `koanf:"telemetry"`
 	Sandbox      SandboxConfig      `koanf:"sandbox"`
 	Plugins      PluginsConfig      `koanf:"plugins"`
 	PromptAssets PromptAssetsConfig `koanf:"prompt_assets"`
+	Taxonomy     TaxonomyConfig     `koanf:"taxonomy"`
+}
+
+// TaxonomyConfig holds biz_line and tag taxonomy definitions.
+type TaxonomyConfig struct {
+	BizLines []BizLineConfig `koanf:"biz_lines"`
+	Tags     []TagConfig     `koanf:"tags"`
+}
+
+// BizLineConfig holds a single biz_line definition.
+type BizLineConfig struct {
+	Name        string `koanf:"name"`
+	Description string `koanf:"description"`
+	Color       string `koanf:"color"`
+	BuiltIn     bool   `koanf:"-"` // not serialized, marks built-in items
+}
+
+// TagConfig holds a single tag definition.
+type TagConfig struct {
+	Name    string `koanf:"name"`
+	Color   string `koanf:"color"`
+	BuiltIn bool   `koanf:"-"` // not serialized, marks built-in items
 }
 
 // ServerConfig holds HTTP server settings.
@@ -69,11 +94,22 @@ type PromptAssetsConfig struct {
 
 // PluginsConfig holds plugin-specific settings.
 type PluginsConfig struct {
-	LLM    LLMPluginConfig    `koanf:"llm"`
-	Search SearchPluginConfig `koanf:"search"`
+	LLM    []LLMProviderConfig `koanf:"llm"`
+	Search SearchPluginConfig   `koanf:"search"`
 }
 
-// LLMPluginConfig holds LLM plugin settings.
+// LLMProviderConfig holds settings for a single LLM provider.
+type LLMProviderConfig struct {
+	Name         string `koanf:"name"`
+	Provider     string `koanf:"provider"` // openai | claude | ollama
+	APIKey       string `koanf:"api_key"`
+	Endpoint     string `koanf:"endpoint"`
+	DefaultModel string `koanf:"default_model"`
+	PingPath     string `koanf:"ping_path"` // lightweight health check path, e.g. "/v1/models"
+}
+
+// LLMPluginConfig holds LLM plugin settings (legacy single-provider format).
+// Deprecated: Use []LLMProviderConfig instead.
 type LLMPluginConfig struct {
 	Enabled      bool   `koanf:"enabled"`
 	Provider     string `koanf:"provider"` // openai | claude | ollama
@@ -130,6 +166,7 @@ func Load(configPath string) (*Config, error) {
 	if err := k.Unmarshal("", &cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+	cfg.Path = configPath
 
 	return &cfg, nil
 }
@@ -189,17 +226,32 @@ func getDefaults() map[string]interface{} {
 		"prompt_assets.traces_dir":     ".traces",
 		"prompt_assets.eval_threshold": 80,
 
-		// Plugin defaults
-		"plugins.llm.enabled":       false,
-		"plugins.llm.provider":      "openai",
-		"plugins.llm.api_key":       "",
-		"plugins.llm.endpoint":      "",
-		"plugins.llm.default_model": "gpt-4o",
+		// Plugin defaults - LLM now supports multiple providers via slice
+		"plugins.llm": []map[string]interface{}{},
 
 		"plugins.search.enabled": false,
 		"plugins.search.type":    "basic",
 		"plugins.search.url":     "",
 		"plugins.search.api_key": "",
+
+		// Taxonomy defaults
+		"taxonomy.biz_lines": []map[string]string{
+			{"name": "tech", "description": "技术研发", "color": "blue"},
+			{"name": "opinion", "description": "舆情业务", "color": "red"},
+			{"name": "marketing", "description": "营销业务", "color": "green"},
+			{"name": "content", "description": "内容创作", "color": "purple"},
+		},
+		"taxonomy.tags": []map[string]string{
+			{"name": "prod", "color": "green"},
+			{"name": "draft", "color": "orange"},
+			{"name": "llm", "color": "blue"},
+			{"name": "rag", "color": "purple"},
+			{"name": "agent", "color": "cyan"},
+			{"name": "security", "color": "red"},
+			{"name": "ops", "color": "geekblue"},
+			{"name": "go", "color": "lime"},
+			{"name": "review", "color": "gold"},
+		},
 	}
 }
 
@@ -237,5 +289,209 @@ func (c *Config) Validate() error {
 	if c.Server.PprofPort <= 0 || c.Server.PprofPort > 65535 {
 		return fmt.Errorf("invalid pprof port: %d", c.Server.PprofPort)
 	}
+	return nil
+}
+
+// DefaultTaxonomyPath is the default path to the taxonomy config file.
+const DefaultTaxonomyPath = "config/taxonomy.yaml"
+
+// LoadTaxonomy loads taxonomy from the given YAML file path.
+// Returns merged taxonomy (built-in + user config) if file exists.
+// Built-in items are marked with BuiltIn=true, user items with BuiltIn=false.
+func LoadTaxonomy(path string) (*TaxonomyConfig, error) {
+	// Start with built-in taxonomy (all items marked BuiltIn=true)
+	merged := defaultTaxonomy()
+
+	if path == "" {
+		path = DefaultTaxonomyPath
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No user config, return built-in only
+			return merged, nil
+		}
+		return nil, fmt.Errorf("failed to read taxonomy file: %w", err)
+	}
+
+	var userTaxonomy TaxonomyConfig
+	if err := goyaml.Unmarshal(data, &userTaxonomy); err != nil {
+		return nil, fmt.Errorf("failed to parse taxonomy YAML: %w", err)
+	}
+
+	// Merge user config: override built-in by name, append new user items
+	merged.BizLines = mergeBizLines(merged.BizLines, userTaxonomy.BizLines)
+	merged.Tags = mergeTags(merged.Tags, userTaxonomy.Tags)
+
+	return merged, nil
+}
+
+// mergeBizLines merges user biz_lines into built-in ones.
+// User items override built-in by name (case-sensitive).
+func mergeBizLines(builtIn, user []BizLineConfig) []BizLineConfig {
+	result := make([]BizLineConfig, 0, len(builtIn)+len(user))
+	seen := make(map[string]bool)
+
+	// First add all built-in
+	for _, b := range builtIn {
+		b.BuiltIn = true
+		result = append(result, b)
+		seen[b.Name] = true
+	}
+
+	// Then add user items (override or append)
+	for _, u := range user {
+		if overridden, exists := findBizLineByName(result, u.Name); exists {
+			// Override: keep BuiltIn=true but update description/color
+			overridden.Description = u.Description
+			overridden.Color = u.Color
+		} else {
+			// Append new user item
+			u.BuiltIn = false
+			result = append(result, u)
+		}
+		seen[u.Name] = true
+	}
+
+	return result
+}
+
+// mergeTags merges user tags into built-in ones.
+func mergeTags(builtIn, user []TagConfig) []TagConfig {
+	result := make([]TagConfig, 0, len(builtIn)+len(user))
+
+	// First add all built-in
+	for _, b := range builtIn {
+		b.BuiltIn = true
+		result = append(result, b)
+	}
+
+	// Then add user items (override or append)
+	for _, u := range user {
+		if exists, idx := findTagByName(result, u.Name); exists {
+			// Override: keep BuiltIn=true but update color
+			result[idx].Color = u.Color
+		} else {
+			// Append new user item
+			u.BuiltIn = false
+			result = append(result, u)
+		}
+	}
+
+	return result
+}
+
+func findBizLineByName(list []BizLineConfig, name string) (*BizLineConfig, bool) {
+	for i := range list {
+		if list[i].Name == name {
+			return &list[i], true
+		}
+	}
+	return nil, false
+}
+
+func findTagByName(list []TagConfig, name string) (bool, int) {
+	for i := range list {
+		if list[i].Name == name {
+			return true, i
+		}
+	}
+	return false, -1
+}
+
+// SaveTaxonomy saves taxonomy to the given YAML file path.
+func SaveTaxonomy(path string, taxonomy *TaxonomyConfig) error {
+	if path == "" {
+		path = DefaultTaxonomyPath
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create taxonomy directory: %w", err)
+	}
+
+	data, err := goyaml.Marshal(taxonomy)
+	if err != nil {
+		return fmt.Errorf("failed to marshal taxonomy: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write taxonomy file: %w", err)
+	}
+
+	return nil
+}
+
+// defaultTaxonomy returns the default taxonomy configuration.
+func defaultTaxonomy() *TaxonomyConfig {
+	return &TaxonomyConfig{
+		BizLines: []BizLineConfig{
+			{Name: "tech", Description: "技术研发", Color: "blue", BuiltIn: true},
+			{Name: "opinion", Description: "舆情业务", Color: "red", BuiltIn: true},
+			{Name: "marketing", Description: "营销业务", Color: "green", BuiltIn: true},
+			{Name: "content", Description: "内容创作", Color: "purple", BuiltIn: true},
+		},
+		Tags: []TagConfig{
+			{Name: "prod", Color: "green", BuiltIn: true},
+			{Name: "draft", Color: "orange", BuiltIn: true},
+			{Name: "llm", Color: "blue", BuiltIn: true},
+			{Name: "rag", Color: "purple", BuiltIn: true},
+			{Name: "agent", Color: "cyan", BuiltIn: true},
+			{Name: "security", Color: "red", BuiltIn: true},
+			{Name: "ops", Color: "geekblue", BuiltIn: true},
+			{Name: "go", Color: "lime", BuiltIn: true},
+			{Name: "review", Color: "gold", BuiltIn: true},
+		},
+	}
+}
+
+// DefaultLLMConfigPath is the default path to the LLM config file.
+const DefaultLLMConfigPath = "config/llm.yaml"
+
+// LoadLLMConfig loads LLM provider configs from the given YAML file path.
+func LoadLLMConfig(path string) ([]LLMProviderConfig, error) {
+	if path == "" {
+		path = DefaultLLMConfigPath
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read LLM config file: %w", err)
+	}
+
+	var configs []LLMProviderConfig
+	if err := goyaml.Unmarshal(data, &configs); err != nil {
+		return nil, fmt.Errorf("failed to parse LLM config YAML: %w", err)
+	}
+
+	return configs, nil
+}
+
+// SaveLLMConfig saves LLM provider configs to the given YAML file path.
+func SaveLLMConfig(path string, configs []LLMProviderConfig) error {
+	if path == "" {
+		path = DefaultLLMConfigPath
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create LLM config directory: %w", err)
+	}
+
+	data, err := goyaml.Marshal(configs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal LLM config: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write LLM config file: %w", err)
+	}
+
 	return nil
 }

@@ -1,0 +1,48 @@
+# Taxonomy configuration - sync via Git
+# Edit through Settings UI or directly here
+
+biz_lines:
+  - name: common
+    description: Common prompts
+    color: default
+  - name: security
+    description: Security related
+    color: red
+  - name: ops
+    description: Operations
+    color: purple
+  - name: data
+    description: Data processing
+    color: blue
+  - name: search
+    description: Search related
+    color: cyan
+  - name: ads
+    description: Advertising
+    color: orange
+  - name: rec
+    description: Recommendation
+    color: green
+  - name: feed
+    description: Feed related
+    color: geekblue
+
+tags:
+  - name: prod
+    color: green
+  - name: draft
+    color: orange
+  - name: llm
+    color: blue
+  - name: rag
+    color: purple
+  - name: agent
+    color: cyan
+  - name: security
+    color: red
+  - name: ops
+    color: geekblue
+  - name: go
+    color: lime
+  - name: review
+    color: gold

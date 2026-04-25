@@ -812,6 +812,10 @@ func (m *localMockGitBridger) Status(ctx context.Context) (added, modified, dele
 	return nil, nil, nil, nil
 }
 
+func (m *localMockGitBridger) RepoPath() string {
+	return ""
+}
+
 func TestEvalService_ToServiceEvalRun(t *testing.T) {
 	svc := NewEvalService()
 

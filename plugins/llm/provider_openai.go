@@ -16,16 +16,21 @@ import (
 type OpenAIProvider struct {
 	APIKey   string
 	Endpoint string // defaults to https://api.openai.com/v1
+	PingPath string // lightweight health check path, e.g. "/v1/models"
 }
 
 // NewOpenAIProvider creates a new OpenAI provider.
-func NewOpenAIProvider(apiKey, endpoint string) *OpenAIProvider {
+func NewOpenAIProvider(apiKey, endpoint, pingPath string) *OpenAIProvider {
 	if endpoint == "" {
 		endpoint = "https://api.openai.com/v1"
+	}
+	if pingPath == "" {
+		pingPath = "/v1/models"
 	}
 	return &OpenAIProvider{
 		APIKey:   apiKey,
 		Endpoint: endpoint,
+		PingPath: pingPath,
 	}
 }
 
@@ -161,4 +166,32 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, body any) (json.RawMessa
 	}
 
 	return respBody, nil
+}
+
+// Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
+// If PingPath is empty, checks TCP connectivity to the endpoint host.
+func (p *OpenAIProvider) Ping(ctx context.Context) error {
+	if p.PingPath == "" {
+		return pingTCP(ctx, p.Endpoint)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.Endpoint+p.PingPath, nil)
+	if err != nil {
+		return fmt.Errorf("openai: create ping request: %w", err)
+	}
+	if p.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("openai: ping failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("openai: ping status %d", resp.StatusCode)
+	}
+	return nil
 }

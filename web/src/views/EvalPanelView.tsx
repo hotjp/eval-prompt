@@ -5,6 +5,7 @@ import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-d
 import * as echarts from 'echarts'
 import { assetApi, evalApi } from '../api/client'
 import type { AssetDetail, EvalRun, EvalReport } from '../api/client'
+import { useStore } from '../store'
 
 function EvalPanelView() {
   const { id } = useParams<{ id: string }>()
@@ -89,8 +90,10 @@ function EvalPanelView() {
   const handleRunEval = async () => {
     if (!id) return
     setRunning(true)
+    useStore.getState().setRunningEval({ id: '', assetId: id, assetName: asset?.name || id })
     try {
       const result = await evalApi.run(id)
+      useStore.getState().setRunningEval({ id: result.run_id, assetId: id, assetName: asset?.name || id })
       message.info('Eval started, run ID: ' + result.run_id)
       const poll = async () => {
         const run = await evalApi.get(result.run_id)
@@ -101,12 +104,14 @@ function EvalPanelView() {
           setCurrentRun(report)
           setRuns((prev) => [run, ...prev])
           setRunning(false)
+          useStore.getState().setRunningEval(null)
         }
       }
       poll()
     } catch {
       message.error('Failed to start eval')
       setRunning(false)
+      useStore.getState().setRunningEval(null)
     }
   }
 

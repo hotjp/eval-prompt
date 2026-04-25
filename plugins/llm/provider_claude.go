@@ -15,19 +15,24 @@ import (
 type ClaudeProvider struct {
 	APIKey   string
 	Endpoint string // defaults to https://api.anthropic.com/v1
+	PingPath string // lightweight health check path, e.g. "/v1/models"
 }
 
 // NewClaudeProvider creates a new Claude provider.
-func NewClaudeProvider(apiKey, endpoint string) (*ClaudeProvider, error) {
+func NewClaudeProvider(apiKey, endpoint, pingPath string) (*ClaudeProvider, error) {
 	if apiKey == "" {
 		return nil, errors.New("claude: api key required")
 	}
 	if endpoint == "" {
 		endpoint = "https://api.anthropic.com/v1"
 	}
+	if pingPath == "" {
+		pingPath = "/v1/models"
+	}
 	return &ClaudeProvider{
 		APIKey:   apiKey,
 		Endpoint: endpoint,
+		PingPath: pingPath,
 	}, nil
 }
 
@@ -210,4 +215,31 @@ func (p *ClaudeProvider) InvokeWithSchema(ctx context.Context, prompt string, sc
 	}
 
 	return json.RawMessage(content), nil
+}
+
+// Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
+// If PingPath is empty, checks TCP connectivity to the endpoint host.
+func (p *ClaudeProvider) Ping(ctx context.Context) error {
+	if p.PingPath == "" {
+		return pingTCP(ctx, p.Endpoint)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.Endpoint+p.PingPath, nil)
+	if err != nil {
+		return fmt.Errorf("claude: create ping request: %w", err)
+	}
+	req.Header.Set("x-api-key", p.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("claude: ping failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("claude: ping status %d", resp.StatusCode)
+	}
+	return nil
 }

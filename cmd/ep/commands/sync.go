@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/gitbridge"
@@ -25,8 +26,26 @@ var syncReconcileCmd = &cobra.Command{
 	Use:   "reconcile",
 	Short: "对账",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		indexer := search.NewIndexer()
+		// Get directory from flag or fallback to working directory
+		wd, _ := cmd.Flags().GetString("dir")
+		if wd == "" {
+			var err error
+			wd, err = os.Getwd()
+			if err != nil {
+				return fmt.Errorf("获取工作目录失败: %w", err)
+			}
+		}
+
+		indexer := search.Default()
+		indexer.SetPersistDir(filepath.Join(wd, ".eval-prompt"))
+		if err := indexer.Load(); err != nil {
+			fmt.Printf("警告: 加载索引失败: %v\n", err)
+		}
 		gitBridge := gitbridge.NewBridge()
+		if err := gitBridge.Open(wd); err != nil {
+			return fmt.Errorf("打开git仓库失败: %w", err)
+		}
+		indexer.SetGitBridge(gitBridge)
 
 		syncService := service.NewSyncService(indexer, gitBridge)
 		report, err := syncService.Reconcile(context.Background())
@@ -45,6 +64,10 @@ var syncReconcileCmd = &cobra.Command{
 	},
 }
 
+func init() {
+	syncReconcileCmd.Flags().String("dir", "", "项目目录路径")
+}
+
 var syncExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "导出备份",
@@ -52,10 +75,30 @@ var syncExportCmd = &cobra.Command{
 		format, _ := cmd.Flags().GetString("format")
 		output, _ := cmd.Flags().GetString("output")
 
-		indexer := search.NewIndexer()
+		// Get directory from flag or fallback to working directory
+		wd, _ := cmd.Flags().GetString("dir")
+		if wd == "" {
+			var err error
+			wd, err = os.Getwd()
+			if err != nil {
+				return fmt.Errorf("获取工作目录失败: %w", err)
+			}
+		}
+
+		indexer := search.Default()
 		gitBridge := gitbridge.NewBridge()
+		if err := gitBridge.Open(wd); err != nil {
+			return fmt.Errorf("打开git仓库失败: %w", err)
+		}
+		indexer.SetGitBridge(gitBridge)
 
 		syncService := service.NewSyncService(indexer, gitBridge)
+
+		// Run reconcile first to populate the index from git
+		if _, err := syncService.Reconcile(context.Background()); err != nil {
+			return fmt.Errorf("对账失败: %w", err)
+		}
+
 		data, err := syncService.Export(context.Background(), format)
 		if err != nil {
 			return fmt.Errorf("导出失败: %w", err)
@@ -73,4 +116,5 @@ var syncExportCmd = &cobra.Command{
 func init() {
 	syncExportCmd.Flags().String("format", "json", "导出格式: json|yaml")
 	syncExportCmd.Flags().String("output", "", "输出文件路径")
+	syncExportCmd.Flags().String("dir", "", "项目目录路径")
 }

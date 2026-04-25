@@ -63,7 +63,8 @@ func newTestEvalHandler() (*EvalHandler, *mock.MockEvalService) {
 		},
 	}
 	logger := slog.Default()
-	return NewEvalHandler(mockEval, logger), mockEval
+	mockIndexer := &mock.MockAssetIndexer{}
+	return NewEvalHandler(mockEval, mockIndexer, logger), mockEval
 }
 
 func TestEvalHandler_RunEval(t *testing.T) {

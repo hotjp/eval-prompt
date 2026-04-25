@@ -13,13 +13,15 @@ import (
 // EvalHandler handles evaluation API endpoints.
 type EvalHandler struct {
 	evalService service.EvalServiceer
+	indexer    service.AssetIndexer
 	logger      *slog.Logger
 }
 
 // NewEvalHandler creates a new EvalHandler.
-func NewEvalHandler(evalService service.EvalServiceer, logger *slog.Logger) *EvalHandler {
+func NewEvalHandler(evalService service.EvalServiceer, indexer service.AssetIndexer, logger *slog.Logger) *EvalHandler {
 	return &EvalHandler{
 		evalService: evalService,
+		indexer:    indexer,
 		logger:      logger,
 	}
 }
@@ -72,6 +74,12 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "eval run failed: %v", err)
 		return
+	}
+
+	// Refresh the in-memory index so the new eval results are visible immediately
+	if _, err := h.indexer.Reconcile(ctx); err != nil {
+		h.logger.Warn("failed to reconcile index after eval", "asset_id", req.AssetID, "error", err)
+		// Non-fatal: eval still succeeded, index will be stale
 	}
 
 	h.logger.Info("eval run started", "asset_id", req.AssetID, "run_id", run.ID, "layer", "L5")

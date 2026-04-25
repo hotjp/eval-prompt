@@ -13,15 +13,20 @@ import (
 // OllamaProvider implements Provider for Ollama local APIs.
 type OllamaProvider struct {
 	Endpoint string // defaults to http://localhost:11434
+	PingPath string // lightweight health check path, e.g. "/api/tags"
 }
 
 // NewOllamaProvider creates a new Ollama provider.
-func NewOllamaProvider(endpoint string) (*OllamaProvider, error) {
+func NewOllamaProvider(endpoint, pingPath string) (*OllamaProvider, error) {
 	if endpoint == "" {
 		endpoint = "http://localhost:11434"
 	}
+	if pingPath == "" {
+		pingPath = "/api/tags"
+	}
 	return &OllamaProvider{
 		Endpoint: endpoint,
+		PingPath: pingPath,
 	}, nil
 }
 
@@ -160,4 +165,29 @@ func (p *OllamaProvider) InvokeWithSchema(ctx context.Context, prompt string, sc
 	}
 
 	return json.RawMessage(ollamaResp.Response), nil
+}
+
+// Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
+// If PingPath is empty, checks TCP connectivity to the endpoint host.
+func (p *OllamaProvider) Ping(ctx context.Context) error {
+	if p.PingPath == "" {
+		return pingTCP(ctx, p.Endpoint)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.Endpoint+p.PingPath, nil)
+	if err != nil {
+		return fmt.Errorf("ollama: create ping request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("ollama: ping failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("ollama: ping status %d", resp.StatusCode)
+	}
+	return nil
 }

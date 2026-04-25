@@ -76,7 +76,9 @@ type FrontMatter struct {
 	Version                string            `yaml:"version,omitempty"`
 	ContentHash            string            `yaml:"content_hash"`
 	State                  string            `yaml:"state"`
+	BizLine                string            `yaml:"biz_line,omitempty"`
 	Tags                   []string          `yaml:"tags,omitempty"`
+	UpdatedAt              time.Time         `yaml:"updated_at,omitempty"`
 	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`
 	EvalStats              EvalStats         `yaml:"eval_stats,omitempty"`
 	Labels                 []LabelEntry       `yaml:"labels,omitempty"`
@@ -88,14 +90,9 @@ func (f *FrontMatter) Validate() error {
 	if f.ID == "" {
 		return NewDomainError(ErrInvalidEntityID, "front matter id is required")
 	}
-	if !IsValidULID(f.ID) {
-		return ErrInvalidID(f.ID)
-	}
+	// NOTE: ID can be a human-readable name (not just ULID) to match asset naming conventions.
 	if f.Name == "" {
 		return NewDomainError(ErrAssetNameEmpty, "front matter name is required")
-	}
-	if f.ContentHash == "" {
-		return NewDomainError(ErrAssetContentHashMismatch, "content_hash is required")
 	}
 	return nil
 }
@@ -119,6 +116,7 @@ type EvalPromptFrontMatter struct {
 	Version      string   `yaml:"version,omitempty"`
 	ContentHash  string   `yaml:"content_hash"`
 	State        string   `yaml:"state"`
+	BizLine      string   `yaml:"biz_line,omitempty"`
 	Tags         []string `yaml:"tags,omitempty"`
 	EvalCaseIDs  []string `yaml:"eval_case_ids,omitempty"`
 	Model        string   `yaml:"model"`
@@ -129,14 +127,9 @@ func (f *EvalPromptFrontMatter) Validate() error {
 	if f.ID == "" {
 		return NewDomainError(ErrInvalidEntityID, "eval prompt front matter id is required")
 	}
-	if !IsValidULID(f.ID) {
-		return ErrInvalidID(f.ID)
-	}
+	// NOTE: ID can be a human-readable name (not just ULID) to match asset naming conventions.
 	if f.Name == "" {
 		return NewDomainError(ErrAssetNameEmpty, "eval prompt front matter name is required")
-	}
-	if f.ContentHash == "" {
-		return NewDomainError(ErrAssetContentHashMismatch, "content_hash is required")
 	}
 	return nil
 }

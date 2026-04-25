@@ -1,12 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Input, Button, Space, message, Spin, Tabs, Tag } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, SwapOutlined } from '@ant-design/icons'
-import MonacoEditor from '@monaco-editor/react'
+import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal } from 'antd'
+import { SaveOutlined, PlayCircleOutlined, SwapOutlined, DiffOutlined } from '@ant-design/icons'
+import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
 import { assetApi, triggerApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
 
 const { TextArea } = Input
+
+// Default body template — frontmatter is handled server-side
+const defaultBody = `## Instruction
+
+Write your prompt here.
+
+## Examples
+
+### Example 1
+- Input:
+- Output:
+
+## Variables
+
+- \`{{variable_name}}\`: description
+`
+
+interface Draft {
+  content: string
+  savedHash: string
+  savedAt: number
+}
+
+function getDraftKey(id: string) {
+  return `draft:${id}`
+}
+
+function loadDraft(id: string): Draft | null {
+  try {
+    const raw = localStorage.getItem(getDraftKey(id))
+    if (!raw) return null
+    const draft: Draft = JSON.parse(raw)
+    // Expire after 7 days
+    if (Date.now() - draft.savedAt > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(getDraftKey(id))
+      return null
+    }
+    return draft
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(id: string, content: string, hash: string) {
+  const draft: Draft = { content, savedHash: hash, savedAt: Date.now() }
+  localStorage.setItem(getDraftKey(id), JSON.stringify(draft))
+}
+
+function clearDraft(id: string) {
+  localStorage.removeItem(getDraftKey(id))
+}
 
 function EditorView() {
   const { id } = useParams<{ id: string }>()
@@ -15,43 +66,165 @@ function EditorView() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [promptValue, setPromptValue] = useState('')
+  const [originalContent, setOriginalContent] = useState('')
+  const [hasChanges, setHasChanges] = useState(false)
   const [variablesValue, setVariablesValue] = useState('{}\n\n{\n  "key": "value"\n}')
   const [injectedResult, setInjectedResult] = useState('')
   const [validating, setValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message?: string } | null>(null)
+  const [contentHash, setContentHash] = useState('')
+  const [updatedAt, setUpdatedAt] = useState('')
+  const [conflictDraft, setConflictDraft] = useState<Draft | null>(null)
+  const [conflictServerContent, setConflictServerContent] = useState('')
+  const loadedRef = useRef(false)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>()
+
+  // Auto-save draft to localStorage on content change
+  useEffect(() => {
+    if (!id || id === 'new' || !hasChanges) return
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      saveDraft(id, promptValue, contentHash)
+    }, 2000)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [promptValue, contentHash, hasChanges, id])
 
   useEffect(() => {
-    if (id) {
-      loadAsset(id)
+    if (!id || id === 'new') {
+      setLoading(false)
+      return
+    }
+
+    // Prevent double-loading
+    if (loadedRef.current) {
+      return
+    }
+
+    let timeout: ReturnType<typeof setTimeout>
+    let cancelled = false
+
+    const loadAsset = async () => {
+      setLoading(true)
+      try {
+        const race = Promise.race([
+          Promise.all([
+            assetApi.get(id).catch(() => null),
+            assetApi.getContent(id).catch(() => ({ content: '', content_hash: '', updated_at: '' })),
+          ]),
+          new Promise<null>((_, reject) => {
+            timeout = setTimeout(() => reject(new Error('timeout')), 3000)
+          }),
+        ])
+
+        const [assetData, contentData] = await race as [AssetDetail | null, { content: string; content_hash: string; updated_at: string }]
+
+        if (cancelled) return
+        clearTimeout(timeout)
+
+        if (!assetData) {
+          message.error('Asset not found')
+          navigate('/assets')
+          return
+        }
+
+        setAsset(assetData)
+
+        // Check for local draft
+        const draft = loadDraft(id)
+        const serverContent = contentData.content || defaultBody
+        const serverHash = contentData.content_hash || ''
+
+        if (draft && draft.savedHash && draft.savedHash !== serverHash) {
+          // Draft exists and server has changed — show conflict
+          setConflictDraft(draft)
+          setConflictServerContent(serverContent)
+          setPromptValue(draft.content)
+          setOriginalContent(draft.content)
+        } else {
+          // No conflict — use server content (or draft if server has no content)
+          const content = (draft && !serverContent) ? draft.content : (contentData.content || defaultBody)
+          setPromptValue(content)
+          setOriginalContent(content)
+          if (draft) saveDraft(id, content, serverHash)
+        }
+
+        setContentHash(serverHash)
+        setUpdatedAt(contentData.updated_at || '')
+        loadedRef.current = true
+      } catch (err) {
+        if (cancelled) return
+        message.error('Failed to load asset')
+        console.error(err)
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadAsset()
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
     }
   }, [id])
 
-  const loadAsset = async (assetId: string) => {
-    setLoading(true)
-    try {
-      const data = await assetApi.get(assetId)
-      setAsset(data)
-      if (data.labels?.prompt) {
-        setPromptValue(data.labels.prompt)
-      }
-    } catch {
-      message.error('Failed to load asset')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    setHasChanges(promptValue !== originalContent)
+  }, [promptValue, originalContent])
 
-  const handleSave = async () => {
+  const handleSave = async (forceContent?: string) => {
     if (!id) return
     setSaving(true)
     try {
-      await assetApi.update(id, { labels: { ...asset?.labels, prompt: promptValue } } as any)
-      message.success('Saved')
-    } catch {
-      message.error('Failed to save')
+      const commitMsg = hasChanges ? `Update prompt ${id}` : `Create prompt ${id}`
+      const result = await assetApi.saveContent(id, forceContent || promptValue, commitMsg, contentHash)
+      message.success('Saved and committed')
+      // Use content from Preference-Applied response directly
+      setPromptValue(result.content)
+      setOriginalContent(result.content)
+      setContentHash(result.content_hash)
+      setUpdatedAt(result.updated_at)
+      setHasChanges(false)
+      clearDraft(id)
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        message.warning('Conflict detected. Please choose which version to keep.')
+        // Reload server content and show conflict
+        try {
+          const contentData = await assetApi.getContent(id)
+          const draft = loadDraft(id)
+          setConflictDraft(draft)
+          setConflictServerContent(contentData.content || defaultBody)
+          setContentHash(contentData.content_hash || '')
+          setUpdatedAt(contentData.updated_at || '')
+        } catch {
+          message.error('Failed to reload content')
+        }
+      } else {
+        message.error('Failed to save')
+      }
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAcceptServer = () => {
+    if (!conflictServerContent) return
+    clearDraft(id!)
+    setConflictDraft(null)
+    setConflictServerContent('')
+    setPromptValue(conflictServerContent)
+    setOriginalContent(conflictServerContent)
+    setHasChanges(false)
+  }
+
+  const handleKeepLocal = () => {
+    if (!conflictDraft) return
+    setConflictDraft(null)
+    setConflictServerContent('')
+    setHasChanges(true)
   }
 
   const handleValidate = async () => {
@@ -81,11 +254,16 @@ function EditorView() {
     }
   }
 
+  const handleRestore = () => {
+    setPromptValue(originalContent)
+    setHasChanges(false)
+  }
+
   if (loading) {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />
   }
 
-  if (!asset) {
+  if (!asset && id !== 'new') {
     return <div>Asset not found</div>
   }
 
@@ -93,15 +271,16 @@ function EditorView() {
     <div>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Card
-          title={asset.name}
+          title={asset?.name || id}
           extra={
             <Space>
-              <Tag>{asset.biz_line}</Tag>
-              <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>
+              {asset?.biz_line && <Tag>{asset.biz_line}</Tag>}
+              {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
+              {updatedAt && <Tag color="blue">Saved {formatUpdatedAt(updatedAt)}</Tag>}
             </Space>
           }
         >
-          <p>{asset.description}</p>
+          <p>{asset?.description || 'New prompt asset'}</p>
         </Card>
 
         <Tabs
@@ -115,7 +294,7 @@ function EditorView() {
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <MonacoEditor
                       height="400px"
-                      language="json"
+                      language="markdown"
                       value={promptValue}
                       onChange={(value) => setPromptValue(value || '')}
                       theme="vs-dark"
@@ -125,10 +304,11 @@ function EditorView() {
                       <Button
                         type="primary"
                         icon={<SaveOutlined />}
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         loading={saving}
+                        disabled={!hasChanges}
                       >
-                        Save
+                        Save & Commit
                       </Button>
                       <Button
                         icon={<PlayCircleOutlined />}
@@ -137,6 +317,11 @@ function EditorView() {
                       >
                         Validate
                       </Button>
+                      {hasChanges && (
+                        <Button onClick={handleRestore}>
+                          Restore
+                        </Button>
+                      )}
                     </Space>
                     {validationResult && (
                       <Tag color={validationResult.valid ? 'green' : 'red'}>
@@ -144,6 +329,34 @@ function EditorView() {
                       </Tag>
                     )}
                   </Space>
+                </Card>
+              ),
+            },
+            {
+              key: 'diff',
+              label: (
+                <span>
+                  <DiffOutlined /> Diff
+                </span>
+              ),
+              children: (
+                <Card title="Changes">
+                  {hasChanges ? (
+                    <DiffEditor
+                      height="400px"
+                      language="markdown"
+                      original={originalContent}
+                      modified={promptValue}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        renderSideBySide: true,
+                        readOnly: true,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ color: '#888', padding: 16 }}>No changes to show</div>
+                  )}
                 </Card>
               ),
             },
@@ -188,6 +401,38 @@ function EditorView() {
           </Space>
         </Card>
       </Space>
+
+      {/* Conflict resolution modal */}
+      <Modal
+        title="Conflict Detected"
+        open={!!conflictDraft}
+        width={900}
+        footer={null}
+        onCancel={() => setConflictDraft(null)}
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <p>Your local draft differs from the server version. Choose which to keep:</p>
+          <DiffEditor
+            height={300}
+            language="markdown"
+            original={conflictServerContent || 'Server version'}
+            modified={conflictDraft?.content || ''}
+            theme="vs-dark"
+            options={{ minimap: { enabled: false }, renderSideBySide: true }}
+          />
+          <Space>
+            <Button type="primary" onClick={() => handleSave(conflictDraft?.content)}>
+              Keep Local Draft
+            </Button>
+            <Button onClick={handleAcceptServer}>
+              Accept Server Version
+            </Button>
+            <Button onClick={handleKeepLocal}>
+              Review &amp; Merge Later
+            </Button>
+          </Space>
+        </Space>
+      </Modal>
     </div>
   )
 }

@@ -35,6 +35,9 @@ type GitBridger interface {
 
 	// Status returns the current working tree status: added, modified, and deleted files.
 	Status(ctx context.Context) (added, modified, deleted []string, err error)
+
+	// RepoPath returns the root path of the Git repository.
+	RepoPath() string
 }
 
 // AssetIndexer is the interface for indexing and searching prompt assets.
@@ -54,6 +57,18 @@ type AssetIndexer interface {
 
 	// Delete removes an asset from the index.
 	Delete(ctx context.Context, id string) error
+
+	// GetFileContent reads the raw content of a prompt file from disk.
+	// Returns the file content or error if the file doesn't exist.
+	GetFileContent(ctx context.Context, id string) (string, error)
+
+	// SaveFileContent writes the full file content (including frontmatter) to a prompt file and commits it to Git.
+	// If the file doesn't exist, it creates it. Returns the commit hash.
+	SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error)
+
+	// CreatePlaceholder creates a placeholder .md file with draft state and commits it to Git.
+	// This marks the asset as "claimed" so other Git users know it's taken.
+	CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error
 }
 
 // SearchFilters contains filter criteria for asset search.
@@ -110,6 +125,16 @@ type ReconcileReport struct {
 	Updated int
 	Deleted int
 	Errors  []string
+}
+
+// FileMetadata contains metadata embedded in a prompt file's frontmatter.
+type FileMetadata struct {
+	Name        string
+	Description string
+	BizLine     string
+	Tags        []string
+	State       string
+	Version     string
 }
 
 // Asset represents a prompt asset (mirrors domain.Asset for plugin use).

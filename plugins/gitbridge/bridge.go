@@ -156,7 +156,8 @@ func (b *Bridge) Status(ctx context.Context) (added, modified, deleted []string,
 		return nil, nil, nil, errors.New("repository not initialized")
 	}
 
-	out, err := b.runGit(ctx, "status", "--porcelain")
+	// Use -u to show individual untracked files (not just directories)
+	out, err := b.runGit(ctx, "status", "--porcelain", "-u")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("git status: %w", err)
 	}
@@ -174,6 +175,9 @@ func (b *Bridge) Status(ctx context.Context) (added, modified, deleted []string,
 			modified = append(modified, path)
 		} else if strings.Contains(status, "D") || status == "D" {
 			deleted = append(deleted, path)
+		} else if status == "??" {
+			// Untracked files - treat as added
+			added = append(added, path)
 		}
 	}
 
@@ -188,4 +192,9 @@ func (b *Bridge) Open(path string) error {
 	}
 	b.repoPath = path
 	return nil
+}
+
+// RepoPath returns the root path of the Git repository.
+func (b *Bridge) RepoPath() string {
+	return b.repoPath
 }

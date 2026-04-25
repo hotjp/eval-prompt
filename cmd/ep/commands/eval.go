@@ -11,6 +11,8 @@ import (
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
+	"github.com/eval-prompt/plugins/gitbridge"
+	"github.com/eval-prompt/plugins/search"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +39,7 @@ var evalRunCmd = &cobra.Command{
 		snapshot, _ := cmd.Flags().GetString("snapshot")
 		caseIDs, _ := cmd.Flags().GetStringSlice("case")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
+		noSync, _ := cmd.Flags().GetBool("no-sync")
 
 		if snapshot == "" {
 			snapshot = "latest"
@@ -47,6 +50,27 @@ var evalRunCmd = &cobra.Command{
 		if err != nil {
 			if service.ErrNotImplemented != nil {
 				return fmt.Errorf("Eval 执行失败: %w", err)
+			}
+		}
+
+		if !noSync {
+			// Auto-reconcile to update index with new eval results
+			wd, _ := cmd.Flags().GetString("dir")
+			if wd == "" {
+				wd, _ = os.Getwd()
+			}
+			indexer := search.Default()
+			indexer.SetPersistDir(filepath.Join(wd, ".eval-prompt"))
+			if err := indexer.Load(); err != nil {
+				fmt.Printf("警告: 加载索引失败: %v\n", err)
+			}
+			gitBridge := gitbridge.NewBridge()
+			if err := gitBridge.Open(wd); err == nil {
+				indexer.SetGitBridge(gitBridge)
+				report, err := indexer.Reconcile(context.Background())
+				if err == nil {
+					fmt.Printf("索引已同步: 新增 %d, 更新 %d, 删除 %d\n", report.Added, report.Updated, report.Deleted)
+				}
 			}
 		}
 
@@ -274,6 +298,8 @@ func init() {
 	evalRunCmd.Flags().String("snapshot", "", "快照版本")
 	evalRunCmd.Flags().StringSlice("case", []string{}, "指定测试用例 ID")
 	evalRunCmd.Flags().Bool("json", false, "JSON 输出")
+	evalRunCmd.Flags().Bool("no-sync", false, "跳过自动同步索引")
+	evalRunCmd.Flags().String("dir", "", "项目目录路径")
 
 	evalCasesCmd.Flags().Bool("json", false, "JSON 输出")
 
