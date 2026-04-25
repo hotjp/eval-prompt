@@ -123,12 +123,15 @@ var serveCmd = &cobra.Command{
 		// Create eval service (TODO: with real implementation)
 		evalService := service.NewEvalService()
 
-		// Create semantic service for LLM-based analysis
-		semanticService := service.NewSemanticService(llmInvoker, defaultModel)
-
-		// Wire semantic service into trigger and eval services
-		triggerService = triggerService.WithSemanticAnalyzer(semanticService, defaultModel)
-		evalService = evalService.WithSemanticAnalyzer(semanticService)
+		// Create semantic service only if LLM is properly configured with a model
+		var semanticService *service.SemanticService
+		if defaultModel != "" {
+			semanticService = service.NewSemanticService(llmInvoker, defaultModel)
+			triggerService = triggerService.WithSemanticAnalyzer(semanticService, defaultModel)
+			evalService = evalService.WithSemanticAnalyzer(semanticService)
+		} else {
+			logger.Info("LLM not configured, semantic features disabled")
+		}
 
 		// Create storage checker for readyz
 		var storageChecker handlers.StorageChecker

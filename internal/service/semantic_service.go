@@ -46,8 +46,9 @@ var _ SemanticAnalyzer = (*SemanticService)(nil)
 
 // AnalyzeContent performs semantic analysis on prompt content.
 func (s *SemanticService) AnalyzeContent(ctx context.Context, req AnalyzeContentRequest) (*AnalyzeContentResult, error) {
-	if s.llmInvoker == nil {
-		return nil, fmt.Errorf("LLM invoker not configured")
+	if s.llmInvoker == nil || s.model == "" {
+		// LLM not configured - return nil so callers skip (preserve existing data)
+		return nil, nil
 	}
 
 	// Build analysis prompt
@@ -93,8 +94,9 @@ Respond with ONLY the JSON object.`, req.Content, req.Description, req.BizLine)
 
 // ExplainDiff explains the semantic differences between two versions of content.
 func (s *SemanticService) ExplainDiff(ctx context.Context, req ExplainDiffRequest) (*ExplainDiffResult, error) {
-	if s.llmInvoker == nil {
-		return nil, fmt.Errorf("LLM invoker not configured")
+	if s.llmInvoker == nil || s.model == "" {
+		// LLM not configured - return nil so callers skip
+		return nil, nil
 	}
 
 	// Build diff explanation prompt
