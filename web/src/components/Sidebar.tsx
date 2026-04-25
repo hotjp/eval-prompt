@@ -610,7 +610,7 @@ function Sidebar() {
         Enter the path to a directory. It will be created and initialized as a Git repository if it doesn't exist.
       </div>
       <Input
-        placeholder="~/path/to/repo"
+        placeholder="$HOME/path/to/repo"
         value={initPath}
         onChange={e => setInitPath(e.target.value)}
         onPressEnter={handleInitRepo}
