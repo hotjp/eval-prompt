@@ -30,6 +30,14 @@ func StaticHandler() http.Handler {
 	fileServer := http.FileServer(http.FS(fs))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// API paths that don't match any route should return JSON 404, not HTML
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error":"not found","code":"L5404"}`))
+			return
+		}
+
 		// Clean the path
 		path := strings.TrimPrefix(r.URL.Path, "/")
 

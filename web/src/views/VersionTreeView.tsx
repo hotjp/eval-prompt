@@ -66,7 +66,7 @@ function VersionTreeView() {
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
                   <Space>
                     <Tag icon={<SyncOutlined spin />}>{snapshot.version}</Tag>
-                    <Tag>{snapshot.commit_hash.slice(0, 8)}</Tag>
+                    <Tag>{(snapshot.commit_hash || '').slice(0, 8)}</Tag>
                     {snapshot.eval_score !== undefined && (
                       <Tag icon={snapshot.eval_score >= 0.8 ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
                         Score: {(snapshot.eval_score * 100).toFixed(1)}%
@@ -74,13 +74,13 @@ function VersionTreeView() {
                     )}
                   </Space>
                   <div>
-                    <strong>Author:</strong> {snapshot.author}
+                    <strong>Author:</strong> {snapshot.author || 'Unknown'}
                   </div>
                   <div>
-                    <strong>Reason:</strong> {snapshot.reason}
+                    <strong>Reason:</strong> {snapshot.reason || 'No reason'}
                   </div>
                   <div style={{ color: '#888', fontSize: 12 }}>
-                    {new Date(snapshot.created_at).toLocaleString()}
+                    {snapshot.created_at ? new Date(snapshot.created_at).toLocaleString() : 'Unknown'}
                   </div>
                 </Space>
               </Card>

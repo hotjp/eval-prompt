@@ -65,13 +65,13 @@ function CompareView() {
   }
 
   // Get version options from snapshots
-  const versionOptions = assetDetail?.snapshots
+  const versionOptions = (assetDetail?.snapshots || [])
     .map((s: Snapshot) => ({ label: s.version, value: s.version }))
-    .sort((a, b) => a.label.localeCompare(b.label)) || []
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   // Get snapshot data for display
   const getSnapshotData = (version: string): Snapshot | undefined => {
-    return assetDetail?.snapshots.find((s: Snapshot) => s.version === version)
+    return (assetDetail?.snapshots || []).find((s: Snapshot) => s.version === version)
   }
 
   return (

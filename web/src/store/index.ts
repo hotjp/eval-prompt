@@ -41,6 +41,7 @@ interface AppState {
   matchedPrompts: MatchedPrompt[]
   loading: boolean
   runningEval: { id: string; assetId: string; assetName: string } | null
+  evalConcurrency: number
 
   setAssets: (assets: Asset[]) => void
   setCurrentAsset: (asset: Asset | null) => void
@@ -49,6 +50,7 @@ interface AppState {
   setMatchedPrompts: (prompts: MatchedPrompt[]) => void
   setLoading: (loading: boolean) => void
   setRunningEval: (eval: { id: string; assetId: string; assetName: string } | null) => void
+  setEvalConcurrency: (concurrency: number) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -59,6 +61,7 @@ export const useStore = create<AppState>((set) => ({
   matchedPrompts: [],
   loading: false,
   runningEval: null,
+  evalConcurrency: 1,
 
   setAssets: (assets) => set({ assets }),
   setCurrentAsset: (currentAsset) => set({ currentAsset }),
@@ -67,4 +70,5 @@ export const useStore = create<AppState>((set) => ({
   setMatchedPrompts: (matchedPrompts) => set({ matchedPrompts }),
   setLoading: (loading) => set({ loading }),
   setRunningEval: (runningEval) => set({ runningEval }),
+  setEvalConcurrency: (evalConcurrency) => set({ evalConcurrency }),
 }))

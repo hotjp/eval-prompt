@@ -123,7 +123,7 @@ function EvalPanelView() {
     return <div>Asset not found</div>
   }
 
-  const passRate = currentRun
+  const passRate = currentRun && currentRun.rubric_details.length > 0
     ? (currentRun.rubric_details.filter((r) => r.passed).length / currentRun.rubric_details.length) * 100
     : 0
 
@@ -212,9 +212,9 @@ function EvalPanelView() {
                   return <Tag color={color}>{status}</Tag>
                 },
               },
-              { title: 'Det. Score', dataIndex: 'deterministic_score', key: 'deterministic_score', render: (s) => s.toFixed(2) },
-              { title: 'Rubric Score', dataIndex: 'rubric_score', key: 'rubric_score', render: (s) => s.toFixed(2) },
-              { title: 'Created', dataIndex: 'created_at', key: 'created_at', render: (d) => new Date(d).toLocaleString() },
+              { title: 'Det. Score', dataIndex: 'deterministic_score', key: 'deterministic_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
+              { title: 'Rubric Score', dataIndex: 'rubric_score', key: 'rubric_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
+              { title: 'Created', dataIndex: 'created_at', key: 'created_at', render: (d) => d ? new Date(d).toLocaleString() : 'N/A' },
               {
                 title: 'Action',
                 key: 'action',

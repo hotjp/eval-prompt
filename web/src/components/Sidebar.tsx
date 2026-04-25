@@ -216,17 +216,17 @@ function Sidebar() {
             <span style={{ fontSize: 14 }}>⚠️</span>
             <span style={{ fontWeight: 500 }}>Degraded — some services unavailable</span>
           </div>
-          {Object.entries(healthData.checks).map(([k, v]) => (
-            v.status !== 'ok' && (
+          {Object.entries(healthData?.checks || {}).map(([k, v]) => (
+            v?.status !== 'ok' && (
               <div key={k} style={{ color: '#8c8c8c', marginTop: 2 }}>
-                {k}: {v.message || v.status}
+                {k}: {v?.message || v?.status || 'unknown'}
               </div>
             )
           ))}
-          {healthData.checks?.llm?.providers && Object.entries(healthData.checks.llm.providers).map(([name, prov]) => (
-            prov.status !== 'ok' && (
+          {healthData?.checks?.llm?.providers && Object.entries(healthData.checks.llm.providers || {}).map(([name, prov]) => (
+            prov?.status !== 'ok' && (
               <div key={`llm-${name}`} style={{ color: '#8c8c8c', marginTop: 2 }}>
-                {name}: {prov.message || prov.status}
+                {name}: {prov?.message || prov?.status || 'unknown'}
               </div>
             )
           ))}
@@ -257,7 +257,7 @@ function Sidebar() {
           <Text type="secondary" style={{ fontSize: 12 }}>Details</Text>
           <div style={{ marginTop: 4, fontSize: 12, color: '#595959' }}>
             <div>Checked: {lastChecked ? lastChecked.toLocaleTimeString() : 'N/A'}</div>
-            {healthData.checks && Object.entries(healthData.checks).map(([k, v]) => (
+            {healthData?.checks && Object.entries(healthData.checks || {}).map(([k, v]) => (
               <div key={k}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
                   <span>{k}</span>
@@ -265,13 +265,13 @@ function Sidebar() {
                     {v.status}
                   </span>
                 </div>
-                {k === 'llm' && v.providers && (
+                {k === 'llm' && v?.providers && (
                   <div style={{ marginLeft: 12, marginTop: 2 }}>
-                    {Object.entries(v.providers).map(([name, prov]) => (
+                    {Object.entries(v.providers || {}).map(([name, prov]) => (
                       <div key={name} style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: '#8c8c8c', fontSize: 11 }}>{name}</span>
-                        <span style={{ color: prov.status === 'ok' ? '#52c41a' : '#ff4d4f', fontSize: 11 }}>
-                          {prov.status === 'ok' ? `${prov.latency_ms}ms` : prov.message}
+                        <span style={{ color: prov?.status === 'ok' ? '#52c41a' : '#ff4d4f', fontSize: 11 }}>
+                          {prov?.status === 'ok' ? `${prov?.latency_ms}ms` : prov?.message}
                         </span>
                       </div>
                     ))}

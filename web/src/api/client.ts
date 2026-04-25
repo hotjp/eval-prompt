@@ -86,6 +86,30 @@ export interface LLMConfig {
   default_model: string
 }
 
+export interface ExecuteEvalRequest {
+  asset_id: string
+  case_ids?: string[]
+  mode?: string
+  runs_per_case?: number
+  concurrency?: number
+  model?: string
+  temperature?: number
+}
+
+export interface Execution {
+  id: string
+  asset_id: string
+  status: string
+  concurrency: number
+  model: string
+  temperature: number
+  runs_per_case: number
+  total_cases: number
+  completed_cases: number
+  created_at: string
+  updated_at: string
+}
+
 export interface RepoConfig {
   repo_path: string
   assets_dir: string
@@ -119,7 +143,7 @@ export const assetApi = {
     if (filters?.biz_line) params.append('biz_line', filters.biz_line)
     if (filters?.tag) params.append('tag', filters.tag)
     const { data } = await api.get(`/assets?${params}`)
-    return data.assets
+    return data.assets || []
   },
 
   get: async (id: string): Promise<AssetDetail> => {
@@ -168,6 +192,20 @@ export const evalApi = {
     return data
   },
 
+  execute: async (request: ExecuteEvalRequest): Promise<{ execution_id: string; status: string }> => {
+    const { data } = await api.post('/evals/execute', request)
+    return data
+  },
+
+  getExecution: async (executionId: string): Promise<Execution> => {
+    const { data } = await api.get(`/evals/executions/${executionId}`)
+    return data
+  },
+
+  cancelExecution: async (executionId: string): Promise<void> => {
+    await api.post(`/evals/executions/${executionId}/cancel`)
+  },
+
   get: async (runId: string): Promise<EvalRun> => {
     const { data } = await api.get(`/evals/${runId}`)
     return data
@@ -194,7 +232,7 @@ export const evalApi = {
 
   list: async (assetId: string): Promise<EvalRun[]> => {
     const { data } = await api.get(`/evals?asset_id=${assetId}`)
-    return data.runs
+    return data.runs || []
   },
 }
 
@@ -218,7 +256,7 @@ export const triggerApi = {
 export const llmConfigApi = {
   get: async (): Promise<LLMConfig[]> => {
     const { data } = await api.get('/llm-config')
-    return data
+    return Array.isArray(data) ? data : (data?.configs || [])
   },
 
   save: async (configs: LLMConfig[]): Promise<void> => {
