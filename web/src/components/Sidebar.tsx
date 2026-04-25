@@ -46,11 +46,12 @@ function Sidebar() {
   const [loading, setLoading] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
-  const [initModalOpen, setInitModalOpen] = useState(false)
   const [initPath, setInitPath] = useState('')
   const [initLoading, setInitLoading] = useState(false)
   const [gitSyncing, setGitSyncing] = useState(false)
   const runningEval = useStore(s => s.runningEval)
+  const showInitRepoModal = useStore(s => s.showInitRepoModal)
+  const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
 
   useEffect(() => {
     if (document.getElementById('sidebar-animations')) return
@@ -192,7 +193,7 @@ function Sidebar() {
     try {
       await adminApi.switchRepo(initPath.trim())
       message.success('Repository initialized')
-      setInitModalOpen(false)
+      setShowInitRepoModal(false)
       setInitPath('')
       fetchRepoStatus()
     } catch (e) {
@@ -523,7 +524,7 @@ function Sidebar() {
                   key: 'init',
                   label: 'Initialize New Repo',
                   icon: <FolderOutlined />,
-                  onClick: () => setInitModalOpen(true),
+                  onClick: () => setShowInitRepoModal(true),
                 },
                 { type: 'divider' as const },
                 {
@@ -578,7 +579,7 @@ function Sidebar() {
                   key: 'init',
                   label: 'Initialize New Repo',
                   icon: <FolderOutlined />,
-                  onClick: () => setInitModalOpen(true),
+                  onClick: () => setShowInitRepoModal(true),
                 },
               ],
             }}
@@ -600,9 +601,9 @@ function Sidebar() {
 
     <Modal
       title="Initialize New Repository"
-      open={initModalOpen}
+      open={showInitRepoModal}
       onOk={handleInitRepo}
-      onCancel={() => { setInitModalOpen(false); setInitPath('') }}
+      onCancel={() => { setShowInitRepoModal(false); setInitPath('') }}
       okText="Initialize"
       confirmLoading={initLoading}
     >

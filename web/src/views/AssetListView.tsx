@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Tag, Input, Button, Space, message, Spin, Row, Col, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
 import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
-import { assetApi } from '../api/client'
+import { assetApi, adminApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
+import { useStore } from '../store'
 import { getAssetTypes, getAssetTypeColor } from '../config/bizLines'
 import { getTagColor } from '../config/tags'
 
@@ -27,6 +28,7 @@ function AssetListView() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('active')
+  const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
 
   useEffect(() => {
     loadAssets()
@@ -41,6 +43,20 @@ function AssetListView() {
       message.error('Failed to load assets')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    try {
+      const status = await adminApi.getRepoStatus()
+      if (!status.current?.valid) {
+        setShowInitRepoModal(true)
+        return
+      }
+      navigate('/assets/new')
+    } catch {
+      // fallback: let the page handle errors if API is unavailable
+      navigate('/assets/new')
     }
   }
 
@@ -244,7 +260,7 @@ function AssetListView() {
         <Space style={{ marginBottom: 16 }}>
           <Button icon={<ReloadOutlined />} onClick={loadAssets}>Refresh</Button>
           {viewMode === 'active' && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/assets/new')}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
               Create
             </Button>
           )}
