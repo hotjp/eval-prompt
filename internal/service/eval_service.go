@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
@@ -129,16 +130,21 @@ type DiagnosisFinding struct {
 
 // EvalService handles evaluation orchestration.
 type EvalService struct {
-	storage        *storage.Client
-	assetRepo      *storage.AssetRepository
-	evalRunRepo    *storage.EvalRunRepository
-	evalCaseRepo   *storage.EvalCaseRepository
-	snapshotRepo   *storage.SnapshotRepository
-	evalRunner     EvalRunner
-	llmInvoker     LLMInvoker
-	gitBridger     GitBridger
-	traceCollector TraceCollector
-	evalsDir       string // Path to the evals directory (e.g., "evals" or ".evals")
+	storage         *storage.Client
+	assetRepo       *storage.AssetRepository
+	evalRunRepo     *storage.EvalRunRepository
+	evalCaseRepo    *storage.EvalCaseRepository
+	snapshotRepo    *storage.SnapshotRepository
+	executionRepo   *storage.EvalExecutionRepository
+	workItemRepo    *storage.EvalWorkItemRepository
+	evalRunner      EvalRunner
+	llmInvoker      LLMInvoker
+	gitBridger      GitBridger
+	traceCollector  TraceCollector
+	semanticAnalyzer SemanticAnalyzer
+	evalsDir        string   // Path to the evals directory (e.g., "evals" or ".evals")
+	concurrency     int      // Default concurrency for worker pool
+	coordinators    sync.Map // Map of executionID -> *Coordinator for cancellation
 }
 
 // NewEvalService creates a new EvalService.
@@ -149,11 +155,14 @@ func NewEvalService() *EvalService {
 // NewEvalServiceWithStorage creates a new EvalService with the given storage client.
 func NewEvalServiceWithStorage(storageClient *storage.Client) *EvalService {
 	return &EvalService{
-		storage:      storageClient,
-		assetRepo:    storage.NewAssetRepository(storageClient),
-		evalRunRepo:  storage.NewEvalRunRepository(storageClient),
-		evalCaseRepo: storage.NewEvalCaseRepository(storageClient),
-		snapshotRepo: storage.NewSnapshotRepository(storageClient),
+		storage:       storageClient,
+		assetRepo:     storage.NewAssetRepository(storageClient),
+		evalRunRepo:   storage.NewEvalRunRepository(storageClient),
+		evalCaseRepo:  storage.NewEvalCaseRepository(storageClient),
+		snapshotRepo:  storage.NewSnapshotRepository(storageClient),
+		executionRepo: storage.NewEvalExecutionRepository(storageClient),
+		workItemRepo:  storage.NewEvalWorkItemRepository(storageClient),
+		concurrency:   4, // default concurrency
 	}
 }
 
@@ -197,6 +206,18 @@ func (s *EvalService) WithEvalsDir(evalsDir string) *EvalService {
 	return s
 }
 
+// WithConcurrency sets the default concurrency for worker pool.
+func (s *EvalService) WithConcurrency(concurrency int) *EvalService {
+	s.concurrency = concurrency
+	return s
+}
+
+// WithSemanticAnalyzer sets the semantic analyzer for the EvalService.
+func (s *EvalService) WithSemanticAnalyzer(sa SemanticAnalyzer) *EvalService {
+	s.semanticAnalyzer = sa
+	return s
+}
+
 // Close closes the underlying storage client.
 func (s *EvalService) Close() error {
 	if s.storage != nil {
@@ -210,8 +231,9 @@ var _ EvalServiceer = (*EvalService)(nil)
 
 // EvalServiceer is the interface for evaluation operations.
 type EvalServiceer interface {
-	// RunEval executes evaluation for an asset snapshot.
-	RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*EvalRun, error)
+	// RunEval executes evaluation for an asset snapshot using the worker pool.
+	// Returns execution_id instead of run_id for async tracking.
+	RunEval(ctx context.Context, req *RunEvalRequest) (*domain.EvalExecution, error)
 
 	// GetEvalRun retrieves an eval run by ID.
 	GetEvalRun(ctx context.Context, runID string) (*EvalRun, error)
@@ -230,223 +252,223 @@ type EvalServiceer interface {
 
 	// DiagnoseEval performs failure attribution analysis.
 	DiagnoseEval(ctx context.Context, runID string) (*Diagnosis, error)
+
+	// GetExecution retrieves an eval execution by ID.
+	GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error)
+
+	// CancelExecution cancels a running eval execution.
+	CancelExecution(ctx context.Context, executionID string) error
+
+	// ListExecutions lists eval executions with pagination.
+	ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error)
 }
 
-// RunEval executes evaluation for an asset snapshot.
-func (s *EvalService) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*EvalRun, error) {
-	if s.evalRunRepo == nil {
+// RunEvalRequest contains parameters for running an eval with the worker pool.
+type RunEvalRequest struct {
+	AssetID         string
+	SnapshotVersion string
+	EvalCaseIDs     []string
+	Mode            domain.ExecutionMode
+	RunsPerCase     int
+	Concurrency     int
+	Model           string
+	Temperature     float64
+}
+
+// RunEval executes evaluation for an asset snapshot using the worker pool.
+func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain.EvalExecution, error) {
+	if s.executionRepo == nil || s.workItemRepo == nil {
 		return nil, fmt.Errorf("storage not initialized")
 	}
 
 	// Get the snapshot by assetID and version
-	snapshot, err := s.snapshotRepo.GetByAssetIDAndVersion(ctx, assetID, snapshotVersion)
+	snapshot, err := s.snapshotRepo.GetByAssetIDAndVersion(ctx, req.AssetID, req.SnapshotVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshot: %w", err)
 	}
 
-	// Try to find eval prompt from evals/ directory
-	var evalPrompt *evalPromptFile
-	var promptModel string
-	evalPrompt, err = s.findEvalPrompt(assetID)
-	if err == nil && evalPrompt != nil {
-		// Found eval prompt in evals/ directory
-		promptModel = evalPrompt.FrontMatter.Model
-		if promptModel == "" {
-			promptModel = "gpt-4o" // default model
-		}
-		// Use eval_case_ids from front matter if not provided
-		if len(caseIDs) == 0 && evalPrompt.FrontMatter.HasEvalCaseIDs() {
-			caseIDs = evalPrompt.FrontMatter.EvalCaseIDs
-		}
-		slog.Info("using eval prompt from evals directory",
-			"layer", "service",
-			"asset_id", assetID,
-			"eval_prompt_path", evalPrompt.FilePath,
-			"model", promptModel,
-		)
-	}
-
-	// Get eval cases - either by specific IDs or all for this asset
-	var evalCases []*domain.EvalCase
-	if len(caseIDs) > 0 {
-		for _, caseID := range caseIDs {
-			ec, err := s.evalCaseRepo.GetByID(ctx, caseID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get eval case %s: %w", caseID, err)
-			}
-			evalCases = append(evalCases, ec)
-		}
-	} else {
-		evalCases, err = s.evalCaseRepo.GetByAssetID(ctx, assetID)
+	// Determine case IDs to use
+	caseIDs := req.EvalCaseIDs
+	if len(caseIDs) == 0 {
+		// Get all eval cases for this asset
+		evalCases, err := s.evalCaseRepo.GetByAssetID(ctx, req.AssetID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get eval cases: %w", err)
 		}
+		for _, ec := range evalCases {
+			caseIDs = append(caseIDs, ec.ID.String())
+		}
 	}
 
-	if len(evalCases) == 0 {
+	if len(caseIDs) == 0 {
 		return nil, fmt.Errorf("no eval cases found")
 	}
 
-	// Use the first eval case for the run (single evaluation)
-	evalCase := evalCases[0]
-
-	// Create eval run record
-	run := domain.NewEvalRun(evalCase.ID, snapshot.ID)
-	run.Status = domain.EvalRunStatusRunning
-
-	if err := s.evalRunRepo.Create(ctx, run); err != nil {
-		return nil, fmt.Errorf("failed to create eval run: %w", err)
+	// Determine mode and runs per case
+	mode := req.Mode
+	if mode == "" {
+		mode = domain.ModeSingle
+	}
+	runsPerCase := req.RunsPerCase
+	if runsPerCase <= 0 {
+		if mode == domain.ModeMatrix {
+			runsPerCase = 3 // default for matrix mode
+		} else {
+			runsPerCase = 1
+		}
 	}
 
-	// Start trace collection if available
-	var traceCtx context.Context
-	if s.traceCollector != nil {
-		traceCtx, err = s.traceCollector.StartSpan(ctx, assetID, snapshot.ID.String())
-		if err != nil {
-			return nil, fmt.Errorf("failed to start trace: %w", err)
+	// Calculate total runs
+	totalRuns := len(caseIDs) * runsPerCase
+
+	// Determine concurrency
+	concurrency := req.Concurrency
+	if concurrency <= 0 {
+		concurrency = s.concurrency
+		if concurrency <= 0 {
+			concurrency = 4 // default
 		}
+	}
+
+	// Determine model and temperature
+	model := req.Model
+	if model == "" {
+		model = "gpt-4o" // default model
+	}
+	temperature := req.Temperature
+	if temperature == 0 {
+		temperature = 0.3 // default
+	}
+
+	// Create eval execution record
+	execution := &domain.EvalExecution{
+		ID:            domain.NewULID(),
+		AssetID:       req.AssetID,
+		SnapshotID:    snapshot.ID.String(),
+		Mode:          mode,
+		RunsPerCase:   runsPerCase,
+		CaseIDs:       caseIDs,
+		TotalRuns:     totalRuns,
+		CompletedRuns: 0,
+		FailedRuns:    0,
+		Status:        domain.ExecutionStatusPending,
+		Concurrency:   concurrency,
+		Model:         model,
+		Temperature:   temperature,
+		CreatedAt:     time.Now(),
+	}
+
+	if err := s.executionRepo.Create(ctx, execution); err != nil {
+		return nil, fmt.Errorf("failed to create eval execution: %w", err)
+	}
+
+	// Create the coordinator with worker pool
+	coord := NewCoordinator(
+		execution,
+		concurrency,
+		s.workItemRepo,
+		s.evalRunRepo,
+		s.evalCaseRepo,
+		s.llmInvoker,
+		s.evalRunner,
+		s.executionRepo,
+	)
+
+	// Store coordinator for cancellation support
+	s.coordinators.Store(execution.ID, coord)
+
+	// Start execution in background with proper error tracking
+	go func() {
+		// Remove coordinator from map when done
 		defer func() {
-			path, _ := s.traceCollector.Finalize(traceCtx)
-			run.TracePath = path
+			s.coordinators.Delete(execution.ID)
 		}()
-	} else {
-		traceCtx = ctx
-	}
 
-	startTime := time.Now()
+		// Recover from any panics in the worker pool
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("eval execution panicked",
+					"layer", "service",
+					"execution_id", execution.ID,
+					"asset_id", req.AssetID,
+					"panic", r,
+				)
+				// Update execution status to failed
+				if err := s.executionRepo.UpdateStatus(context.Background(), execution.ID, domain.ExecutionStatusFailed); err != nil {
+					slog.Warn("failed to update execution status after panic",
+						"layer", "service",
+						"execution_id", execution.ID,
+						"error", err,
+					)
+				}
+			}
+		}()
 
-	// Record eval start event
-	if s.traceCollector != nil {
-		s.traceCollector.RecordEvent(traceCtx, TraceEvent{
-			Name:      "eval_start",
-			Timestamp: startTime,
-			Type:      "event",
-			Data: map[string]any{
-				"asset_id":     assetID,
-				"snapshot_id":  snapshot.ID.String(),
-				"eval_case_id": evalCase.ID.String(),
-			},
-		})
-	}
-
-	// Build prompt: use eval prompt content if available, otherwise use eval case prompt
-	var prompt string
-	if evalPrompt != nil {
-		prompt = evalPrompt.Content
-	} else {
-		prompt = evalCase.Prompt
-	}
-
-	// Invoke LLM if invoker is available
-	var llmResponse *LLMResponse
-	if s.llmInvoker != nil {
-		model := promptModel
-		if model == "" {
-			model = "gpt-4o" // default model
-		}
-		llmResp, err := s.llmInvoker.Invoke(traceCtx, prompt, model, 0.3)
-		if err != nil {
-			run.Fail()
-			s.evalRunRepo.Update(ctx, run)
-			return s.toServiceEvalRun(run), fmt.Errorf("LLM invocation failed: %w", err)
-		}
-		llmResponse = llmResp
-		run.TokenInput = llmResp.TokensIn
-		run.TokenOutput = llmResp.TokensOut
-	}
-
-	output := ""
-	if llmResponse != nil {
-		output = llmResponse.Content
-	}
-
-	// Run deterministic checks if eval runner is available
-	deterministicScore := 1.0
-	if s.evalRunner != nil && len(evalCase.Rubric.Checks) > 0 {
-		// Build deterministic checks from rubric
-		checks := make([]DeterministicCheck, len(evalCase.Rubric.Checks))
-		for i, check := range evalCase.Rubric.Checks {
-			checks[i] = DeterministicCheck{
-				ID:          check.ID,
-				Type:        "content_contains",
-				Expected:    check.Description,
+		// Execute the worker pool and capture any returned error
+		if err := coord.Execute(context.Background()); err != nil {
+			slog.Error("eval execution failed",
+				"layer", "service",
+				"execution_id", execution.ID,
+				"asset_id", req.AssetID,
+				"error", err,
+			)
+			// Update execution status to failed
+			if updateErr := s.executionRepo.UpdateStatus(context.Background(), execution.ID, domain.ExecutionStatusFailed); updateErr != nil {
+				slog.Warn("failed to update execution status after error",
+					"layer", "service",
+					"execution_id", execution.ID,
+					"error", updateErr,
+				)
 			}
 		}
+	}()
 
-		// Run deterministic evaluation
-		result, err := s.evalRunner.RunDeterministic(traceCtx, nil, checks)
-		if err == nil {
-			deterministicScore = result.Score
+	slog.Info("eval execution started",
+		"layer", "service",
+		"execution_id", execution.ID,
+		"asset_id", req.AssetID,
+		"total_runs", totalRuns,
+		"concurrency", concurrency,
+	)
+
+	return execution, nil
+}
+
+// GetExecution retrieves an eval execution by ID.
+func (s *EvalService) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
+	if s.executionRepo == nil {
+		return nil, fmt.Errorf("storage not initialized")
+	}
+	return s.executionRepo.GetByID(ctx, executionID)
+}
+
+// CancelExecution cancels a running eval execution.
+func (s *EvalService) CancelExecution(ctx context.Context, executionID string) error {
+	if s.executionRepo == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+
+	// Lookup coordinator and signal cancellation
+	if coord, ok := s.coordinators.Load(executionID); ok {
+		if c, ok := coord.(*Coordinator); ok {
+			c.Cancel()
+			slog.Info("eval execution cancellation signalled",
+				"layer", "service",
+				"execution_id", executionID,
+			)
 		}
 	}
 
-	// Run rubric evaluation if LLM invoker and eval runner are available
-	rubricScore := 0
-	rubricDetails := make([]domain.RubricCheckResult, 0)
-	if s.evalRunner != nil && s.llmInvoker != nil && len(evalCase.Rubric.Checks) > 0 {
-		rubric := Rubric{
-			MaxScore: evalCase.Rubric.MaxScore,
-			Checks:   make([]RubricCheck, len(evalCase.Rubric.Checks)),
-		}
-		for i, c := range evalCase.Rubric.Checks {
-			rubric.Checks[i] = RubricCheck{
-				ID:          c.ID,
-				Description: c.Description,
-				Weight:      c.Weight,
-			}
-		}
+	// Update execution status to cancelled
+	return s.executionRepo.UpdateStatus(ctx, executionID, domain.ExecutionStatusCancelled)
+}
 
-		rubricResult, err := s.evalRunner.RunRubric(traceCtx, output, rubric, s.llmInvoker)
-		if err == nil {
-			rubricScore = rubricResult.Score
-			for _, detail := range rubricResult.Details {
-				rubricDetails = append(rubricDetails, domain.RubricCheckResult{
-					CheckID: detail.CheckID,
-					Passed:  detail.Passed,
-					Score:   detail.Score,
-					Details: detail.Details,
-				})
-			}
-		}
+// ListExecutions lists eval executions with pagination.
+func (s *EvalService) ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error) {
+	if s.executionRepo == nil {
+		return nil, 0, fmt.Errorf("storage not initialized")
 	}
-
-	// Calculate duration
-	durationMs := time.Since(startTime).Milliseconds()
-	run.DurationMs = durationMs
-	run.DeterministicScore = deterministicScore
-	run.RubricScore = rubricScore
-	run.RubricDetails = rubricDetails
-
-	// Determine pass/fail
-	passed := deterministicScore >= 0.8 && rubricScore >= evalCase.Rubric.MaxScore*80/100
-	run.Complete(deterministicScore, rubricScore, passed)
-
-	// Update the run record
-	if err := s.evalRunRepo.Update(ctx, run); err != nil {
-		return nil, fmt.Errorf("failed to update eval run: %w", err)
-	}
-
-	// Record eval complete event
-	if s.traceCollector != nil {
-		s.traceCollector.RecordEvent(traceCtx, TraceEvent{
-			Name:      "eval_complete",
-			Timestamp: time.Now(),
-			Type:      "event",
-			Data: map[string]any{
-				"status":              run.Status,
-				"deterministic_score": deterministicScore,
-				"rubric_score":        rubricScore,
-				"passed":              passed,
-			},
-		})
-	}
-
-	// Write eval history to the .md file (transaction boundary)
-	if err := s.writeEvalHistoryToFile(ctx, assetID, run, snapshot); err != nil {
-		return nil, fmt.Errorf("failed to write eval history to file: %w", err)
-	}
-
-	return s.toServiceEvalRun(run), nil
+	return s.executionRepo.List(ctx, offset, limit)
 }
 
 // GetEvalRun retrieves an eval run by ID.
@@ -637,11 +659,11 @@ func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalRe
 	report.CheckResults = make([]CheckResult, 0, len(run.RubricDetails))
 	for _, detail := range run.RubricDetails {
 		report.CheckResults = append(report.CheckResults, CheckResult{
-			CheckID: detail.CheckID,
+			CheckID:   detail.CheckID,
 			CheckType: "rubric",
-			Passed:  detail.Passed,
-			Score:   detail.Score,
-			Details: detail.Details,
+			Passed:    detail.Passed,
+			Score:     detail.Score,
+			Details:   detail.Details,
 		})
 	}
 
@@ -675,7 +697,9 @@ func (s *EvalService) DiagnoseEval(ctx context.Context, runID string) (*Diagnosi
 	prompt := s.buildDiagnosisPrompt(run)
 
 	// Invoke LLM for diagnosis
-	resp, err := s.llmInvoker.Invoke(ctx, prompt, "gpt-4o", 0.3)
+	// TODO: get model from LLM config or execution context
+	diagnosisModel := "gpt-4o"
+	resp, err := s.llmInvoker.Invoke(ctx, prompt, diagnosisModel, 0.3)
 	if err != nil {
 		return nil, fmt.Errorf("LLM diagnosis failed: %w", err)
 	}
@@ -688,8 +712,8 @@ func (s *EvalService) DiagnoseEval(ctx context.Context, runID string) (*Diagnosi
 			RunID:               runID,
 			OverallSeverity:     "medium",
 			Findings:            []DiagnosisFinding{},
-			RecommendedStrategy:  "Review rubric checks and improve prompt clarity",
-			EstimatedIterations:  3,
+			RecommendedStrategy: "Review rubric checks and improve prompt clarity",
+			EstimatedIterations: 3,
 			Confidence:          0.5,
 		}
 

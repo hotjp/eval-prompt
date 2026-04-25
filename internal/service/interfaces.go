@@ -5,6 +5,8 @@ package service
 import (
 	"context"
 	"time"
+
+	"github.com/eval-prompt/plugins/llm"
 )
 
 // CommitInfo represents git commit information.
@@ -83,10 +85,11 @@ type AssetIndexer interface {
 
 // SearchFilters contains filter criteria for asset search.
 type SearchFilters struct {
-	BizLine string
-	Tags    []string
-	State   string
-	Label   string
+	RepoPath string
+	BizLine  string
+	Tags     []string
+	State    string
+	Label    string
 }
 
 // AssetSummary is a condensed asset representation for search results.
@@ -156,19 +159,10 @@ type Asset struct {
 	Tags        []string
 	ContentHash string
 	FilePath    string
+	RepoPath    string // repo isolation
 	State       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-}
-
-// LLMResponse contains the LLM output and metadata.
-type LLMResponse struct {
-	Content     string
-	Model       string
-	TokensIn    int
-	TokensOut   int
-	StopReason  string
-	RawResponse []byte
 }
 
 // LLMInvoker abstracts LLM provider calls.
@@ -176,12 +170,69 @@ type LLMResponse struct {
 type LLMInvoker interface {
 	// Invoke calls the LLM with a prompt, model, and temperature.
 	// Returns the text response and usage metadata.
-	Invoke(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error)
+	Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error)
 
 	// InvokeWithSchema calls the LLM and enforces a JSON output schema.
 	// The schema is a JSON Schema (draft-07) describing the expected output structure.
 	// Returns the parsed JSON response.
 	InvokeWithSchema(ctx context.Context, prompt string, schema []byte) ([]byte, error)
+}
+
+// SemanticAnalyzer provides LLM-based semantic capabilities.
+type SemanticAnalyzer interface {
+	AnalyzeContent(ctx context.Context, req AnalyzeContentRequest) (*AnalyzeContentResult, error)
+	ExplainDiff(ctx context.Context, req ExplainDiffRequest) (*ExplainDiffResult, error)
+}
+
+type AnalyzeContentRequest struct {
+	Content     string
+	Description string
+	BizLine     string
+}
+
+type AnalyzeContentResult struct {
+	Triggers []TriggerEntry
+	Issues   []ContentIssue
+	Score    ContentScore
+}
+
+type TriggerEntry struct {
+	Pattern    string
+	Examples   []string
+	Confidence float64
+}
+
+type ContentIssue struct {
+	Severity   string
+	Location   string
+	Problem    string
+	Suggestion string
+}
+
+type ContentScore struct {
+	Overall      float64
+	Clarity      float64
+	Completeness float64
+}
+
+type ExplainDiffRequest struct {
+	OldContent string
+	NewContent string
+	OldVersion string
+	NewVersion string
+}
+
+type ExplainDiffResult struct {
+	Summary string
+	Changes []SemanticChange
+	Impact  string
+}
+
+type SemanticChange struct {
+	Type        string
+	Location    string
+	Description string
+	Significance string
 }
 
 // TraceEvent represents a single event in an evaluation trace.
@@ -252,7 +303,7 @@ type EvalRunner interface {
 	RunDeterministic(ctx context.Context, trace []TraceEvent, checks []DeterministicCheck) (DeterministicResult, error)
 
 	// RunRubric runs LLM-based rubric evaluation on output.
-	RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker) (RubricResult, error)
+	RunRubric(ctx context.Context, output string, rubric Rubric, invoker LLMInvoker, model string) (RubricResult, error)
 }
 
 // PromptContent represents the content of a prompt asset.

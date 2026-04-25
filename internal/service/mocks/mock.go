@@ -7,6 +7,7 @@ import (
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/plugins/llm"
 )
 
 // MockAssetIndexer is a mock implementation of service.AssetIndexer.
@@ -84,6 +85,10 @@ func (m *MockAssetIndexer) SaveFileContent(ctx context.Context, id, content, com
 	return "mock-commit-hash", nil
 }
 
+func (m *MockAssetIndexer) ReInit(ctx context.Context, path string) error {
+	return nil
+}
+
 // MockAssetFileManager is a mock implementation of service.AssetFileManager.
 type MockAssetFileManager struct {
 	GetFrontmatterFunc    func(ctx context.Context, id string) (*domain.FrontMatter, error)
@@ -150,23 +155,25 @@ func (m *MockTriggerService) InjectVariables(ctx context.Context, prompt string,
 
 // MockEvalService is a mock implementation of service.EvalServiceer.
 type MockEvalService struct {
-	RunEvalFunc       func(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error)
-	GetEvalRunFunc    func(ctx context.Context, runID string) (*service.EvalRun, error)
-	ListEvalRunsFunc  func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
-	ListEvalCasesFunc func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
-	CompareEvalFunc   func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
+	RunEvalFunc        func(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error)
+	GetEvalRunFunc     func(ctx context.Context, runID string) (*service.EvalRun, error)
+	ListEvalRunsFunc   func(ctx context.Context, assetID string) ([]*service.EvalRun, error)
+	ListEvalCasesFunc  func(ctx context.Context, assetID string) ([]*domain.EvalCase, error)
+	CompareEvalFunc    func(ctx context.Context, assetID string, v1, v2 string) (*service.CompareResult, error)
 	GenerateReportFunc func(ctx context.Context, runID string) (*service.EvalReport, error)
-	DiagnoseEvalFunc  func(ctx context.Context, runID string) (*service.Diagnosis, error)
+	DiagnoseEvalFunc   func(ctx context.Context, runID string) (*service.Diagnosis, error)
+	GetExecutionFunc    func(ctx context.Context, executionID string) (*domain.EvalExecution, error)
+	CancelExecutionFunc func(ctx context.Context, executionID string) error
+	ListExecutionsFunc  func(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error)
 }
 
-func (m *MockEvalService) RunEval(ctx context.Context, assetID, snapshotVersion string, caseIDs []string) (*service.EvalRun, error) {
+func (m *MockEvalService) RunEval(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error) {
 	if m.RunEvalFunc != nil {
-		return m.RunEvalFunc(ctx, assetID, snapshotVersion, caseIDs)
+		return m.RunEvalFunc(ctx, req)
 	}
-	return &service.EvalRun{
-		ID:        "test-run-id",
-		Status:    service.EvalRunStatusRunning,
-		CreatedAt: time.Now(),
+	return &domain.EvalExecution{
+		ID:     "test-execution-id",
+		Status: domain.ExecutionStatusRunning,
 	}, nil
 }
 
@@ -216,6 +223,30 @@ func (m *MockEvalService) DiagnoseEval(ctx context.Context, runID string) (*serv
 	return nil, nil
 }
 
+func (m *MockEvalService) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
+	if m.GetExecutionFunc != nil {
+		return m.GetExecutionFunc(ctx, executionID)
+	}
+	return &domain.EvalExecution{
+		ID:     executionID,
+		Status: domain.ExecutionStatusRunning,
+	}, nil
+}
+
+func (m *MockEvalService) CancelExecution(ctx context.Context, executionID string) error {
+	if m.CancelExecutionFunc != nil {
+		return m.CancelExecutionFunc(ctx, executionID)
+	}
+	return nil
+}
+
+func (m *MockEvalService) ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error) {
+	if m.ListExecutionsFunc != nil {
+		return m.ListExecutionsFunc(ctx, offset, limit)
+	}
+	return nil, 0, nil
+}
+
 // MockGitBridger is a mock implementation of service.GitBridger.
 type MockGitBridger struct {
 	InitRepoFunc       func(ctx context.Context, path string) error
@@ -260,17 +291,29 @@ func (m *MockGitBridger) Status(ctx context.Context) (added, modified, deleted [
 	return nil, nil, nil, nil
 }
 
-// MockLLMInvoker is a mock implementation of service.LLMInvoker.
-type MockLLMInvoker struct {
-	InvokeFunc         func(ctx context.Context, prompt string, model string, temperature float64) (*service.LLMResponse, error)
-	InvokeWithSchemaFunc func(ctx context.Context, prompt string, schema []byte) ([]byte, error)
+func (m *MockGitBridger) Pull(ctx context.Context) error {
+	return nil
 }
 
-func (m *MockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*service.LLMResponse, error) {
+func (m *MockGitBridger) RepoPath() string {
+	return ""
+}
+
+func (m *MockGitBridger) SetPath(path string) {
+}
+
+// MockLLMInvoker is a mock implementation of service.LLMInvoker.
+type MockLLMInvoker struct {
+	InvokeFunc         func(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error)
+	InvokeWithSchemaFunc func(ctx context.Context, prompt string, schema []byte) ([]byte, error)
+	PingFunc           func(ctx context.Context) error
+}
+
+func (m *MockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
 	if m.InvokeFunc != nil {
 		return m.InvokeFunc(ctx, prompt, model, temperature)
 	}
-	return &service.LLMResponse{
+	return &llm.LLMResponse{
 		Content:    "mock response",
 		Model:     model,
 		TokensIn:  100,
@@ -284,6 +327,13 @@ func (m *MockLLMInvoker) InvokeWithSchema(ctx context.Context, prompt string, sc
 		return m.InvokeWithSchemaFunc(ctx, prompt, schema)
 	}
 	return []byte(`{"result": "ok"}`), nil
+}
+
+func (m *MockLLMInvoker) Ping(ctx context.Context) error {
+	if m.PingFunc != nil {
+		return m.PingFunc(ctx)
+	}
+	return nil
 }
 
 // MockTraceCollector is a mock implementation of service.TraceCollector.
@@ -317,7 +367,7 @@ func (m *MockTraceCollector) Finalize(ctx context.Context) (string, error) {
 // MockEvalRunner is a mock implementation of service.EvalRunner.
 type MockEvalRunner struct {
 	RunDeterministicFunc func(ctx context.Context, trace []service.TraceEvent, checks []service.DeterministicCheck) (service.DeterministicResult, error)
-	RunRubricFunc        func(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker) (service.RubricResult, error)
+	RunRubricFunc        func(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker, model string) (service.RubricResult, error)
 }
 
 func (m *MockEvalRunner) RunDeterministic(ctx context.Context, trace []service.TraceEvent, checks []service.DeterministicCheck) (service.DeterministicResult, error) {
@@ -331,9 +381,9 @@ func (m *MockEvalRunner) RunDeterministic(ctx context.Context, trace []service.T
 	}, nil
 }
 
-func (m *MockEvalRunner) RunRubric(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker) (service.RubricResult, error) {
+func (m *MockEvalRunner) RunRubric(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker, model string) (service.RubricResult, error) {
 	if m.RunRubricFunc != nil {
-		return m.RunRubricFunc(ctx, output, rubric, invoker)
+		return m.RunRubricFunc(ctx, output, rubric, invoker, model)
 	}
 	// Default: all checks pass with full score
 	details := make([]service.RubricCheckResult, len(rubric.Checks))
@@ -402,5 +452,33 @@ func (m *MockModelAdapter) GetModelProfile(ctx context.Context, model string) (s
 		TemperatureCurve:  "linear",
 		SystemRoleSupport: true,
 		JSONReliability:   0.9,
+	}, nil
+}
+
+// MockSemanticAnalyzer is a mock implementation of service.SemanticAnalyzer.
+type MockSemanticAnalyzer struct {
+	AnalyzeContentFunc func(ctx context.Context, req service.AnalyzeContentRequest) (*service.AnalyzeContentResult, error)
+	ExplainDiffFunc    func(ctx context.Context, req service.ExplainDiffRequest) (*service.ExplainDiffResult, error)
+}
+
+func (m *MockSemanticAnalyzer) AnalyzeContent(ctx context.Context, req service.AnalyzeContentRequest) (*service.AnalyzeContentResult, error) {
+	if m.AnalyzeContentFunc != nil {
+		return m.AnalyzeContentFunc(ctx, req)
+	}
+	return &service.AnalyzeContentResult{
+		Triggers: []service.TriggerEntry{},
+		Issues:   []service.ContentIssue{},
+		Score:    service.ContentScore{Overall: 1.0, Clarity: 1.0, Completeness: 1.0},
+	}, nil
+}
+
+func (m *MockSemanticAnalyzer) ExplainDiff(ctx context.Context, req service.ExplainDiffRequest) (*service.ExplainDiffResult, error) {
+	if m.ExplainDiffFunc != nil {
+		return m.ExplainDiffFunc(ctx, req)
+	}
+	return &service.ExplainDiffResult{
+		Summary: "mock diff",
+		Changes: []service.SemanticChange{},
+		Impact:  "low",
 	}, nil
 }

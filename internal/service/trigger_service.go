@@ -21,8 +21,10 @@ type MatchedPrompt struct {
 
 // TriggerService handles prompt matching and variable injection.
 type TriggerService struct {
-	indexer    AssetIndexer
-	gitBridger GitBridger
+	indexer          AssetIndexer
+	gitBridger      GitBridger
+	semanticAnalyzer SemanticAnalyzer // nil if not configured
+	model            string            // configured default model
 }
 
 // NewTriggerService creates a new TriggerService.
@@ -31,6 +33,13 @@ func NewTriggerService(indexer AssetIndexer, gitBridger GitBridger) *TriggerServ
 		indexer:    indexer,
 		gitBridger: gitBridger,
 	}
+}
+
+// WithSemanticAnalyzer sets the semantic analyzer and model for the TriggerService.
+func (s *TriggerService) WithSemanticAnalyzer(sa SemanticAnalyzer, model string) *TriggerService {
+	s.semanticAnalyzer = sa
+	s.model = model
+	return s
 }
 
 // Ensure TriggerService implements TriggerServicer.
@@ -59,6 +68,10 @@ var DefaultAntiPatterns = []string{
 }
 
 // MatchTrigger matches input against available prompts.
+// Flow:
+//  1. Try frontmatter Triggers regex matching (O(N)遍历所有asset)
+//  2. If results < top: use keyword Search as fallback
+//  3. If SemanticAnalyzer is configured, use it for enhanced matching (future)
 func (s *TriggerService) MatchTrigger(ctx context.Context, input string, top int) ([]*MatchedPrompt, error) {
 	if s.indexer == nil {
 		return nil, fmt.Errorf("indexer not configured")
@@ -68,25 +81,107 @@ func (s *TriggerService) MatchTrigger(ctx context.Context, input string, top int
 		top = 5
 	}
 
-	// Search for matching assets
-	results, err := s.indexer.Search(ctx, input, SearchFilters{})
-	if err != nil {
-		return nil, fmt.Errorf("search: %w", err)
+	var matches []*MatchedPrompt
+
+	// Step 1: Try frontmatter Triggers regex matching
+	triggerMatches := s.matchByTriggers(ctx, input)
+	matches = append(matches, triggerMatches...)
+
+	// Step 2: Fallback to keyword Search if needed
+	if len(matches) < top {
+		searchResults, err := s.indexer.Search(ctx, input, SearchFilters{})
+		if err != nil {
+			return nil, fmt.Errorf("search: %w", err)
+		}
+
+		for i := 0; i < len(searchResults) && len(matches) < top; i++ {
+			r := searchResults[i]
+			// Skip if already matched by triggers
+			if containsAssetID(matches, r.ID) {
+				continue
+			}
+			matches = append(matches, &MatchedPrompt{
+				AssetID:     r.ID,
+				Name:        r.Name,
+				Description: r.Description,
+				Relevance:   calculateRelevance(input, r.Name, r.Description),
+			})
+		}
 	}
 
-	// Convert to MatchedPrompt (limited to top results)
-	var matches []*MatchedPrompt
-	for i := 0; i < len(results) && i < top; i++ {
-		r := results[i]
-		matches = append(matches, &MatchedPrompt{
-			AssetID:     r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Relevance:   calculateRelevance(input, r.Name, r.Description),
-		})
+	// Step 3: SemanticAnalyzer (future - not implemented yet)
+	// if s.semanticAnalyzer != nil && len(matches) < top {
+	//     // Use semantic analysis for enhanced matching
+	// }
+
+	// Limit to top results
+	if len(matches) > top {
+		matches = matches[:top]
 	}
 
 	return matches, nil
+}
+
+// matchByTriggers matches input against frontmatter trigger patterns.
+func (s *TriggerService) matchByTriggers(ctx context.Context, input string) []*MatchedPrompt {
+	var matches []*MatchedPrompt
+
+	// For MVP: match by name/description using simple keyword matching
+	// Future: read frontmatter YAML to get TriggerEntry patterns
+	inputLower := strings.ToLower(input)
+
+	results, err := s.indexer.Search(ctx, input, SearchFilters{})
+	if err != nil {
+		return matches
+	}
+
+	for _, r := range results {
+		// Simple regex-like matching on name and description
+		nameLower := strings.ToLower(r.Name)
+		descLower := strings.ToLower(r.Description)
+
+		// Check if input keywords appear in name or description
+		inputWords := strings.Fields(inputLower)
+		relevance := 0.0
+		for _, word := range inputWords {
+			if len(word) < 2 {
+				continue
+			}
+			// Simple substring match as a stand-in for regex pattern matching
+			if strings.Contains(nameLower, word) {
+				relevance += 2.0
+			}
+			if strings.Contains(descLower, word) {
+				relevance += 1.0
+			}
+		}
+
+		// Normalize relevance
+		if relevance > 0 {
+			maxScore := float64(len(inputWords) * 3)
+			if maxScore > 0 {
+				relevance = relevance / maxScore
+			}
+			matches = append(matches, &MatchedPrompt{
+				AssetID:     r.ID,
+				Name:        r.Name,
+				Description: r.Description,
+				Relevance:   relevance,
+			})
+		}
+	}
+
+	return matches
+}
+
+// containsAssetID checks if a match already contains the given asset ID.
+func containsAssetID(matches []*MatchedPrompt, id string) bool {
+	for _, m := range matches {
+		if m.AssetID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // calculateRelevance calculates a simple relevance score based on keyword matching.

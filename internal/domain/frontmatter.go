@@ -67,6 +67,14 @@ type LabelEntry struct {
 	Date     string `yaml:"date"`
 }
 
+// TriggerEntry represents a trigger pattern for matching user input to prompts.
+// Stored in YAML front matter for serialization in .md files.
+type TriggerEntry struct {
+	Pattern    string   `yaml:"pattern"`
+	Examples   []string `yaml:"examples,omitempty"`
+	Confidence float64  `yaml:"confidence,omitempty"`
+}
+
 // FrontMatter represents the YAML front matter in a .md prompt file.
 // This is the canonical format for storing prompt metadata in the filesystem.
 type FrontMatter struct {
@@ -83,6 +91,7 @@ type FrontMatter struct {
 	EvalStats              EvalStats         `yaml:"eval_stats,omitempty"`
 	Labels                 []LabelEntry       `yaml:"labels,omitempty"`
 	RecommendedSnapshotID  string            `yaml:"recommended_snapshot_id,omitempty"`
+	Triggers               []TriggerEntry    `yaml:"triggers,omitempty"`
 }
 
 // Validate validates the front matter structure.

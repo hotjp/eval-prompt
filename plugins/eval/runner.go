@@ -68,7 +68,7 @@ func (r *Runner) RunDeterministic(ctx context.Context, trace []service.TraceEven
 }
 
 // RunRubric runs LLM-based rubric evaluation on output text.
-func (r *Runner) RunRubric(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker) (service.RubricResult, error) {
+func (r *Runner) RunRubric(ctx context.Context, output string, rubric service.Rubric, invoker service.LLMInvoker, model string) (service.RubricResult, error) {
 	if invoker == nil {
 		return service.RubricResult{}, errors.New("eval: LLMInvoker is required for rubric evaluation")
 	}
@@ -88,7 +88,7 @@ func (r *Runner) RunRubric(ctx context.Context, output string, rubric service.Ru
 	prompt := r.buildGradingPrompt(output, rubric)
 
 	// Call the LLM
-	resp, err := invoker.Invoke(ctx, prompt, "gpt-4o", 0.3)
+	resp, err := invoker.Invoke(ctx, prompt, model, 0.3)
 	if err != nil {
 		return result, fmt.Errorf("eval: LLM invocation failed: %w", err)
 	}
