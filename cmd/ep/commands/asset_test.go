@@ -53,7 +53,6 @@ func TestAssetCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	cmd := exec.Command(ep, "asset", "create",
-		"--id", "test/asset-1",
 		"--name", "Test Asset",
 		"--file", contentFile,
 		"--biz-line", "test")
