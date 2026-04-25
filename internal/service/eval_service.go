@@ -892,18 +892,41 @@ func (s *EvalService) writeEvalHistoryToFile(ctx context.Context, assetID string
 		return fmt.Errorf("failed to parse front matter: %w", err)
 	}
 
-	// Create the eval history entry
+	// Get model from eval prompt if available
+	model := "gpt-4o" // default model
+
+	// Create the eval history entry with all fields
 	entry := domain.EvalHistoryEntry{
-		RunID:      run.ID.String(),
-		SnapshotID: snapshot.Version,
-		Score:      run.RubricScore,
-		Model:      "gpt-4o", // TODO: get from actual LLM response
-		Date:       time.Now().Format("2006-01-02"),
-		By:         "", // TODO: get from context if available
+		RunID:              run.ID.String(),
+		SnapshotID:         snapshot.Version,
+		Score:              run.RubricScore,
+		DeterministicScore: run.DeterministicScore,
+		RubricScore:        run.RubricScore,
+		Model:              model,
+		EvalCaseVersion:    snapshot.Version,
+		TokensIn:           run.TokenInput,
+		TokensOut:          run.TokenOutput,
+		DurationMs:         run.DurationMs,
+		Date:               time.Now().Format("2006-01-02"),
+		By:                 "", // TODO: get from context if available
 	}
 
 	// Insert at the beginning of eval_history
 	fm.EvalHistory = append([]domain.EvalHistoryEntry{entry}, fm.EvalHistory...)
+
+	// Limit eval_history to max 10 entries
+	const maxEvalHistory = 10
+	if len(fm.EvalHistory) > maxEvalHistory {
+		fm.EvalHistory = fm.EvalHistory[:maxEvalHistory]
+	}
+
+	// Update eval_stats using Welford algorithm
+	if fm.EvalStats == nil {
+		fm.EvalStats = make(domain.EvalStats)
+	}
+	stat := fm.EvalStats[model]
+	stat.Update(float64(run.RubricScore))
+	fm.EvalStats[model] = stat
 
 	// Format the complete .md file
 	newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
@@ -922,6 +945,7 @@ func (s *EvalService) writeEvalHistoryToFile(ctx context.Context, assetID string
 		"file_path", asset.FilePath,
 		"run_id", run.ID.String(),
 		"score", run.RubricScore,
+		"model", model,
 	)
 
 	return nil

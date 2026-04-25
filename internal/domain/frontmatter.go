@@ -1,14 +1,62 @@
 package domain
 
+import (
+	"math"
+	"time"
+)
+
 // EvalHistoryEntry represents an eval run summary stored in YAML front matter.
 // This is a lightweight representation for serialization in .md files.
 type EvalHistoryEntry struct {
-	RunID       string `yaml:"run_id"`
-	SnapshotID  string `yaml:"snapshot_id"`
-	Score       int    `yaml:"score"`
-	Model       string `yaml:"model"`
-	Date        string `yaml:"date"`
-	By          string `yaml:"by"`
+	RunID              string  `yaml:"run_id"`
+	SnapshotID         string  `yaml:"snapshot_id"`
+	Score              int     `yaml:"score"`
+	DeterministicScore float64 `yaml:"deterministic_score"`
+	RubricScore        int     `yaml:"rubric_score"`
+	Model              string  `yaml:"model"`
+	EvalCaseVersion    string  `yaml:"eval_case_version"`
+	TokensIn           int     `yaml:"tokens_in"`
+	TokensOut          int     `yaml:"tokens_out"`
+	DurationMs         int64   `yaml:"duration_ms"`
+	Date               string  `yaml:"date"`
+	By                 string  `yaml:"by"`
+}
+
+// EvalStats map model name to ModelStat.
+type EvalStats map[string]ModelStat
+
+// ModelStat holds Welford algorithm parameters for incremental statistics.
+type ModelStat struct {
+	Count   int     `yaml:"count"`
+	Mean    float64 `yaml:"mean"`
+	M2      float64 `yaml:"m2"` // Welford algorithm parameter
+	Min     float64 `yaml:"min"`
+	Max     float64 `yaml:"max"`
+	LastRun string  `yaml:"last_run"`
+}
+
+// Update updates the statistics with a new score using Welford's online algorithm.
+func (s *ModelStat) Update(newScore float64) {
+	s.Count++
+	delta := newScore - s.Mean
+	s.Mean += delta / float64(s.Count)
+	delta2 := newScore - s.Mean
+	s.M2 += delta * delta2
+	if newScore < s.Min || s.Count == 1 {
+		s.Min = newScore
+	}
+	if newScore > s.Max {
+		s.Max = newScore
+	}
+	s.LastRun = time.Now().Format("2006-01-02")
+}
+
+// StdDev returns the standard deviation of the scores.
+func (s *ModelStat) StdDev() float64 {
+	if s.Count < 2 {
+		return 0
+	}
+	return math.Sqrt(s.M2 / float64(s.Count-1))
 }
 
 // LabelEntry represents a label stored in YAML front matter.
@@ -30,6 +78,7 @@ type FrontMatter struct {
 	State                  string            `yaml:"state"`
 	Tags                   []string          `yaml:"tags,omitempty"`
 	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`
+	EvalStats              EvalStats         `yaml:"eval_stats,omitempty"`
 	Labels                 []LabelEntry       `yaml:"labels,omitempty"`
 	RecommendedSnapshotID  string            `yaml:"recommended_snapshot_id,omitempty"`
 }
