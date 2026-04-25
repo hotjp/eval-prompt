@@ -10,7 +10,6 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
@@ -146,17 +145,6 @@ func (_c *EvalRunCreate) SetID(v string) *EvalRunCreate {
 	return _c
 }
 
-// SetEvalCaseID sets the "eval_case" edge to the EvalCase entity by ID.
-func (_c *EvalRunCreate) SetEvalCaseID(id string) *EvalRunCreate {
-	_c.mutation.SetEvalCaseID(id)
-	return _c
-}
-
-// SetEvalCase sets the "eval_case" edge to the EvalCase entity.
-func (_c *EvalRunCreate) SetEvalCase(v *EvalCase) *EvalRunCreate {
-	return _c.SetEvalCaseID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_c *EvalRunCreate) Mutation() *EvalRunMutation {
 	return _c.mutation
@@ -224,9 +212,6 @@ func (_c *EvalRunCreate) check() error {
 		if err := evalrun.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "EvalRun.id": %w`, err)}
 		}
-	}
-	if len(_c.mutation.EvalCaseIDs()) == 0 {
-		return &ValidationError{Name: "eval_case", err: errors.New(`ent: missing required edge "EvalRun.eval_case"`)}
 	}
 	return nil
 }
@@ -298,23 +283,6 @@ func (_c *EvalRunCreate) createSpec() (*EvalRun, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(evalrun.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
-	}
-	if nodes := _c.mutation.EvalCaseIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.EvalCaseTable,
-			Columns: []string{evalrun.EvalCaseColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.eval_case_eval_runs = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

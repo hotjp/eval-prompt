@@ -11,9 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
-	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
@@ -127,62 +125,9 @@ func (_u *EvalCaseUpdate) SetNillableCreatedAt(v *time.Time) *EvalCaseUpdate {
 	return _u
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_u *EvalCaseUpdate) SetAssetID(id string) *EvalCaseUpdate {
-	_u.mutation.SetAssetID(id)
-	return _u
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_u *EvalCaseUpdate) SetAsset(v *Asset) *EvalCaseUpdate {
-	return _u.SetAssetID(v.ID)
-}
-
-// AddEvalRunIDs adds the "eval_runs" edge to the EvalRun entity by IDs.
-func (_u *EvalCaseUpdate) AddEvalRunIDs(ids ...string) *EvalCaseUpdate {
-	_u.mutation.AddEvalRunIDs(ids...)
-	return _u
-}
-
-// AddEvalRuns adds the "eval_runs" edges to the EvalRun entity.
-func (_u *EvalCaseUpdate) AddEvalRuns(v ...*EvalRun) *EvalCaseUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddEvalRunIDs(ids...)
-}
-
 // Mutation returns the EvalCaseMutation object of the builder.
 func (_u *EvalCaseUpdate) Mutation() *EvalCaseMutation {
 	return _u.mutation
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (_u *EvalCaseUpdate) ClearAsset() *EvalCaseUpdate {
-	_u.mutation.ClearAsset()
-	return _u
-}
-
-// ClearEvalRuns clears all "eval_runs" edges to the EvalRun entity.
-func (_u *EvalCaseUpdate) ClearEvalRuns() *EvalCaseUpdate {
-	_u.mutation.ClearEvalRuns()
-	return _u
-}
-
-// RemoveEvalRunIDs removes the "eval_runs" edge to EvalRun entities by IDs.
-func (_u *EvalCaseUpdate) RemoveEvalRunIDs(ids ...string) *EvalCaseUpdate {
-	_u.mutation.RemoveEvalRunIDs(ids...)
-	return _u
-}
-
-// RemoveEvalRuns removes "eval_runs" edges to EvalRun entities.
-func (_u *EvalCaseUpdate) RemoveEvalRuns(v ...*EvalRun) *EvalCaseUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveEvalRunIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -224,9 +169,6 @@ func (_u *EvalCaseUpdate) check() error {
 			return &ValidationError{Name: "prompt", err: fmt.Errorf(`ent: validator failed for field "EvalCase.prompt": %w`, err)}
 		}
 	}
-	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalCase.asset"`)
-	}
 	return nil
 }
 
@@ -265,80 +207,6 @@ func (_u *EvalCaseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(evalcase.FieldCreatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.AssetCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalcase.AssetTable,
-			Columns: []string{evalcase.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalcase.AssetTable,
-			Columns: []string{evalcase.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.EvalRunsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedEvalRunsIDs(); len(nodes) > 0 && !_u.mutation.EvalRunsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalRunsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -456,62 +324,9 @@ func (_u *EvalCaseUpdateOne) SetNillableCreatedAt(v *time.Time) *EvalCaseUpdateO
 	return _u
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_u *EvalCaseUpdateOne) SetAssetID(id string) *EvalCaseUpdateOne {
-	_u.mutation.SetAssetID(id)
-	return _u
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_u *EvalCaseUpdateOne) SetAsset(v *Asset) *EvalCaseUpdateOne {
-	return _u.SetAssetID(v.ID)
-}
-
-// AddEvalRunIDs adds the "eval_runs" edge to the EvalRun entity by IDs.
-func (_u *EvalCaseUpdateOne) AddEvalRunIDs(ids ...string) *EvalCaseUpdateOne {
-	_u.mutation.AddEvalRunIDs(ids...)
-	return _u
-}
-
-// AddEvalRuns adds the "eval_runs" edges to the EvalRun entity.
-func (_u *EvalCaseUpdateOne) AddEvalRuns(v ...*EvalRun) *EvalCaseUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddEvalRunIDs(ids...)
-}
-
 // Mutation returns the EvalCaseMutation object of the builder.
 func (_u *EvalCaseUpdateOne) Mutation() *EvalCaseMutation {
 	return _u.mutation
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (_u *EvalCaseUpdateOne) ClearAsset() *EvalCaseUpdateOne {
-	_u.mutation.ClearAsset()
-	return _u
-}
-
-// ClearEvalRuns clears all "eval_runs" edges to the EvalRun entity.
-func (_u *EvalCaseUpdateOne) ClearEvalRuns() *EvalCaseUpdateOne {
-	_u.mutation.ClearEvalRuns()
-	return _u
-}
-
-// RemoveEvalRunIDs removes the "eval_runs" edge to EvalRun entities by IDs.
-func (_u *EvalCaseUpdateOne) RemoveEvalRunIDs(ids ...string) *EvalCaseUpdateOne {
-	_u.mutation.RemoveEvalRunIDs(ids...)
-	return _u
-}
-
-// RemoveEvalRuns removes "eval_runs" edges to EvalRun entities.
-func (_u *EvalCaseUpdateOne) RemoveEvalRuns(v ...*EvalRun) *EvalCaseUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveEvalRunIDs(ids...)
 }
 
 // Where appends a list predicates to the EvalCaseUpdate builder.
@@ -565,9 +380,6 @@ func (_u *EvalCaseUpdateOne) check() error {
 		if err := evalcase.PromptValidator(v); err != nil {
 			return &ValidationError{Name: "prompt", err: fmt.Errorf(`ent: validator failed for field "EvalCase.prompt": %w`, err)}
 		}
-	}
-	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalCase.asset"`)
 	}
 	return nil
 }
@@ -624,80 +436,6 @@ func (_u *EvalCaseUpdateOne) sqlSave(ctx context.Context) (_node *EvalCase, err 
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(evalcase.FieldCreatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.AssetCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalcase.AssetTable,
-			Columns: []string{evalcase.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalcase.AssetTable,
-			Columns: []string{evalcase.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.EvalRunsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedEvalRunsIDs(); len(nodes) > 0 && !_u.mutation.EvalRunsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalRunsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &EvalCase{config: _u.config}
 	_spec.Assign = _node.assignValues

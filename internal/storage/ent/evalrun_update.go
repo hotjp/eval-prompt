@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 	"github.com/eval-prompt/internal/storage/ent/schema"
@@ -232,26 +231,9 @@ func (_u *EvalRunUpdate) SetNillableCreatedAt(v *time.Time) *EvalRunUpdate {
 	return _u
 }
 
-// SetEvalCaseID sets the "eval_case" edge to the EvalCase entity by ID.
-func (_u *EvalRunUpdate) SetEvalCaseID(id string) *EvalRunUpdate {
-	_u.mutation.SetEvalCaseID(id)
-	return _u
-}
-
-// SetEvalCase sets the "eval_case" edge to the EvalCase entity.
-func (_u *EvalRunUpdate) SetEvalCase(v *EvalCase) *EvalRunUpdate {
-	return _u.SetEvalCaseID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_u *EvalRunUpdate) Mutation() *EvalRunMutation {
 	return _u.mutation
-}
-
-// ClearEvalCase clears the "eval_case" edge to the EvalCase entity.
-func (_u *EvalRunUpdate) ClearEvalCase() *EvalRunUpdate {
-	_u.mutation.ClearEvalCase()
-	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -292,9 +274,6 @@ func (_u *EvalRunUpdate) check() error {
 		if err := evalrun.TracePathValidator(v); err != nil {
 			return &ValidationError{Name: "trace_path", err: fmt.Errorf(`ent: validator failed for field "EvalRun.trace_path": %w`, err)}
 		}
-	}
-	if _u.mutation.EvalCaseCleared() && len(_u.mutation.EvalCaseIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalRun.eval_case"`)
 	}
 	return nil
 }
@@ -378,35 +357,6 @@ func (_u *EvalRunUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(evalrun.FieldCreatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.EvalCaseCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.EvalCaseTable,
-			Columns: []string{evalrun.EvalCaseColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalCaseIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.EvalCaseTable,
-			Columns: []string{evalrun.EvalCaseColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -629,26 +579,9 @@ func (_u *EvalRunUpdateOne) SetNillableCreatedAt(v *time.Time) *EvalRunUpdateOne
 	return _u
 }
 
-// SetEvalCaseID sets the "eval_case" edge to the EvalCase entity by ID.
-func (_u *EvalRunUpdateOne) SetEvalCaseID(id string) *EvalRunUpdateOne {
-	_u.mutation.SetEvalCaseID(id)
-	return _u
-}
-
-// SetEvalCase sets the "eval_case" edge to the EvalCase entity.
-func (_u *EvalRunUpdateOne) SetEvalCase(v *EvalCase) *EvalRunUpdateOne {
-	return _u.SetEvalCaseID(v.ID)
-}
-
 // Mutation returns the EvalRunMutation object of the builder.
 func (_u *EvalRunUpdateOne) Mutation() *EvalRunMutation {
 	return _u.mutation
-}
-
-// ClearEvalCase clears the "eval_case" edge to the EvalCase entity.
-func (_u *EvalRunUpdateOne) ClearEvalCase() *EvalRunUpdateOne {
-	_u.mutation.ClearEvalCase()
-	return _u
 }
 
 // Where appends a list predicates to the EvalRunUpdate builder.
@@ -702,9 +635,6 @@ func (_u *EvalRunUpdateOne) check() error {
 		if err := evalrun.TracePathValidator(v); err != nil {
 			return &ValidationError{Name: "trace_path", err: fmt.Errorf(`ent: validator failed for field "EvalRun.trace_path": %w`, err)}
 		}
-	}
-	if _u.mutation.EvalCaseCleared() && len(_u.mutation.EvalCaseIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "EvalRun.eval_case"`)
 	}
 	return nil
 }
@@ -805,35 +735,6 @@ func (_u *EvalRunUpdateOne) sqlSave(ctx context.Context) (_node *EvalRun, err er
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(evalrun.FieldCreatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.EvalCaseCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.EvalCaseTable,
-			Columns: []string{evalrun.EvalCaseColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalCaseIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalrun.EvalCaseTable,
-			Columns: []string{evalrun.EvalCaseColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &EvalRun{config: _u.config}
 	_spec.Assign = _node.assignValues

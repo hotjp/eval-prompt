@@ -10,9 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/evalcase"
-	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/schema"
 )
 
@@ -97,32 +95,6 @@ func (_c *EvalCaseCreate) SetID(v string) *EvalCaseCreate {
 	return _c
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_c *EvalCaseCreate) SetAssetID(id string) *EvalCaseCreate {
-	_c.mutation.SetAssetID(id)
-	return _c
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_c *EvalCaseCreate) SetAsset(v *Asset) *EvalCaseCreate {
-	return _c.SetAssetID(v.ID)
-}
-
-// AddEvalRunIDs adds the "eval_runs" edge to the EvalRun entity by IDs.
-func (_c *EvalCaseCreate) AddEvalRunIDs(ids ...string) *EvalCaseCreate {
-	_c.mutation.AddEvalRunIDs(ids...)
-	return _c
-}
-
-// AddEvalRuns adds the "eval_runs" edges to the EvalRun entity.
-func (_c *EvalCaseCreate) AddEvalRuns(v ...*EvalRun) *EvalCaseCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddEvalRunIDs(ids...)
-}
-
 // Mutation returns the EvalCaseMutation object of the builder.
 func (_c *EvalCaseCreate) Mutation() *EvalCaseMutation {
 	return _c.mutation
@@ -197,9 +169,6 @@ func (_c *EvalCaseCreate) check() error {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "EvalCase.id": %w`, err)}
 		}
 	}
-	if len(_c.mutation.AssetIDs()) == 0 {
-		return &ValidationError{Name: "asset", err: errors.New(`ent: missing required edge "EvalCase.asset"`)}
-	}
 	return nil
 }
 
@@ -258,39 +227,6 @@ func (_c *EvalCaseCreate) createSpec() (*EvalCase, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(evalcase.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
-	}
-	if nodes := _c.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   evalcase.AssetTable,
-			Columns: []string{evalcase.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.asset_eval_cases = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.EvalRunsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   evalcase.EvalRunsTable,
-			Columns: []string{evalcase.EvalRunsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalrun.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

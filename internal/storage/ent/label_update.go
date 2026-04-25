@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
@@ -49,26 +48,9 @@ func (_u *LabelUpdate) SetUpdatedAt(v time.Time) *LabelUpdate {
 	return _u
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_u *LabelUpdate) SetAssetID(id string) *LabelUpdate {
-	_u.mutation.SetAssetID(id)
-	return _u
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_u *LabelUpdate) SetAsset(v *Asset) *LabelUpdate {
-	return _u.SetAssetID(v.ID)
-}
-
 // Mutation returns the LabelMutation object of the builder.
 func (_u *LabelUpdate) Mutation() *LabelMutation {
 	return _u.mutation
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (_u *LabelUpdate) ClearAsset() *LabelUpdate {
-	_u.mutation.ClearAsset()
-	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -114,9 +96,6 @@ func (_u *LabelUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Label.name": %w`, err)}
 		}
 	}
-	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Label.asset"`)
-	}
 	return nil
 }
 
@@ -137,35 +116,6 @@ func (_u *LabelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(label.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.AssetCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.AssetTable,
-			Columns: []string{label.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.AssetTable,
-			Columns: []string{label.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -207,26 +157,9 @@ func (_u *LabelUpdateOne) SetUpdatedAt(v time.Time) *LabelUpdateOne {
 	return _u
 }
 
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_u *LabelUpdateOne) SetAssetID(id string) *LabelUpdateOne {
-	_u.mutation.SetAssetID(id)
-	return _u
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_u *LabelUpdateOne) SetAsset(v *Asset) *LabelUpdateOne {
-	return _u.SetAssetID(v.ID)
-}
-
 // Mutation returns the LabelMutation object of the builder.
 func (_u *LabelUpdateOne) Mutation() *LabelMutation {
 	return _u.mutation
-}
-
-// ClearAsset clears the "asset" edge to the Asset entity.
-func (_u *LabelUpdateOne) ClearAsset() *LabelUpdateOne {
-	_u.mutation.ClearAsset()
-	return _u
 }
 
 // Where appends a list predicates to the LabelUpdate builder.
@@ -285,9 +218,6 @@ func (_u *LabelUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Label.name": %w`, err)}
 		}
 	}
-	if _u.mutation.AssetCleared() && len(_u.mutation.AssetIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Label.asset"`)
-	}
 	return nil
 }
 
@@ -325,35 +255,6 @@ func (_u *LabelUpdateOne) sqlSave(ctx context.Context) (_node *Label, err error)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(label.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.AssetCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.AssetTable,
-			Columns: []string{label.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.AssetTable,
-			Columns: []string{label.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Label{config: _u.config}
 	_spec.Assign = _node.assignValues

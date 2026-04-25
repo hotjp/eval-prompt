@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
 	"github.com/eval-prompt/internal/storage/ent/evalrun"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
@@ -19,12 +18,10 @@ import (
 // EvalRunQuery is the builder for querying EvalRun entities.
 type EvalRunQuery struct {
 	config
-	ctx          *QueryContext
-	order        []evalrun.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.EvalRun
-	withEvalCase *EvalCaseQuery
-	withFKs      bool
+	ctx        *QueryContext
+	order      []evalrun.OrderOption
+	inters     []Interceptor
+	predicates []predicate.EvalRun
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -59,28 +56,6 @@ func (_q *EvalRunQuery) Unique(unique bool) *EvalRunQuery {
 func (_q *EvalRunQuery) Order(o ...evalrun.OrderOption) *EvalRunQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryEvalCase chains the current query on the "eval_case" edge.
-func (_q *EvalRunQuery) QueryEvalCase() *EvalCaseQuery {
-	query := (&EvalCaseClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(evalrun.Table, evalrun.FieldID, selector),
-			sqlgraph.To(evalcase.Table, evalcase.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, evalrun.EvalCaseTable, evalrun.EvalCaseColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // First returns the first EvalRun entity from the query.
@@ -270,27 +245,15 @@ func (_q *EvalRunQuery) Clone() *EvalRunQuery {
 		return nil
 	}
 	return &EvalRunQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]evalrun.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.EvalRun{}, _q.predicates...),
-		withEvalCase: _q.withEvalCase.Clone(),
+		config:     _q.config,
+		ctx:        _q.ctx.Clone(),
+		order:      append([]evalrun.OrderOption{}, _q.order...),
+		inters:     append([]Interceptor{}, _q.inters...),
+		predicates: append([]predicate.EvalRun{}, _q.predicates...),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
-}
-
-// WithEvalCase tells the query-builder to eager-load the nodes that are connected to
-// the "eval_case" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *EvalRunQuery) WithEvalCase(opts ...func(*EvalCaseQuery)) *EvalRunQuery {
-	query := (&EvalCaseClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withEvalCase = query
-	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -369,26 +332,15 @@ func (_q *EvalRunQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *EvalRunQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*EvalRun, error) {
 	var (
-		nodes       = []*EvalRun{}
-		withFKs     = _q.withFKs
-		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
-			_q.withEvalCase != nil,
-		}
+		nodes = []*EvalRun{}
+		_spec = _q.querySpec()
 	)
-	if _q.withEvalCase != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, evalrun.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*EvalRun).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &EvalRun{config: _q.config}
 		nodes = append(nodes, node)
-		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -400,46 +352,7 @@ func (_q *EvalRunQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Eval
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withEvalCase; query != nil {
-		if err := _q.loadEvalCase(ctx, query, nodes, nil,
-			func(n *EvalRun, e *EvalCase) { n.Edges.EvalCase = e }); err != nil {
-			return nil, err
-		}
-	}
 	return nodes, nil
-}
-
-func (_q *EvalRunQuery) loadEvalCase(ctx context.Context, query *EvalCaseQuery, nodes []*EvalRun, init func(*EvalRun), assign func(*EvalRun, *EvalCase)) error {
-	ids := make([]string, 0, len(nodes))
-	nodeids := make(map[string][]*EvalRun)
-	for i := range nodes {
-		if nodes[i].eval_case_eval_runs == nil {
-			continue
-		}
-		fk := *nodes[i].eval_case_eval_runs
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(evalcase.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "eval_case_eval_runs" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
 }
 
 func (_q *EvalRunQuery) sqlCount(ctx context.Context) (int, error) {

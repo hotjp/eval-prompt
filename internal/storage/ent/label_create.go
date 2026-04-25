@@ -10,7 +10,6 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/eval-prompt/internal/storage/ent/asset"
 	"github.com/eval-prompt/internal/storage/ent/label"
 )
 
@@ -45,17 +44,6 @@ func (_c *LabelCreate) SetNillableUpdatedAt(v *time.Time) *LabelCreate {
 func (_c *LabelCreate) SetID(v string) *LabelCreate {
 	_c.mutation.SetID(v)
 	return _c
-}
-
-// SetAssetID sets the "asset" edge to the Asset entity by ID.
-func (_c *LabelCreate) SetAssetID(id string) *LabelCreate {
-	_c.mutation.SetAssetID(id)
-	return _c
-}
-
-// SetAsset sets the "asset" edge to the Asset entity.
-func (_c *LabelCreate) SetAsset(v *Asset) *LabelCreate {
-	return _c.SetAssetID(v.ID)
 }
 
 // Mutation returns the LabelMutation object of the builder.
@@ -117,9 +105,6 @@ func (_c *LabelCreate) check() error {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Label.id": %w`, err)}
 		}
 	}
-	if len(_c.mutation.AssetIDs()) == 0 {
-		return &ValidationError{Name: "asset", err: errors.New(`ent: missing required edge "Label.asset"`)}
-	}
 	return nil
 }
 
@@ -162,23 +147,6 @@ func (_c *LabelCreate) createSpec() (*Label, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(label.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if nodes := _c.mutation.AssetIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   label.AssetTable,
-			Columns: []string{label.AssetColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(asset.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.asset_labels = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

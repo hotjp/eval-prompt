@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
@@ -137,6 +138,7 @@ type EvalService struct {
 	llmInvoker     LLMInvoker
 	gitBridger     GitBridger
 	traceCollector TraceCollector
+	evalsDir       string // Path to the evals directory (e.g., "evals" or ".evals")
 }
 
 // NewEvalService creates a new EvalService.
@@ -189,6 +191,12 @@ func (s *EvalService) WithTraceCollector(collector TraceCollector) *EvalService 
 	return s
 }
 
+// WithEvalsDir sets the evals directory path.
+func (s *EvalService) WithEvalsDir(evalsDir string) *EvalService {
+	s.evalsDir = evalsDir
+	return s
+}
+
 // Close closes the underlying storage client.
 func (s *EvalService) Close() error {
 	if s.storage != nil {
@@ -234,6 +242,28 @@ func (s *EvalService) RunEval(ctx context.Context, assetID, snapshotVersion stri
 	snapshot, err := s.snapshotRepo.GetByAssetIDAndVersion(ctx, assetID, snapshotVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshot: %w", err)
+	}
+
+	// Try to find eval prompt from evals/ directory
+	var evalPrompt *evalPromptFile
+	var promptModel string
+	evalPrompt, err = s.findEvalPrompt(assetID)
+	if err == nil && evalPrompt != nil {
+		// Found eval prompt in evals/ directory
+		promptModel = evalPrompt.FrontMatter.Model
+		if promptModel == "" {
+			promptModel = "gpt-4o" // default model
+		}
+		// Use eval_case_ids from front matter if not provided
+		if len(caseIDs) == 0 && evalPrompt.FrontMatter.HasEvalCaseIDs() {
+			caseIDs = evalPrompt.FrontMatter.EvalCaseIDs
+		}
+		slog.Info("using eval prompt from evals directory",
+			"layer", "service",
+			"asset_id", assetID,
+			"eval_prompt_path", evalPrompt.FilePath,
+			"model", promptModel,
+		)
 	}
 
 	// Get eval cases - either by specific IDs or all for this asset
@@ -299,13 +329,22 @@ func (s *EvalService) RunEval(ctx context.Context, assetID, snapshotVersion stri
 		})
 	}
 
-	// Build prompt from eval case
-	prompt := evalCase.Prompt
+	// Build prompt: use eval prompt content if available, otherwise use eval case prompt
+	var prompt string
+	if evalPrompt != nil {
+		prompt = evalPrompt.Content
+	} else {
+		prompt = evalCase.Prompt
+	}
 
 	// Invoke LLM if invoker is available
 	var llmResponse *LLMResponse
 	if s.llmInvoker != nil {
-		llmResp, err := s.llmInvoker.Invoke(traceCtx, prompt, "gpt-4o", 0.3)
+		model := promptModel
+		if model == "" {
+			model = "gpt-4o" // default model
+		}
+		llmResp, err := s.llmInvoker.Invoke(traceCtx, prompt, model, 0.3)
 		if err != nil {
 			run.Fail()
 			s.evalRunRepo.Update(ctx, run)
@@ -785,6 +824,47 @@ func (s *EvalService) toServiceEvalRun(domainRun *domain.EvalRun) *EvalRun {
 		DurationMs:         domainRun.DurationMs,
 		CreatedAt:          domainRun.CreatedAt,
 	}
+}
+
+// evalPromptFile represents an eval prompt loaded from the evals directory.
+type evalPromptFile struct {
+	FrontMatter *domain.EvalPromptFrontMatter
+	Content     string
+	FilePath    string
+}
+
+// findEvalPrompt looks for an eval prompt file in the evals directory for the given asset.
+// It looks for a file named {assetID}.md in the evals directory.
+func (s *EvalService) findEvalPrompt(assetID string) (*evalPromptFile, error) {
+	if s.evalsDir == "" {
+		return nil, fmt.Errorf("evals directory not configured")
+	}
+
+	// Construct the expected eval prompt file path
+	evalFilePath := filepath.Join(s.evalsDir, assetID+".md")
+
+	// Check if file exists
+	if _, err := os.Stat(evalFilePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("eval prompt file not found for asset %s", assetID)
+	}
+
+	// Read the file
+	fileContent, err := os.ReadFile(evalFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read eval prompt file %s: %w", evalFilePath, err)
+	}
+
+	// Parse the front matter
+	fm, content, err := yamlutil.ParseEvalPromptFrontMatter(string(fileContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse eval prompt front matter: %w", err)
+	}
+
+	return &evalPromptFile{
+		FrontMatter: fm,
+		Content:     content,
+		FilePath:    evalFilePath,
+	}, nil
 }
 
 // writeEvalHistoryToFile writes the eval history to the .md file.

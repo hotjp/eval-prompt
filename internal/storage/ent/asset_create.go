@@ -6,14 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/eval-prompt/internal/storage/ent/asset"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
-	"github.com/eval-prompt/internal/storage/ent/label"
-	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 )
 
 // AssetCreate is the builder for creating a Asset entity.
@@ -32,20 +28,6 @@ func (_c *AssetCreate) SetName(v string) *AssetCreate {
 // SetDescription sets the "description" field.
 func (_c *AssetCreate) SetDescription(v string) *AssetCreate {
 	_c.mutation.SetDescription(v)
-	return _c
-}
-
-// SetBizLine sets the "biz_line" field.
-func (_c *AssetCreate) SetBizLine(v string) *AssetCreate {
-	_c.mutation.SetBizLine(v)
-	return _c
-}
-
-// SetNillableBizLine sets the "biz_line" field if the given value is not nil.
-func (_c *AssetCreate) SetNillableBizLine(v *string) *AssetCreate {
-	if v != nil {
-		_c.SetBizLine(*v)
-	}
 	return _c
 }
 
@@ -81,83 +63,10 @@ func (_c *AssetCreate) SetNillableState(v *asset.State) *AssetCreate {
 	return _c
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (_c *AssetCreate) SetCreatedAt(v time.Time) *AssetCreate {
-	_c.mutation.SetCreatedAt(v)
-	return _c
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (_c *AssetCreate) SetNillableCreatedAt(v *time.Time) *AssetCreate {
-	if v != nil {
-		_c.SetCreatedAt(*v)
-	}
-	return _c
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (_c *AssetCreate) SetUpdatedAt(v time.Time) *AssetCreate {
-	_c.mutation.SetUpdatedAt(v)
-	return _c
-}
-
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (_c *AssetCreate) SetNillableUpdatedAt(v *time.Time) *AssetCreate {
-	if v != nil {
-		_c.SetUpdatedAt(*v)
-	}
-	return _c
-}
-
 // SetID sets the "id" field.
 func (_c *AssetCreate) SetID(v string) *AssetCreate {
 	_c.mutation.SetID(v)
 	return _c
-}
-
-// AddLabelIDs adds the "labels" edge to the Label entity by IDs.
-func (_c *AssetCreate) AddLabelIDs(ids ...string) *AssetCreate {
-	_c.mutation.AddLabelIDs(ids...)
-	return _c
-}
-
-// AddLabels adds the "labels" edges to the Label entity.
-func (_c *AssetCreate) AddLabels(v ...*Label) *AssetCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddLabelIDs(ids...)
-}
-
-// AddEvalCaseIDs adds the "eval_cases" edge to the EvalCase entity by IDs.
-func (_c *AssetCreate) AddEvalCaseIDs(ids ...string) *AssetCreate {
-	_c.mutation.AddEvalCaseIDs(ids...)
-	return _c
-}
-
-// AddEvalCases adds the "eval_cases" edges to the EvalCase entity.
-func (_c *AssetCreate) AddEvalCases(v ...*EvalCase) *AssetCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddEvalCaseIDs(ids...)
-}
-
-// AddAdaptationIDs adds the "adaptations" edge to the ModelAdaptation entity by IDs.
-func (_c *AssetCreate) AddAdaptationIDs(ids ...string) *AssetCreate {
-	_c.mutation.AddAdaptationIDs(ids...)
-	return _c
-}
-
-// AddAdaptations adds the "adaptations" edges to the ModelAdaptation entity.
-func (_c *AssetCreate) AddAdaptations(v ...*ModelAdaptation) *AssetCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddAdaptationIDs(ids...)
 }
 
 // Mutation returns the AssetMutation object of the builder.
@@ -199,14 +108,6 @@ func (_c *AssetCreate) defaults() {
 		v := asset.DefaultState
 		_c.mutation.SetState(v)
 	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		v := asset.DefaultCreatedAt()
-		_c.mutation.SetCreatedAt(v)
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		v := asset.DefaultUpdatedAt()
-		_c.mutation.SetUpdatedAt(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -221,11 +122,6 @@ func (_c *AssetCreate) check() error {
 	}
 	if _, ok := _c.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Asset.description"`)}
-	}
-	if v, ok := _c.mutation.BizLine(); ok {
-		if err := asset.BizLineValidator(v); err != nil {
-			return &ValidationError{Name: "biz_line", err: fmt.Errorf(`ent: validator failed for field "Asset.biz_line": %w`, err)}
-		}
 	}
 	if _, ok := _c.mutation.ContentHash(); !ok {
 		return &ValidationError{Name: "content_hash", err: errors.New(`ent: missing required field "Asset.content_hash"`)}
@@ -250,12 +146,6 @@ func (_c *AssetCreate) check() error {
 		if err := asset.StateValidator(v); err != nil {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Asset.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Asset.updated_at"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := asset.IDValidator(v); err != nil {
@@ -305,10 +195,6 @@ func (_c *AssetCreate) createSpec() (*Asset, *sqlgraph.CreateSpec) {
 		_spec.SetField(asset.FieldDescription, field.TypeString, value)
 		_node.Description = value
 	}
-	if value, ok := _c.mutation.BizLine(); ok {
-		_spec.SetField(asset.FieldBizLine, field.TypeString, value)
-		_node.BizLine = value
-	}
 	if value, ok := _c.mutation.Tags(); ok {
 		_spec.SetField(asset.FieldTags, field.TypeJSON, value)
 		_node.Tags = value
@@ -324,62 +210,6 @@ func (_c *AssetCreate) createSpec() (*Asset, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
 		_node.State = value
-	}
-	if value, ok := _c.mutation.CreatedAt(); ok {
-		_spec.SetField(asset.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
-	}
-	if value, ok := _c.mutation.UpdatedAt(); ok {
-		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = value
-	}
-	if nodes := _c.mutation.LabelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.EvalCasesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.AdaptationsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

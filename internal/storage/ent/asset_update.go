@@ -6,16 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/eval-prompt/internal/storage/ent/asset"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
-	"github.com/eval-prompt/internal/storage/ent/label"
-	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
 
@@ -57,26 +53,6 @@ func (_u *AssetUpdate) SetNillableDescription(v *string) *AssetUpdate {
 	if v != nil {
 		_u.SetDescription(*v)
 	}
-	return _u
-}
-
-// SetBizLine sets the "biz_line" field.
-func (_u *AssetUpdate) SetBizLine(v string) *AssetUpdate {
-	_u.mutation.SetBizLine(v)
-	return _u
-}
-
-// SetNillableBizLine sets the "biz_line" field if the given value is not nil.
-func (_u *AssetUpdate) SetNillableBizLine(v *string) *AssetUpdate {
-	if v != nil {
-		_u.SetBizLine(*v)
-	}
-	return _u
-}
-
-// ClearBizLine clears the value of the "biz_line" field.
-func (_u *AssetUpdate) ClearBizLine() *AssetUpdate {
-	_u.mutation.ClearBizLine()
 	return _u
 }
 
@@ -140,142 +116,13 @@ func (_u *AssetUpdate) SetNillableState(v *asset.State) *AssetUpdate {
 	return _u
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (_u *AssetUpdate) SetCreatedAt(v time.Time) *AssetUpdate {
-	_u.mutation.SetCreatedAt(v)
-	return _u
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (_u *AssetUpdate) SetNillableCreatedAt(v *time.Time) *AssetUpdate {
-	if v != nil {
-		_u.SetCreatedAt(*v)
-	}
-	return _u
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *AssetUpdate) SetUpdatedAt(v time.Time) *AssetUpdate {
-	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// AddLabelIDs adds the "labels" edge to the Label entity by IDs.
-func (_u *AssetUpdate) AddLabelIDs(ids ...string) *AssetUpdate {
-	_u.mutation.AddLabelIDs(ids...)
-	return _u
-}
-
-// AddLabels adds the "labels" edges to the Label entity.
-func (_u *AssetUpdate) AddLabels(v ...*Label) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddLabelIDs(ids...)
-}
-
-// AddEvalCaseIDs adds the "eval_cases" edge to the EvalCase entity by IDs.
-func (_u *AssetUpdate) AddEvalCaseIDs(ids ...string) *AssetUpdate {
-	_u.mutation.AddEvalCaseIDs(ids...)
-	return _u
-}
-
-// AddEvalCases adds the "eval_cases" edges to the EvalCase entity.
-func (_u *AssetUpdate) AddEvalCases(v ...*EvalCase) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddEvalCaseIDs(ids...)
-}
-
-// AddAdaptationIDs adds the "adaptations" edge to the ModelAdaptation entity by IDs.
-func (_u *AssetUpdate) AddAdaptationIDs(ids ...string) *AssetUpdate {
-	_u.mutation.AddAdaptationIDs(ids...)
-	return _u
-}
-
-// AddAdaptations adds the "adaptations" edges to the ModelAdaptation entity.
-func (_u *AssetUpdate) AddAdaptations(v ...*ModelAdaptation) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddAdaptationIDs(ids...)
-}
-
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdate) Mutation() *AssetMutation {
 	return _u.mutation
 }
 
-// ClearLabels clears all "labels" edges to the Label entity.
-func (_u *AssetUpdate) ClearLabels() *AssetUpdate {
-	_u.mutation.ClearLabels()
-	return _u
-}
-
-// RemoveLabelIDs removes the "labels" edge to Label entities by IDs.
-func (_u *AssetUpdate) RemoveLabelIDs(ids ...string) *AssetUpdate {
-	_u.mutation.RemoveLabelIDs(ids...)
-	return _u
-}
-
-// RemoveLabels removes "labels" edges to Label entities.
-func (_u *AssetUpdate) RemoveLabels(v ...*Label) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveLabelIDs(ids...)
-}
-
-// ClearEvalCases clears all "eval_cases" edges to the EvalCase entity.
-func (_u *AssetUpdate) ClearEvalCases() *AssetUpdate {
-	_u.mutation.ClearEvalCases()
-	return _u
-}
-
-// RemoveEvalCaseIDs removes the "eval_cases" edge to EvalCase entities by IDs.
-func (_u *AssetUpdate) RemoveEvalCaseIDs(ids ...string) *AssetUpdate {
-	_u.mutation.RemoveEvalCaseIDs(ids...)
-	return _u
-}
-
-// RemoveEvalCases removes "eval_cases" edges to EvalCase entities.
-func (_u *AssetUpdate) RemoveEvalCases(v ...*EvalCase) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveEvalCaseIDs(ids...)
-}
-
-// ClearAdaptations clears all "adaptations" edges to the ModelAdaptation entity.
-func (_u *AssetUpdate) ClearAdaptations() *AssetUpdate {
-	_u.mutation.ClearAdaptations()
-	return _u
-}
-
-// RemoveAdaptationIDs removes the "adaptations" edge to ModelAdaptation entities by IDs.
-func (_u *AssetUpdate) RemoveAdaptationIDs(ids ...string) *AssetUpdate {
-	_u.mutation.RemoveAdaptationIDs(ids...)
-	return _u
-}
-
-// RemoveAdaptations removes "adaptations" edges to ModelAdaptation entities.
-func (_u *AssetUpdate) RemoveAdaptations(v ...*ModelAdaptation) *AssetUpdate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveAdaptationIDs(ids...)
-}
-
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *AssetUpdate) Save(ctx context.Context) (int, error) {
-	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -301,24 +148,11 @@ func (_u *AssetUpdate) ExecX(ctx context.Context) {
 	}
 }
 
-// defaults sets the default values of the builder before save.
-func (_u *AssetUpdate) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
-		v := asset.UpdateDefaultUpdatedAt()
-		_u.mutation.SetUpdatedAt(v)
-	}
-}
-
 // check runs all checks and user-defined validators on the builder.
 func (_u *AssetUpdate) check() error {
 	if v, ok := _u.mutation.Name(); ok {
 		if err := asset.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Asset.name": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.BizLine(); ok {
-		if err := asset.BizLineValidator(v); err != nil {
-			return &ValidationError{Name: "biz_line", err: fmt.Errorf(`ent: validator failed for field "Asset.biz_line": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.ContentHash(); ok {
@@ -357,12 +191,6 @@ func (_u *AssetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(asset.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.BizLine(); ok {
-		_spec.SetField(asset.FieldBizLine, field.TypeString, value)
-	}
-	if _u.mutation.BizLineCleared() {
-		_spec.ClearField(asset.FieldBizLine, field.TypeString)
-	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(asset.FieldTags, field.TypeJSON, value)
 	}
@@ -382,147 +210,6 @@ func (_u *AssetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.CreatedAt(); ok {
-		_spec.SetField(asset.FieldCreatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.LabelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedLabelsIDs(); len(nodes) > 0 && !_u.mutation.LabelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.LabelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.EvalCasesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedEvalCasesIDs(); len(nodes) > 0 && !_u.mutation.EvalCasesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalCasesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.AdaptationsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedAdaptationsIDs(); len(nodes) > 0 && !_u.mutation.AdaptationsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AdaptationsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -569,26 +256,6 @@ func (_u *AssetUpdateOne) SetNillableDescription(v *string) *AssetUpdateOne {
 	if v != nil {
 		_u.SetDescription(*v)
 	}
-	return _u
-}
-
-// SetBizLine sets the "biz_line" field.
-func (_u *AssetUpdateOne) SetBizLine(v string) *AssetUpdateOne {
-	_u.mutation.SetBizLine(v)
-	return _u
-}
-
-// SetNillableBizLine sets the "biz_line" field if the given value is not nil.
-func (_u *AssetUpdateOne) SetNillableBizLine(v *string) *AssetUpdateOne {
-	if v != nil {
-		_u.SetBizLine(*v)
-	}
-	return _u
-}
-
-// ClearBizLine clears the value of the "biz_line" field.
-func (_u *AssetUpdateOne) ClearBizLine() *AssetUpdateOne {
-	_u.mutation.ClearBizLine()
 	return _u
 }
 
@@ -652,137 +319,9 @@ func (_u *AssetUpdateOne) SetNillableState(v *asset.State) *AssetUpdateOne {
 	return _u
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (_u *AssetUpdateOne) SetCreatedAt(v time.Time) *AssetUpdateOne {
-	_u.mutation.SetCreatedAt(v)
-	return _u
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (_u *AssetUpdateOne) SetNillableCreatedAt(v *time.Time) *AssetUpdateOne {
-	if v != nil {
-		_u.SetCreatedAt(*v)
-	}
-	return _u
-}
-
-// SetUpdatedAt sets the "updated_at" field.
-func (_u *AssetUpdateOne) SetUpdatedAt(v time.Time) *AssetUpdateOne {
-	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// AddLabelIDs adds the "labels" edge to the Label entity by IDs.
-func (_u *AssetUpdateOne) AddLabelIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.AddLabelIDs(ids...)
-	return _u
-}
-
-// AddLabels adds the "labels" edges to the Label entity.
-func (_u *AssetUpdateOne) AddLabels(v ...*Label) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddLabelIDs(ids...)
-}
-
-// AddEvalCaseIDs adds the "eval_cases" edge to the EvalCase entity by IDs.
-func (_u *AssetUpdateOne) AddEvalCaseIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.AddEvalCaseIDs(ids...)
-	return _u
-}
-
-// AddEvalCases adds the "eval_cases" edges to the EvalCase entity.
-func (_u *AssetUpdateOne) AddEvalCases(v ...*EvalCase) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddEvalCaseIDs(ids...)
-}
-
-// AddAdaptationIDs adds the "adaptations" edge to the ModelAdaptation entity by IDs.
-func (_u *AssetUpdateOne) AddAdaptationIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.AddAdaptationIDs(ids...)
-	return _u
-}
-
-// AddAdaptations adds the "adaptations" edges to the ModelAdaptation entity.
-func (_u *AssetUpdateOne) AddAdaptations(v ...*ModelAdaptation) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddAdaptationIDs(ids...)
-}
-
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdateOne) Mutation() *AssetMutation {
 	return _u.mutation
-}
-
-// ClearLabels clears all "labels" edges to the Label entity.
-func (_u *AssetUpdateOne) ClearLabels() *AssetUpdateOne {
-	_u.mutation.ClearLabels()
-	return _u
-}
-
-// RemoveLabelIDs removes the "labels" edge to Label entities by IDs.
-func (_u *AssetUpdateOne) RemoveLabelIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.RemoveLabelIDs(ids...)
-	return _u
-}
-
-// RemoveLabels removes "labels" edges to Label entities.
-func (_u *AssetUpdateOne) RemoveLabels(v ...*Label) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveLabelIDs(ids...)
-}
-
-// ClearEvalCases clears all "eval_cases" edges to the EvalCase entity.
-func (_u *AssetUpdateOne) ClearEvalCases() *AssetUpdateOne {
-	_u.mutation.ClearEvalCases()
-	return _u
-}
-
-// RemoveEvalCaseIDs removes the "eval_cases" edge to EvalCase entities by IDs.
-func (_u *AssetUpdateOne) RemoveEvalCaseIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.RemoveEvalCaseIDs(ids...)
-	return _u
-}
-
-// RemoveEvalCases removes "eval_cases" edges to EvalCase entities.
-func (_u *AssetUpdateOne) RemoveEvalCases(v ...*EvalCase) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveEvalCaseIDs(ids...)
-}
-
-// ClearAdaptations clears all "adaptations" edges to the ModelAdaptation entity.
-func (_u *AssetUpdateOne) ClearAdaptations() *AssetUpdateOne {
-	_u.mutation.ClearAdaptations()
-	return _u
-}
-
-// RemoveAdaptationIDs removes the "adaptations" edge to ModelAdaptation entities by IDs.
-func (_u *AssetUpdateOne) RemoveAdaptationIDs(ids ...string) *AssetUpdateOne {
-	_u.mutation.RemoveAdaptationIDs(ids...)
-	return _u
-}
-
-// RemoveAdaptations removes "adaptations" edges to ModelAdaptation entities.
-func (_u *AssetUpdateOne) RemoveAdaptations(v ...*ModelAdaptation) *AssetUpdateOne {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveAdaptationIDs(ids...)
 }
 
 // Where appends a list predicates to the AssetUpdate builder.
@@ -800,7 +339,6 @@ func (_u *AssetUpdateOne) Select(field string, fields ...string) *AssetUpdateOne
 
 // Save executes the query and returns the updated Asset entity.
 func (_u *AssetUpdateOne) Save(ctx context.Context) (*Asset, error) {
-	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -826,24 +364,11 @@ func (_u *AssetUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-// defaults sets the default values of the builder before save.
-func (_u *AssetUpdateOne) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
-		v := asset.UpdateDefaultUpdatedAt()
-		_u.mutation.SetUpdatedAt(v)
-	}
-}
-
 // check runs all checks and user-defined validators on the builder.
 func (_u *AssetUpdateOne) check() error {
 	if v, ok := _u.mutation.Name(); ok {
 		if err := asset.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Asset.name": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.BizLine(); ok {
-		if err := asset.BizLineValidator(v); err != nil {
-			return &ValidationError{Name: "biz_line", err: fmt.Errorf(`ent: validator failed for field "Asset.biz_line": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.ContentHash(); ok {
@@ -899,12 +424,6 @@ func (_u *AssetUpdateOne) sqlSave(ctx context.Context) (_node *Asset, err error)
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(asset.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.BizLine(); ok {
-		_spec.SetField(asset.FieldBizLine, field.TypeString, value)
-	}
-	if _u.mutation.BizLineCleared() {
-		_spec.ClearField(asset.FieldBizLine, field.TypeString)
-	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(asset.FieldTags, field.TypeJSON, value)
 	}
@@ -924,147 +443,6 @@ func (_u *AssetUpdateOne) sqlSave(ctx context.Context) (_node *Asset, err error)
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.CreatedAt(); ok {
-		_spec.SetField(asset.FieldCreatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.UpdatedAt(); ok {
-		_spec.SetField(asset.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.LabelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedLabelsIDs(); len(nodes) > 0 && !_u.mutation.LabelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.LabelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.LabelsTable,
-			Columns: []string{asset.LabelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(label.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.EvalCasesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedEvalCasesIDs(); len(nodes) > 0 && !_u.mutation.EvalCasesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.EvalCasesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.EvalCasesTable,
-			Columns: []string{asset.EvalCasesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(evalcase.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.AdaptationsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedAdaptationsIDs(); len(nodes) > 0 && !_u.mutation.AdaptationsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AdaptationsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   asset.AdaptationsTable,
-			Columns: []string{asset.AdaptationsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(modeladaptation.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Asset{config: _u.config}
 	_spec.Assign = _node.assignValues

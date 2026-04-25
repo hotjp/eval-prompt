@@ -22,7 +22,6 @@ type ModelAdaptationQuery struct {
 	order      []modeladaptation.OrderOption
 	inters     []Interceptor
 	predicates []predicate.ModelAdaptation
-	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -333,13 +332,9 @@ func (_q *ModelAdaptationQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *ModelAdaptationQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*ModelAdaptation, error) {
 	var (
-		nodes   = []*ModelAdaptation{}
-		withFKs = _q.withFKs
-		_spec   = _q.querySpec()
+		nodes = []*ModelAdaptation{}
+		_spec = _q.querySpec()
 	)
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, modeladaptation.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*ModelAdaptation).scanValues(nil, columns)
 	}

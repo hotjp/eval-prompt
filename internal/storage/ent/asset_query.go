@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -13,22 +12,16 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/eval-prompt/internal/storage/ent/asset"
-	"github.com/eval-prompt/internal/storage/ent/evalcase"
-	"github.com/eval-prompt/internal/storage/ent/label"
-	"github.com/eval-prompt/internal/storage/ent/modeladaptation"
 	"github.com/eval-prompt/internal/storage/ent/predicate"
 )
 
 // AssetQuery is the builder for querying Asset entities.
 type AssetQuery struct {
 	config
-	ctx             *QueryContext
-	order           []asset.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.Asset
-	withLabels      *LabelQuery
-	withEvalCases   *EvalCaseQuery
-	withAdaptations *ModelAdaptationQuery
+	ctx        *QueryContext
+	order      []asset.OrderOption
+	inters     []Interceptor
+	predicates []predicate.Asset
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -63,72 +56,6 @@ func (_q *AssetQuery) Unique(unique bool) *AssetQuery {
 func (_q *AssetQuery) Order(o ...asset.OrderOption) *AssetQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryLabels chains the current query on the "labels" edge.
-func (_q *AssetQuery) QueryLabels() *LabelQuery {
-	query := (&LabelClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, selector),
-			sqlgraph.To(label.Table, label.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.LabelsTable, asset.LabelsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryEvalCases chains the current query on the "eval_cases" edge.
-func (_q *AssetQuery) QueryEvalCases() *EvalCaseQuery {
-	query := (&EvalCaseClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, selector),
-			sqlgraph.To(evalcase.Table, evalcase.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.EvalCasesTable, asset.EvalCasesColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryAdaptations chains the current query on the "adaptations" edge.
-func (_q *AssetQuery) QueryAdaptations() *ModelAdaptationQuery {
-	query := (&ModelAdaptationClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(asset.Table, asset.FieldID, selector),
-			sqlgraph.To(modeladaptation.Table, modeladaptation.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, asset.AdaptationsTable, asset.AdaptationsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // First returns the first Asset entity from the query.
@@ -318,51 +245,15 @@ func (_q *AssetQuery) Clone() *AssetQuery {
 		return nil
 	}
 	return &AssetQuery{
-		config:          _q.config,
-		ctx:             _q.ctx.Clone(),
-		order:           append([]asset.OrderOption{}, _q.order...),
-		inters:          append([]Interceptor{}, _q.inters...),
-		predicates:      append([]predicate.Asset{}, _q.predicates...),
-		withLabels:      _q.withLabels.Clone(),
-		withEvalCases:   _q.withEvalCases.Clone(),
-		withAdaptations: _q.withAdaptations.Clone(),
+		config:     _q.config,
+		ctx:        _q.ctx.Clone(),
+		order:      append([]asset.OrderOption{}, _q.order...),
+		inters:     append([]Interceptor{}, _q.inters...),
+		predicates: append([]predicate.Asset{}, _q.predicates...),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
-}
-
-// WithLabels tells the query-builder to eager-load the nodes that are connected to
-// the "labels" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AssetQuery) WithLabels(opts ...func(*LabelQuery)) *AssetQuery {
-	query := (&LabelClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withLabels = query
-	return _q
-}
-
-// WithEvalCases tells the query-builder to eager-load the nodes that are connected to
-// the "eval_cases" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AssetQuery) WithEvalCases(opts ...func(*EvalCaseQuery)) *AssetQuery {
-	query := (&EvalCaseClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withEvalCases = query
-	return _q
-}
-
-// WithAdaptations tells the query-builder to eager-load the nodes that are connected to
-// the "adaptations" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AssetQuery) WithAdaptations(opts ...func(*ModelAdaptationQuery)) *AssetQuery {
-	query := (&ModelAdaptationClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withAdaptations = query
-	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -441,13 +332,8 @@ func (_q *AssetQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset, error) {
 	var (
-		nodes       = []*Asset{}
-		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
-			_q.withLabels != nil,
-			_q.withEvalCases != nil,
-			_q.withAdaptations != nil,
-		}
+		nodes = []*Asset{}
+		_spec = _q.querySpec()
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Asset).scanValues(nil, columns)
@@ -455,7 +341,6 @@ func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset,
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Asset{config: _q.config}
 		nodes = append(nodes, node)
-		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -467,122 +352,7 @@ func (_q *AssetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Asset,
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withLabels; query != nil {
-		if err := _q.loadLabels(ctx, query, nodes,
-			func(n *Asset) { n.Edges.Labels = []*Label{} },
-			func(n *Asset, e *Label) { n.Edges.Labels = append(n.Edges.Labels, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withEvalCases; query != nil {
-		if err := _q.loadEvalCases(ctx, query, nodes,
-			func(n *Asset) { n.Edges.EvalCases = []*EvalCase{} },
-			func(n *Asset, e *EvalCase) { n.Edges.EvalCases = append(n.Edges.EvalCases, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withAdaptations; query != nil {
-		if err := _q.loadAdaptations(ctx, query, nodes,
-			func(n *Asset) { n.Edges.Adaptations = []*ModelAdaptation{} },
-			func(n *Asset, e *ModelAdaptation) { n.Edges.Adaptations = append(n.Edges.Adaptations, e) }); err != nil {
-			return nil, err
-		}
-	}
 	return nodes, nil
-}
-
-func (_q *AssetQuery) loadLabels(ctx context.Context, query *LabelQuery, nodes []*Asset, init func(*Asset), assign func(*Asset, *Label)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*Asset)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	query.withFKs = true
-	query.Where(predicate.Label(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(asset.LabelsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.asset_labels
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "asset_labels" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "asset_labels" returned %v for node %v`, *fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *AssetQuery) loadEvalCases(ctx context.Context, query *EvalCaseQuery, nodes []*Asset, init func(*Asset), assign func(*Asset, *EvalCase)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*Asset)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	query.withFKs = true
-	query.Where(predicate.EvalCase(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(asset.EvalCasesColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.asset_eval_cases
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "asset_eval_cases" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "asset_eval_cases" returned %v for node %v`, *fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *AssetQuery) loadAdaptations(ctx context.Context, query *ModelAdaptationQuery, nodes []*Asset, init func(*Asset), assign func(*Asset, *ModelAdaptation)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*Asset)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	query.withFKs = true
-	query.Where(predicate.ModelAdaptation(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(asset.AdaptationsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.asset_adaptations
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "asset_adaptations" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "asset_adaptations" returned %v for node %v`, *fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
 }
 
 func (_q *AssetQuery) sqlCount(ctx context.Context) (int, error) {

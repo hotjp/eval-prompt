@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +25,7 @@ func init() {
 	evalCmd.AddCommand(evalCompareCmd)
 	evalCmd.AddCommand(evalReportCmd)
 	evalCmd.AddCommand(evalDiagnoseCmd)
+	evalCmd.AddCommand(evalSetupCmd)
 }
 
 var evalRunCmd = &cobra.Command{
@@ -191,6 +195,81 @@ var evalDiagnoseCmd = &cobra.Command{
 	},
 }
 
+var evalSetupCmd = &cobra.Command{
+	Use:   "setup <asset_id>",
+	Short: "创建 Eval Prompt 模板",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		assetID := args[0]
+		evalsDir, _ := cmd.Flags().GetString("evals-dir")
+		model, _ := cmd.Flags().GetString("model")
+
+		if evalsDir == "" {
+			evalsDir = "evals" // default to "evals" directory
+		}
+
+		if model == "" {
+			model = "gpt-4o" // default model
+		}
+
+		// Create evals directory if it doesn't exist
+		if err := os.MkdirAll(evalsDir, 0755); err != nil {
+			return fmt.Errorf("创建 evals 目录失败: %w", err)
+		}
+
+		// Generate eval prompt file path
+		evalFilePath := filepath.Join(evalsDir, assetID+".md")
+
+		// Check if file already exists
+		if _, err := os.Stat(evalFilePath); err == nil {
+			return fmt.Errorf("eval prompt 文件已存在: %s", evalFilePath)
+		}
+
+		// Create eval prompt front matter
+		fm := &domain.EvalPromptFrontMatter{
+			ID:          assetID,
+			Name:        fmt.Sprintf("Eval Prompt for Asset %s", assetID),
+			Version:     "v1.0.0",
+			ContentHash: "", // Will be computed when content is finalized
+			State:       "active",
+			Tags:        []string{},
+			EvalCaseIDs: []string{},
+			Model:       model,
+		}
+
+		// Create eval prompt content template
+		content := `# Eval Prompt
+
+This is the evaluation prompt template for asset ` + assetID + `.
+
+## Instructions
+Describe how to evaluate the prompt asset here.
+
+## Evaluation Criteria
+- Criterion 1: Describe what to check
+- Criterion 2: Describe what to verify
+
+## Expected Output
+Describe the expected output format.
+`
+
+		// Format the complete markdown file
+		mdContent, err := yamlutil.FormatEvalPromptMarkdown(fm, content)
+		if err != nil {
+			return fmt.Errorf("格式化 eval prompt 失败: %w", err)
+		}
+
+		// Write the file
+		if err := os.WriteFile(evalFilePath, []byte(mdContent), 0644); err != nil {
+			return fmt.Errorf("写入 eval prompt 文件失败: %w", err)
+		}
+
+		fmt.Printf("Eval Prompt 模板已创建: %s\n", evalFilePath)
+		fmt.Printf("模型: %s\n", model)
+		return nil
+	},
+}
+
 func init() {
 	evalRunCmd.Flags().String("snapshot", "", "快照版本")
 	evalRunCmd.Flags().StringSlice("case", []string{}, "指定测试用例 ID")
@@ -203,4 +282,7 @@ func init() {
 	evalReportCmd.Flags().Bool("json", false, "JSON 输出")
 
 	evalDiagnoseCmd.Flags().String("format", "markdown", "输出格式: json|markdown")
+
+	evalSetupCmd.Flags().String("evals-dir", "evals", "Eval 提示词目录")
+	evalSetupCmd.Flags().String("model", "gpt-4o", "使用的模型")
 }
