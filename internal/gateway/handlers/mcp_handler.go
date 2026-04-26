@@ -134,9 +134,10 @@ func (h *MCPHandler) HandlePOST(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]any) (any, error) {
-	// MCP protocol: prompts/list params are cursor? and limit?
+	// MCP protocol: prompts/list params are cursor?, limit?, category?
 	cursor, _ := params["cursor"].(string)
 	limit, _ := params["limit"].(int)
+	category, _ := params["category"].(string)
 	if limit <= 0 {
 		limit = 20 // default limit
 	}
@@ -144,8 +145,9 @@ func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]an
 		limit = 100 // max limit
 	}
 
-	// Search with empty query to get all (supports filtering via SearchFilters if needed)
-	results, err := h.indexer.Search(ctx, "", service.SearchFilters{})
+	// Search with category filter
+	filters := service.SearchFilters{Category: category}
+	results, err := h.indexer.Search(ctx, "", filters)
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
