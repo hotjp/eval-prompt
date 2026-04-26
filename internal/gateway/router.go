@@ -108,11 +108,16 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	// Eval API routes
 	mux.HandleFunc("GET /api/v1/evals", evalHandler.ListEvalRuns)
 	mux.HandleFunc("POST /api/v1/evals/run", evalHandler.RunEval)
+	mux.HandleFunc("POST /api/v1/evals/execute", evalHandler.ExecuteEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", evalHandler.GetEvalRun)
 	mux.HandleFunc("GET /api/v1/evals/{id}/diagnose", evalHandler.DiagnoseEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}/report", evalHandler.GetEvalReport)
 	mux.HandleFunc("POST /api/v1/evals/compare", evalHandler.CompareEval)
 	mux.HandleFunc("POST /api/v1/eval/diff", evalHandler.DiffEval)
+
+	// Execution API routes (called by frontend)
+	mux.HandleFunc("GET /api/v1/executions/{id}", evalHandler.GetExecution)
+	mux.HandleFunc("POST /api/v1/executions/{id}/cancel", evalHandler.CancelExecution)
 
 	// Rewrite API
 	mux.HandleFunc("POST /api/v1/rewrite", evalHandler.Rewrite)
@@ -147,6 +152,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/admin/reconcile", adminHandler.Reconcile)
 	mux.HandleFunc("POST /api/v1/admin/git-pull", adminHandler.GitPull)
 	mux.HandleFunc("POST /api/v1/admin/open-folder", adminHandler.OpenFolder)
+	mux.HandleFunc("PUT /api/v1/admin/config", adminHandler.SaveConfig)
 
 	// Health check endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

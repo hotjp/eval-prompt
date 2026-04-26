@@ -123,6 +123,63 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ExecuteEvalRequest represents the request body for executing an eval.
+type ExecuteEvalRequest struct {
+	AssetID     string   `json:"asset_id"`
+	CaseIDs     []string `json:"case_ids,omitempty"`
+	Mode        string   `json:"mode,omitempty"`
+	RunsPerCase int      `json:"runs_per_case,omitempty"`
+	Concurrency int      `json:"concurrency,omitempty"`
+	Model       string   `json:"model,omitempty"`
+	Temperature float64  `json:"temperature,omitempty"`
+}
+
+// ExecuteEvalResponse represents the response for executing an eval.
+type ExecuteEvalResponse struct {
+	ExecutionID string `json:"execution_id"`
+	Status      string `json:"status"`
+}
+
+// ExecuteEval handles POST /api/v1/evals/execute.
+func (h *EvalHandler) ExecuteEval(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req ExecuteEvalRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if req.AssetID == "" {
+		h.writeError(w, http.StatusBadRequest, "asset_id is required")
+		return
+	}
+
+	// Convert handler request to service request
+	svcReq := &service.RunEvalRequest{
+		AssetID:     req.AssetID,
+		EvalCaseIDs: req.CaseIDs,
+		Mode:        domain.ExecutionMode(req.Mode),
+		RunsPerCase: req.RunsPerCase,
+		Concurrency: req.Concurrency,
+		Model:       req.Model,
+		Temperature: req.Temperature,
+	}
+
+	execution, err := h.evalService.RunEval(ctx, svcReq)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "eval execution failed: %v", err)
+		return
+	}
+
+	h.logger.Info("eval execution started", "asset_id", req.AssetID, "execution_id", execution.ID, "layer", "L5")
+
+	h.writeJSON(w, http.StatusAccepted, ExecuteEvalResponse{
+		ExecutionID: execution.ID,
+		Status:      string(execution.Status),
+	})
+}
+
 // GetEvalRun handles GET /api/v1/evals/{id}.
 //
 //	@Summary Get eval run by ID
