@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/eval-prompt/internal/pathutil"
 )
 
 // LLMCall represents a single LLM call record stored in JSON Lines format.
@@ -40,8 +43,11 @@ func NewLLMCallFileStore(baseDir string) *LLMCallFileStore {
 	return &LLMCallFileStore{baseDir: baseDir}
 }
 
-func (s *LLMCallFileStore) filePath(executionID string) string {
-	return filepath.Join(s.baseDir, executionID, "calls.jsonl")
+func (s *LLMCallFileStore) filePath(executionID string) (string, error) {
+	if err := pathutil.ValidateID(executionID); err != nil {
+		return "", err
+	}
+	return filepath.Join(s.baseDir, executionID, "calls.jsonl"), nil
 }
 
 // Append appends a single LLM call to the execution's calls.jsonl file.
@@ -49,7 +55,10 @@ func (s *LLMCallFileStore) Append(ctx context.Context, executionID string, call 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	filePath := s.filePath(executionID)
+	filePath, err := s.filePath(executionID)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return err
 	}
@@ -73,7 +82,10 @@ func (s *LLMCallFileStore) AppendBatch(ctx context.Context, executionID string, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	filePath := s.filePath(executionID)
+	filePath, err := s.filePath(executionID)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return err
 	}
@@ -98,7 +110,13 @@ func (s *LLMCallFileStore) AppendBatch(ctx context.Context, executionID string, 
 
 // ListByExecution reads all LLM calls for a given execution.
 func (s *LLMCallFileStore) ListByExecution(ctx context.Context, executionID string) ([]*LLMCall, error) {
-	filePath := s.filePath(executionID)
+	s.mu.Lock() // use mutex for read as well to prevent reading while writing
+	defer s.mu.Unlock()
+
+	filePath, err := s.filePath(executionID)
+	if err != nil {
+		return nil, err
+	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -111,6 +129,7 @@ func (s *LLMCallFileStore) ListByExecution(ctx context.Context, executionID stri
 	for scanner.Scan() {
 		var call LLMCall
 		if err := json.Unmarshal(scanner.Bytes(), &call); err != nil {
+			slog.Warn("failed to unmarshal LLM call", "error", err)
 			continue
 		}
 		calls = append(calls, &call)
@@ -120,7 +139,13 @@ func (s *LLMCallFileStore) ListByExecution(ctx context.Context, executionID stri
 
 // ListByExecutionPaginated reads LLM calls with pagination.
 func (s *LLMCallFileStore) ListByExecutionPaginated(ctx context.Context, executionID string, offset, limit int) ([]*LLMCall, int, error) {
-	filePath := s.filePath(executionID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filePath, err := s.filePath(executionID)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -133,6 +158,7 @@ func (s *LLMCallFileStore) ListByExecutionPaginated(ctx context.Context, executi
 	for scanner.Scan() {
 		var call LLMCall
 		if err := json.Unmarshal(scanner.Bytes(), &call); err != nil {
+			slog.Warn("failed to unmarshal LLM call", "error", err)
 			continue
 		}
 		all = append(all, &call)
@@ -155,7 +181,13 @@ func (s *LLMCallFileStore) ListByExecutionPaginated(ctx context.Context, executi
 
 // GetCompletedRunIDs returns a map of run_id to true for all completed calls.
 func (s *LLMCallFileStore) GetCompletedRunIDs(ctx context.Context, executionID string) (map[string]bool, error) {
-	filePath := s.filePath(executionID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filePath, err := s.filePath(executionID)
+	if err != nil {
+		return nil, err
+	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -168,6 +200,7 @@ func (s *LLMCallFileStore) GetCompletedRunIDs(ctx context.Context, executionID s
 	for scanner.Scan() {
 		var call LLMCall
 		if err := json.Unmarshal(scanner.Bytes(), &call); err != nil {
+			slog.Warn("failed to unmarshal LLM call", "error", err)
 			continue
 		}
 		if call.Status == "completed" {

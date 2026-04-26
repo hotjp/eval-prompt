@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/pathutil"
 )
 
 // Deprecated: Execution is stored in .evals/executions/*.json, not in database.
@@ -21,8 +23,11 @@ func NewExecutionFileStore(baseDir string) *ExecutionFileStore {
 	return &ExecutionFileStore{baseDir: baseDir}
 }
 
-func (s *ExecutionFileStore) filePath(id string) string {
-	return filepath.Join(s.baseDir, fmt.Sprintf("%s.json", id))
+func (s *ExecutionFileStore) filePath(id string) (string, error) {
+	if err := pathutil.ValidateID(id); err != nil {
+		return "", err
+	}
+	return filepath.Join(s.baseDir, fmt.Sprintf("%s.json", id)), nil
 }
 
 func (s *ExecutionFileStore) Save(ctx context.Context, exec *domain.EvalExecution) error {
@@ -33,14 +38,22 @@ func (s *ExecutionFileStore) Save(ctx context.Context, exec *domain.EvalExecutio
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.filePath(exec.ID), data, 0644)
+	path, err := s.filePath(exec.ID)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 func (s *ExecutionFileStore) Get(ctx context.Context, id string) (*domain.EvalExecution, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	data, err := os.ReadFile(s.filePath(id))
+	path, err := s.filePath(id)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +80,12 @@ func (s *ExecutionFileStore) ListByAsset(ctx context.Context, assetID string) ([
 		}
 		data, err := os.ReadFile(filepath.Join(s.baseDir, entry.Name()))
 		if err != nil {
+			slog.Warn("failed to read execution file", "file", entry.Name(), "error", err)
 			continue
 		}
 		var exec domain.EvalExecution
 		if err := json.Unmarshal(data, &exec); err != nil {
+			slog.Warn("failed to unmarshal execution file", "file", entry.Name(), "error", err)
 			continue
 		}
 		if exec.AssetID == assetID {
@@ -96,10 +111,12 @@ func (s *ExecutionFileStore) List(ctx context.Context, offset, limit int) ([]*do
 		}
 		data, err := os.ReadFile(filepath.Join(s.baseDir, entry.Name()))
 		if err != nil {
+			slog.Warn("failed to read execution file", "file", entry.Name(), "error", err)
 			continue
 		}
 		var exec domain.EvalExecution
 		if err := json.Unmarshal(data, &exec); err != nil {
+			slog.Warn("failed to unmarshal execution file", "file", entry.Name(), "error", err)
 			continue
 		}
 		all = append(all, &exec)
@@ -130,7 +147,11 @@ func (s *ExecutionFileStore) UpdateStatus(ctx context.Context, id string, status
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.filePath(id), data, 0644)
+	path, err := s.filePath(id)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 func (s *ExecutionFileStore) UpdateProgress(ctx context.Context, id string, completed, failed, cancelled int) error {
@@ -148,7 +169,11 @@ func (s *ExecutionFileStore) UpdateProgress(ctx context.Context, id string, comp
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.filePath(id), data, 0644)
+	path, err := s.filePath(id)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 func (s *ExecutionFileStore) Archive(ctx context.Context, id string) error {
@@ -160,7 +185,11 @@ func (s *ExecutionFileStore) IsArchived(ctx context.Context, id string) bool {
 }
 
 func (s *ExecutionFileStore) getWithoutLock(id string) (*domain.EvalExecution, error) {
-	data, err := os.ReadFile(s.filePath(id))
+	path, err := s.filePath(id)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
