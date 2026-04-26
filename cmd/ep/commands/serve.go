@@ -118,6 +118,12 @@ var serveCmd = &cobra.Command{
 					break
 				}
 			}
+			// If defaultModel still not set, error
+			if defaultModel == "" {
+				logger.Error("default_model not configured: set default_model in LLM config or set default=true on a provider")
+			}
+		} else {
+			logger.Info("no LLM providers configured")
 		}
 
 		// Create plugin instances
@@ -177,6 +183,7 @@ var serveCmd = &cobra.Command{
 
 		// Create LLM checker for readyz
 		llmChecker := handlers.NewLLMCheckerAdapter(llmInvoker)
+		llmChecker.SetDefaultModel(defaultModel)
 
 		// Create config manager and register config change handlers
 		configManager := service.NewInMemoryConfigManager()

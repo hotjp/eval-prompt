@@ -24,6 +24,7 @@ type StorageChecker interface {
 // LLMChecker is an interface for checking LLM provider readiness.
 type LLMChecker interface {
 	Ping(ctx context.Context) error
+	DefaultModel() string
 }
 
 // NewReadyHandler creates a new ReadyHandler.
@@ -90,6 +91,22 @@ func (h *ReadyHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			checks["llm"] = CheckResult{Status: "ok"}
+		}
+
+		// Check 3: Model config (warn if default model not set)
+		if h.llm.DefaultModel() == "" {
+			checks["model_config"] = CheckResult{
+				Status:  "degraded",
+				Message: "default model not configured: set default_model in LLM config or set default=true on a provider",
+			}
+			if overallStatus == "ok" {
+				overallStatus = "degraded"
+			}
+		} else {
+			checks["model_config"] = CheckResult{
+				Status:  "ok",
+				Message: h.llm.DefaultModel(),
+			}
 		}
 	}
 

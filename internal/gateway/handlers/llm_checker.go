@@ -11,7 +11,8 @@ import (
 
 // LLMCheckerAdapter wraps an LLM invoker to check readiness.
 type LLMCheckerAdapter struct {
-	invoker llm.Interface
+	invoker      llm.Interface
+	defaultModel string
 }
 
 // NewLLMCheckerAdapter creates a new LLMCheckerAdapter.
@@ -35,4 +36,14 @@ func (c *LLMCheckerAdapter) Ping(ctx context.Context) error {
 // SetInvoker updates the underlying LLM invoker (allows hot reload of config).
 func (c *LLMCheckerAdapter) SetInvoker(invoker llm.Interface) {
 	c.invoker = invoker
+}
+
+// SetDefaultModel sets the default model for LLM operations.
+func (c *LLMCheckerAdapter) SetDefaultModel(model string) {
+	c.defaultModel = model
+}
+
+// DefaultModel returns the configured default model.
+func (c *LLMCheckerAdapter) DefaultModel() string {
+	return c.defaultModel
 }

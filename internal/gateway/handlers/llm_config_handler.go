@@ -192,7 +192,19 @@ func (h *LLMConfigHandler) HandleLLMChange(ctx context.Context, domain string, c
 		defaultCfg = &(*h.cfg)[0]
 	}
 
-	h.logger.Info("LLM config change handler triggered", "changed", changed, "default", defaultCfg.Name)
+	if h.llmChecker != nil && *h.llmChecker != nil {
+		model := ""
+		if defaultCfg != nil {
+			model = defaultCfg.DefaultModel
+		}
+		(*h.llmChecker).SetDefaultModel(model)
+	}
+
+	defaultName := ""
+	if defaultCfg != nil {
+		defaultName = defaultCfg.Name
+	}
+	h.logger.Info("LLM config change handler triggered", "changed", changed, "default", defaultName)
 }
 
 // maskAPIKey masks an API key for security.
