@@ -51,7 +51,7 @@ cd ./my-prompts
 
 # 3. Start server
 ep serve
-# Open http://127.0.0.1:18080
+# Open http://127.0.0.1:18880
 
 # 4. Create a prompt
 ep asset create my-prompt --content "# My Prompt\n\nYou are an expert..."

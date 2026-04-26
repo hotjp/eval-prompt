@@ -9,7 +9,7 @@
 你可以通过以下方式与 eval-prompt 交互：
 - **MCP 协议** — 作为 MCP client 连接，程序化读写 Prompt
 - **CLI** — `ep asset create`、`ep eval run` 等命令
-- **Web UI** — 人类友好界面 http://127.0.0.1:18080
+- **Web UI** — 人类友好界面 http://127.0.0.1:18880
 
 ### 你与 eval-prompt 的协作流程
 
@@ -71,7 +71,7 @@ cd ./my-prompts
 
 # 3. 启动服务
 ep serve
-# 浏览器打开 http://127.0.0.1:18080
+# 浏览器打开 http://127.0.0.1:18880
 
 # 4. 创建第一个 Prompt
 ep asset create my-first-prompt

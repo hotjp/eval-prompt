@@ -273,7 +273,7 @@ var serveCmd = &cobra.Command{
 }
 
 func init() {
-	serveCmd.Flags().Int("port", 8080, "服务端口")
+	serveCmd.Flags().Int("port", 18880, "服务端口")
 	serveCmd.Flags().String("host", "127.0.0.1", "监听地址")
 	serveCmd.Flags().Bool("no-browser", false, "不自动打开浏览器")
 }

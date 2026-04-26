@@ -201,7 +201,7 @@ func getDefaults() map[string]interface{} {
 		"lang": "en-US", // Default to English
 
 		// Server defaults
-		"server.port":          8080,
+		"server.port":          18880,
 		"server.host":          "127.0.0.1",
 		"server.metrics_port":  9090,
 		"server.pprof_port":    6060,
