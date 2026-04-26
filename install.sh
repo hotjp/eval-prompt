@@ -140,8 +140,15 @@ rm -f "${TMPDIR}/${FILENAME}"
 echo ""
 echo "Installed: ${INSTALL_DIR}/${BINARY_NAME}"
 echo ""
-echo "Next steps:"
-echo "  1. Start server:  ep serve"
-echo "  2. Open browser:  open http://127.0.0.1:8080"
-echo ""
-echo "Run 'ep --version' to verify."
+
+# Start server automatically
+echo "Starting server..."
+nohup ep serve > /tmp/ep.log 2>&1 &
+sleep 2
+if curl -s --connect-timeout 2 http://127.0.0.1:8080 > /dev/null 2>&1; then
+    echo "Server running at: http://127.0.0.1:8080"
+    open http://127.0.0.1:8080 2>/dev/null || true
+else
+    echo "Server started in background. Logs: /tmp/ep.log"
+    echo "Access at: http://127.0.0.1:8080"
+fi
