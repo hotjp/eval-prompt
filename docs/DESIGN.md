@@ -1194,7 +1194,7 @@ install:
 
 ### 12.2 分发方式
 
-- **GitHub Release**：预编译二进制（Linux/macOS/Windows）
+- **GitHub Release**：预编译二进制（Linux/macOS；Windows 开发中）
 - **直接下载**：`curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh`
 
 ### 12.3 首次运行

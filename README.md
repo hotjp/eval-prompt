@@ -174,14 +174,13 @@ export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
 # macOS / Linux / Git Bash
 curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
 
-# Windows (PowerShell)
-iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
+# Windows
+# Coming soon ⏳ — star the repo to get notified: https://github.com/hotjp/eval-prompt
 ```
 
 **Requirements:**
 - macOS: Xcode Command Line Tools
 - Linux: gcc + SQLite dev libraries
-- Windows: Git Bash or WSL
 
 ## License
 

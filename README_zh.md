@@ -151,8 +151,9 @@ export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
 # macOS / Linux / Git Bash
 curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
 
-# Windows (PowerShell)
-iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
+# Windows
+# 开发中，预计一个月内发布 ⏳
+# 请先 star 本仓库关注更新：https://github.com/hotjp/eval-prompt
 ```
 
 **二进制命名：**
