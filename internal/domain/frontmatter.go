@@ -97,6 +97,14 @@ type TestCase struct {
 	Rubric   []TestCaseRubricCheck `yaml:"rubric,omitempty"`
 }
 
+// Validate validates the test case structure.
+func (tc *TestCase) Validate() error {
+	if tc.ID == "" {
+		return NewDomainError(ErrInvalidEntityID, "test case ID is required")
+	}
+	return nil
+}
+
 // FrontMatter represents the YAML front matter in a .md prompt file.
 // This is the canonical format for storing prompt metadata in the filesystem.
 type FrontMatter struct {
@@ -106,7 +114,7 @@ type FrontMatter struct {
 	Version                string            `yaml:"version,omitempty"`
 	ContentHash            string            `yaml:"content_hash"`
 	State                  string            `yaml:"state"`
-	AssetType                string            `yaml:"asset_type,omitempty"`
+	AssetType              string            `yaml:"asset_type,omitempty"`
 	Tags                   []string          `yaml:"tags,omitempty"`
 	UpdatedAt              time.Time         `yaml:"updated_at,omitempty"`
 	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`

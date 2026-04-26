@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"time"
 )
 
@@ -26,6 +27,9 @@ const (
 )
 
 // EvalExecution represents an eval execution batch.
+// An EvalExecution tracks the execution of one or more test cases against an asset,
+// supporting various execution modes (single, batch, matrix) with configurable
+// concurrency and model parameters.
 type EvalExecution struct {
 	ID             string         `json:"id"`
 	AssetID        string         `json:"asset_id"`
@@ -44,6 +48,20 @@ type EvalExecution struct {
 	CreatedAt      time.Time      `json:"created_at"`
 	StartedAt      *time.Time     `json:"started_at,omitempty"`
 	CompletedAt    *time.Time     `json:"completed_at,omitempty"`
+}
+
+// Validate validates the eval execution structure.
+func (e *EvalExecution) Validate() error {
+	if e.ID == "" {
+		return errors.New("execution ID is required")
+	}
+	if e.AssetID == "" {
+		return errors.New("asset ID is required")
+	}
+	if len(e.CaseIDs) == 0 {
+		return errors.New("case IDs cannot be empty")
+	}
+	return nil
 }
 
 // WorkItemStatus represents the status of an eval work item.
