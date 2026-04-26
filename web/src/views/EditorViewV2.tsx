@@ -101,6 +101,10 @@ function generateId() {
   return Math.random().toString(36).substring(2, 11)
 }
 
+function stripThinkTags(content: string): string {
+  return content.replace(/<think>[\s\S]*?<\/think>/g, '')
+}
+
 function EditorViewV2() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -631,7 +635,7 @@ function EditorViewV2() {
           {chatMessages.map((msg) => (
             <div key={msg.id} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripThinkTags(msg.content)}</ReactMarkdown>
               </div>
             </div>
           ))}
