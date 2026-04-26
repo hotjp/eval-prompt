@@ -511,11 +511,40 @@ Rewritten text:`, req.Instruction, req.Content)
 	h.writeJSON(w, http.StatusOK, map[string]string{"rewritten": rewritten})
 }
 
-// cleanRewriteResponse does basic cleanup and preserves think tags and markdown.
+// cleanRewriteResponse removes think tags and their content, and cleans up markdown formatting.
 func cleanRewriteResponse(s string) string {
-	// Trim whitespace
-	s = strings.TrimSpace(s)
-	return s
+	// Remove <think>...</think> blocks (iteratively, in case of nested or consecutive)
+	for {
+		start := strings.Index(s, "<think>")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(s[start:], "</think>")
+		if end == -1 {
+			// Orphaned opening tag, remove from start to end of line
+			s = s[:start]
+			break
+		}
+		s = s[:start] + s[start+end+len("</think>"):]
+	}
+
+	// Remove markdown code block markers
+	s = strings.ReplaceAll(s, "```", "")
+
+	// Remove bold/italic markers
+	s = strings.ReplaceAll(s, "**", "")
+	s = strings.ReplaceAll(s, "*", "")
+	s = strings.ReplaceAll(s, "_", "")
+
+	// Remove headers but preserve content
+	s = strings.ReplaceAll(s, "# ", "")
+	s = strings.ReplaceAll(s, "## ", "")
+	s = strings.ReplaceAll(s, "### ", "")
+
+	// Remove leading dashes in markdown lists
+	s = strings.ReplaceAll(s, "- ", "")
+
+	return strings.TrimSpace(s)
 }
 
 // writeJSON writes a JSON response.
