@@ -298,6 +298,17 @@ function EditorViewV2() {
     if (!id) return
     setSaving(true)
     try {
+      // Save first if there are unsaved changes
+      if (hasChanges) {
+        const result = await assetApi.saveContent(id, promptValue, undefined, contentHash)
+        setPromptValue(result.content)
+        setOriginalContent(result.content)
+        setContentHash(result.content_hash)
+        setUpdatedAt(result.updated_at)
+        setHasChanges(false)
+        clearDraft(id)
+      }
+      // Then commit
       const result = await assetApi.commit(id, `Update prompt ${id}`)
       message.success('Committed: ' + result.commit.slice(0, 8))
     } catch {
