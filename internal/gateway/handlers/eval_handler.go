@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/eval-prompt/internal/domain"
@@ -460,8 +459,9 @@ func (h *EvalHandler) DiffEval(w http.ResponseWriter, r *http.Request) {
 
 // RewriteRequest represents a rewrite request.
 type RewriteRequest struct {
-	Content     string `json:"content"`
-	Instruction string `json:"instruction"`
+	Content         string `json:"content"`
+	Instruction     string `json:"instruction"`
+	DisableThinking bool   `json:"disable_thinking"`
 }
 
 // Rewrite handles POST /api/v1/rewrite.
@@ -488,8 +488,9 @@ func (h *EvalHandler) Rewrite(w http.ResponseWriter, r *http.Request) {
 
 	// Build rewrite prompt - instruct LLM to return ONLY the rewritten text
 	prompt := fmt.Sprintf(`Rewrite the following text according to the instruction.
-Do not include any markdown formatting, no code blocks, no think tags, no explanations.
-Just output the rewritten text directly.
+Do NOT include any thinking, reasoning, or <thinking> tags in your response.
+Do NOT include any markdown formatting, code blocks, or explanations.
+Output ONLY the rewritten text directly.
 
 Instruction: %s
 
@@ -498,7 +499,7 @@ Original text:
 
 Rewritten text:`, req.Instruction, req.Content)
 
-	resp, err := h.llmInvoker.Invoke(r.Context(), prompt, h.defaultModel, 0.3)
+	resp, err := h.llmInvoker.InvokeWithOptions(r.Context(), prompt, h.defaultModel, 0.3, llm.InvokeOptions{DisableThinking: req.DisableThinking})
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "rewrite failed: %v", err)
 		return
@@ -512,9 +513,18 @@ Rewritten text:`, req.Instruction, req.Content)
 
 // cleanRewriteResponse removes think tags, markdown formatting, and trims whitespace.
 func cleanRewriteResponse(s string) string {
-	// Remove <think> tags and content
+	// Remove think tags using simple string replacement
+	// (Go regex has issues matching Chinese chars between think tags)
 	s = strings.ReplaceAll(s, "<think>", "")
 	s = strings.ReplaceAll(s, "</think>", "")
+
+	// Also remove any orphaned think content (line that starts with <think)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimPrefix(line, "<think>")
+		lines[i] = strings.TrimPrefix(lines[i], "<thinking>")
+	}
+	s = strings.Join(lines, "\n")
 
 	// Remove markdown code block markers
 	s = strings.ReplaceAll(s, "```", "")
