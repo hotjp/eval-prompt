@@ -3,7 +3,7 @@ import { Layout, Card, Table, Tag, Button, Space, Modal, Form, Input, message, P
 import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, RobotOutlined, LockOutlined, FolderOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, SwapOutlined, RocketOutlined, SendOutlined, GlobalOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
-import { getAssetTypes, saveAssetTypesToAPI, AssetTypeConfig } from '../config/bizLines'
+import { getAssetTypes, saveAssetTypesToAPI, AssetTypeConfig } from '../config/assetTypes'
 import { getTags, saveTagsToAPI, TagConfig } from '../config/tags'
 import { getLLMConfigs, saveLLMConfigsToAPI, LLMConfig as LLMConfigType } from '../config/llmConfig'
 import { adminApi, llmConfigApi, type RepoListResponse } from '../api/client'
@@ -30,11 +30,11 @@ function SettingsView() {
     if (section === 'language') return 'language'
     return 'categories'
   })
-  const [bizLines, setAssetTypes] = useState<AssetType[]>(() => getAssetTypes().map((b, i) => ({ ...b, key: b.name || `biz-${i}`, assetCount: 0 })))
+  const [assetTypes, setAssetTypes] = useState<AssetType[]>(() => getAssetTypes().map((b, i) => ({ ...b, key: b.name || `type-${i}`, assetCount: 0 })))
   const [tags, setTags] = useState<TagItem[]>(() => getTags().map((t, i) => ({ ...t, key: t.name || `tag-${i}`, usageCount: 0 })))
   const [llmConfigs, setLlmConfigs] = useState<LLMConfigItem[]>(() => getLLMConfigs().map((c, i) => ({ ...c, key: c.name || `llm-${i}` })))
   const [repoForm] = Form.useForm()
-  const [bizLineModalOpen, setAssetTypeModalOpen] = useState(false)
+  const [assetTypeModalOpen, setAssetTypeModalOpen] = useState(false)
   const [tagModalOpen, setTagModalOpen] = useState(false)
   const [llmModalOpen, setLlmModalOpen] = useState(false)
   const [editingAssetType, setEditingAssetType] = useState<AssetType | null>(null)
@@ -71,7 +71,7 @@ function SettingsView() {
       icon: <TeamOutlined />,
       label: 'Categories',
       children: [
-        { key: 'bizlines', label: 'Business Lines' },
+        { key: 'assettypes', label: 'Asset Types' },
         { key: 'tags', label: 'Tags' },
       ],
     },
@@ -120,7 +120,7 @@ function SettingsView() {
     }
   }
 
-  const bizLineColumns: ColumnsType<AssetType> = [
+  const assetTypeColumns: ColumnsType<AssetType> = [
     { title: 'Name', dataIndex: 'name', key: 'name', render: (name, record) => (
       <Space>
         <Tag key={name} color={record.color}>{name}</Tag>
@@ -147,9 +147,9 @@ function SettingsView() {
           />
           {!record.built_in && (
             <Popconfirm
-              title="Delete this biz line?"
+              title="Delete this asset type?"
               onConfirm={() => {
-                const updated = bizLines.filter((b) => b.name !== record.name)
+                const updated = assetTypes.filter((b) => b.name !== record.name)
                 setAssetTypes(updated)
                 saveAssetTypesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
                 message.success('Deleted')
@@ -269,10 +269,10 @@ function SettingsView() {
     form.validateFields().then((values) => {
       let updated: AssetType[]
       if (editingAssetType) {
-        updated = bizLines.map((b) => (b.name === editingAssetType.name ? { ...b, ...values } : b))
+        updated = assetTypes.map((b) => (b.name === editingAssetType.name ? { ...b, ...values } : b))
         message.success('Updated')
       } else {
-        updated = [...bizLines, { ...values, key: values.name, color: values.color || 'default', assetCount: 0 }]
+        updated = [...assetTypes, { ...values, key: values.name, color: values.color || 'default', assetCount: 0 }]
         message.success('Added')
       }
       setAssetTypes(updated)
@@ -345,7 +345,7 @@ function SettingsView() {
       return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Card
-            title="Business Lines"
+            title="Asset Types"
             extra={
               <Button
                 type="primary"
@@ -360,7 +360,7 @@ function SettingsView() {
               </Button>
             }
           >
-            <Table columns={bizLineColumns} dataSource={bizLines} rowKey="key" pagination={false} size="small" />
+            <Table columns={assetTypeColumns} dataSource={assetTypes} rowKey="key" pagination={false} size="small" />
           </Card>
 
           <Card
@@ -612,8 +612,8 @@ function SettingsView() {
       </Content>
 
       <Modal
-        title={editingAssetType ? 'Edit Biz Line' : 'Add Biz Line'}
-        open={bizLineModalOpen}
+        title={editingAssetType ? 'Edit Asset Type' : 'Add Asset Type'}
+        open={assetTypeModalOpen}
         onOk={handleAssetTypeSave}
         onCancel={() => {
           setAssetTypeModalOpen(false)

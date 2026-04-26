@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Select, Button, Space, message } from 'antd'
 import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
-import { getAssetTypes } from '../config/bizLines'
+import { getAssetTypes } from '../config/assetTypes'
 import { getTags } from '../config/tags'
 
 const { TextArea } = Input
 
-const bizLineOptions = getAssetTypes().map((b) => ({ label: b.name, value: b.name }))
-const defaultBizLine = getAssetTypes()[0]?.name || 'prompt'
+const assetTypeOptions = getAssetTypes().map((b) => ({ label: b.name, value: b.name }))
+const defaultAssetType = getAssetTypes()[0]?.name || 'prompt'
 const tagOptions = getTags().map((t) => ({ label: t.name, value: t.name }))
 const stateOptions = [
   { label: 'Active', value: 'active' },
@@ -95,7 +95,7 @@ function CreateAssetView() {
             form={form}
             layout="vertical"
             onFinish={handleCreate}
-            initialValues={{ state: 'draft', asset_type: defaultBizLine, category: 'content' }}
+            initialValues={{ state: 'draft', asset_type: defaultAssetType, category: 'content' }}
           >
             <Form.Item
               label="Category"
@@ -123,11 +123,11 @@ function CreateAssetView() {
             </Form.Item>
 
             <Form.Item
-              label="Business Line"
+              label="Asset Type"
               name="asset_type"
               rules={[{ required: true, message: 'Please select business line' }]}
             >
-              <Select options={bizLineOptions} style={{ width: 200 }} />
+              <Select options={assetTypeOptions} style={{ width: 200 }} />
             </Form.Item>
 
             <Form.Item label="Tags" name="tags">

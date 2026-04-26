@@ -12,7 +12,7 @@ import SettingsView from './views/SettingsView'
 import AssetDetailRouter from './views/AssetDetailRouter'
 import ExecutionListView from './views/ExecutionListView'
 import CallLogView from './views/CallLogView'
-import { loadAssetTypesFromAPI } from './config/bizLines'
+import { loadAssetTypesFromAPI } from './config/assetTypes'
 import { loadTagsFromAPI } from './config/tags'
 
 const { Content } = Layout

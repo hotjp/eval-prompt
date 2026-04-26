@@ -6,7 +6,7 @@ import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircl
 import { assetApi, adminApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
 import { useStore } from '../store'
-import { getAssetTypes } from '../config/bizLines'
+import { getAssetTypes } from '../config/assetTypes'
 import { getTagColor } from '../config/tags'
 
 const categoryColors: Record<string, string> = {

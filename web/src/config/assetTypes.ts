@@ -12,7 +12,7 @@ export interface AssetTypeConfig {
 
 const STORAGE_KEY = 'ep_asset_types'
 
-const DEFAULT_BIZ_LINES: AssetTypeConfig[] = [
+const DEFAULT_ASSET_TYPES: AssetTypeConfig[] = [
   { name: 'prompt', description: '提示词', color: 'blue', built_in: true },
   { name: 'agent', description: 'Agent 描述文件', color: 'purple', built_in: true },
   { name: 'skill', description: 'Skill', color: 'green', built_in: true },
@@ -34,7 +34,7 @@ export function getAssetTypes(): AssetTypeConfig[] {
       return cachedAssetTypes!
     }
   } catch {}
-  cachedAssetTypes = DEFAULT_BIZ_LINES
+  cachedAssetTypes = DEFAULT_ASSET_TYPES
   return cachedAssetTypes
 }
 
@@ -43,26 +43,26 @@ export async function loadAssetTypesFromAPI(): Promise<void> {
   loadingAssetTypes = true
   try {
     const { data } = await axios.get<{ asset_types: AssetTypeConfig[] }>('/api/v1/taxonomy')
-    cachedAssetTypes = data.asset_types || DEFAULT_BIZ_LINES
+    cachedAssetTypes = data.asset_types || DEFAULT_ASSET_TYPES
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedAssetTypes))
   } catch {
     // fallback to cached or default
     if (!cachedAssetTypes) {
-      cachedAssetTypes = DEFAULT_BIZ_LINES
+      cachedAssetTypes = DEFAULT_ASSET_TYPES
     }
   } finally {
     loadingAssetTypes = false
   }
 }
 
-export async function saveAssetTypesToAPI(bizLines: AssetTypeConfig[]): Promise<void> {
-  cachedAssetTypes = bizLines
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(bizLines))
-  await axios.put('/api/v1/taxonomy/asset_types', bizLines)
+export async function saveAssetTypesToAPI(assetTypes: AssetTypeConfig[]): Promise<void> {
+  cachedAssetTypes = assetTypes
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(assetTypes))
+  await axios.put('/api/v1/taxonomy/asset_types', assetTypes)
 }
 
 export function getAssetTypeColor(name: string): string {
-  const bizLines = getAssetTypes()
-  const found = bizLines.find((b) => b.name === name)
+  const assetTypes = getAssetTypes()
+  const found = assetTypes.find((b) => b.name === name)
   return found?.color || 'default'
 }

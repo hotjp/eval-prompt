@@ -4,7 +4,7 @@ export interface Asset {
   id: string
   name: string
   description: string
-  bizLine: string
+  assetType: string
   tags: string[]
   state: string
 }
