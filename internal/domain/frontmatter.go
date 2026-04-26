@@ -75,8 +75,8 @@ type TriggerEntry struct {
 	Confidence float64  `yaml:"confidence,omitempty"`
 }
 
-// RubricCheck represents a single check item in a test case rubric.
-type RubricCheck struct {
+// TestCaseRubricCheck represents a single check item in a test case rubric (for YAML frontmatter).
+type TestCaseRubricCheck struct {
 	Check    string  `yaml:"check"`
 	Weight   float64 `yaml:"weight,omitempty"`
 	Criteria string  `yaml:"criteria,omitempty"`
@@ -90,11 +90,11 @@ type TestCaseExpected struct {
 
 // TestCase represents a test case in the front matter.
 type TestCase struct {
-	ID      string            `yaml:"id"`
-	Name    string            `yaml:"name,omitempty"`
-	Input   interface{}       `yaml:"input,omitempty"`
-	Expected *TestCaseExpected `yaml:"expected,omitempty"`
-	Rubric  []RubricCheck     `yaml:"rubric,omitempty"`
+	ID       string             `yaml:"id"`
+	Name     string             `yaml:"name,omitempty"`
+	Input    interface{}        `yaml:"input,omitempty"`
+	Expected *TestCaseExpected  `yaml:"expected,omitempty"`
+	Rubric   []TestCaseRubricCheck `yaml:"rubric,omitempty"`
 }
 
 // FrontMatter represents the YAML front matter in a .md prompt file.
