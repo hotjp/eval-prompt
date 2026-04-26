@@ -214,11 +214,11 @@ func TestMCPHandler_E2E_Workflow(t *testing.T) {
 	prompts := resultMap["prompts"].([]interface{})
 	require.NotEmpty(t, prompts)
 	prompt := prompts[0].(map[string]interface{})
-	promptID := prompt["id"].(string)
+	promptID := prompt["name"].(string)
 	require.Equal(t, "common/test", promptID)
 
-	// Step 2: prompts/get with variables
-	getBody := fmt.Sprintf(`{"jsonrpc": "2.0", "method": "prompts/get", "params": {"id": "%s", "variables": {"name": "world"}}, "id": 2}`, promptID)
+	// Step 2: prompts/get with arguments
+	getBody := fmt.Sprintf(`{"jsonrpc": "2.0", "method": "prompts/get", "params": {"name": "%s", "arguments": {"name": "world"}}, "id": 2}`, promptID)
 	getReq := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(getBody))
 	getReq.Header.Set("Content-Type", "application/json")
 	getRec := httptest.NewRecorder()
@@ -285,7 +285,7 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
 	// prompts/get with variables
-	body := `{"jsonrpc": "2.0", "method": "prompts/get", "params": {"id": "common/greeting", "variables": {"name": "Alice"}}, "id": 1}`
+	body := `{"jsonrpc": "2.0", "method": "prompts/get", "params": {"name": "common/greeting", "arguments": {"name": "Alice"}}, "id": 1}`
 	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -327,7 +327,7 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
 	// prompts/get without variables
-	body := `{"jsonrpc": "2.0", "method": "prompts/get", "params": {"id": "common/test"}, "id": 1}`
+	body := `{"jsonrpc": "2.0", "method": "prompts/get", "params": {"name": "common/test"}, "id": 1}`
 	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -343,15 +343,13 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 
 	result := resp.Result.(map[string]interface{})
 	require.Equal(t, "A test prompt", result["description"])
-	require.Equal(t, "ml", result["asset_type"])
+	require.NotNil(t, result["messages"])
 }
 
 func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
-	// Test prompts/list with various filters
-	searchedAssetType := ""
+	// Test prompts/list with cursor/limit pagination
 	mockIndexer := &mock.MockAssetIndexer{
 		SearchFunc: func(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error) {
-			searchedAssetType = filters.AssetType
 			return []service.AssetSummary{
 				{ID: "ai/gpt-prompt", Name: "GPT Prompt", Description: "GPT prompt", AssetType: "ai", Tags: []string{"gpt"}},
 				{ID: "ml/llm-prompt", Name: "LLM Prompt", Description: "LLM prompt", AssetType: "ml", Tags: []string{"llm"}},
@@ -366,8 +364,8 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
 
-	// List with asset_type filter
-	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"asset_type": "ai", "tag": "gpt"}, "id": 1}`
+	// List with limit
+	body := `{"jsonrpc": "2.0", "method": "prompts/list", "params": {"limit": 10}, "id": 1}`
 	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -375,7 +373,6 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "ai", searchedAssetType)
 
 	var resp MCPResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)

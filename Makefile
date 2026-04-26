@@ -76,11 +76,28 @@ install:
 	cp $(BINARY_PATH) /usr/local/bin/
 	@echo "Installed to /usr/local/bin/$(BINARY_NAME)"
 
+## release: Build all platform binaries for release
+release:
+	@echo "Building release binaries..."
+	@mkdir -p ./dist
+	@cd web && npm run build
+	@rm -rf internal/gateway/web/dist && cp -r web/dist internal/gateway/web/
+	@echo "  Building darwin-arm64..."
+	$(GOBUILD) -o ./dist/ep-darwin-arm64 ./cmd/ep/
+	@echo "  Building darwin-amd64..."
+	$(GOBUILD) -o ./dist/ep-darwin-amd64 ./cmd/ep/
+	@echo "  Building linux-arm64..."
+	GOOS=linux GOARCH=arm64 $(GOBUILD) -o ./dist/ep-linux-arm64 ./cmd/ep/
+	@echo "  Building linux-amd64..."
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o ./dist/ep-linux-amd64 ./cmd/ep/
+	@echo "Done! Binaries in ./dist/"
+
 ## help: Show this help message
 help:
 	@echo "Available targets:"
-	@echo "  build          Build the CLI (ep)"
+	@echo "  build          Build the CLI (ep) to ./bin/"
 	@echo "  build-server   Build the server binary"
+	@echo "  release        Build all platform binaries to ./dist/"
 	@echo "  test           Run tests"
 	@echo "  test-coverage  Run tests with coverage report"
 	@echo "  lint           Run linter"

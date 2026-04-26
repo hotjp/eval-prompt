@@ -138,17 +138,8 @@ func (h *MCPHandler) HandlePOST(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]any) (any, error) {
-	// Extract filters
-	filters := service.SearchFilters{}
-	if bizLine, ok := params["asset_type"].(string); ok {
-		filters.AssetType = bizLine
-	}
-	if tag, ok := params["tag"].(string); ok {
-		filters.Tags = []string{tag}
-	}
-
-	// Extract query and limit
-	query, _ := params["query"].(string)
+	// MCP protocol: prompts/list params are cursor? and limit?
+	cursor, _ := params["cursor"].(string)
 	limit, _ := params["limit"].(int)
 	if limit <= 0 {
 		limit = 20 // default limit
@@ -157,69 +148,94 @@ func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]an
 		limit = 100 // max limit
 	}
 
-	results, err := h.indexer.Search(ctx, query, filters)
+	// Search with empty query to get all (supports filtering via SearchFilters if needed)
+	results, err := h.indexer.Search(ctx, "", service.SearchFilters{})
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
 
-	// Apply limit
-	if len(results) > limit {
-		results = results[:limit]
+	// Apply cursor offset (cursor is the index to start from)
+	offset := 0
+	if cursor != "" {
+		for i, r := range results {
+			if r.ID == cursor {
+				offset = i
+				break
+			}
+		}
 	}
 
-	// Convert to MCP format
+	// Apply limit
+	if offset >= len(results) {
+		results = []service.AssetSummary{}
+	} else {
+		results = results[offset:]
+		if len(results) > limit {
+			results = results[:limit]
+		}
+	}
+
+	// Build next cursor
+	var nextCursor string
+	if offset+limit < len(results) {
+		nextCursor = results[offset+limit-1].ID
+	}
+
+	// Convert to MCP format: { prompts: [{ name, description }] }
+	// MCP uses 'name' as the identifier for prompts/get
 	prompts := make([]map[string]any, len(results))
 	for i, r := range results {
 		prompts[i] = map[string]any{
-			"id":          r.ID,
-			"name":        r.Name,
+			"name":        r.ID, // MCP name maps to our ID
 			"description": r.Description,
-			"asset_type":  r.AssetType,
-			"tags":        r.Tags,
 		}
 	}
-	return map[string]any{"prompts": prompts}, nil
+
+	result := map[string]any{"prompts": prompts}
+	if nextCursor != "" {
+		result["nextCursor"] = nextCursor
+	}
+	return result, nil
 }
 
 func (h *MCPHandler) handlePromptsGet(ctx context.Context, params map[string]any) (any, error) {
-	id, ok := params["id"].(string)
-	if !ok || id == "" {
-		return nil, fmt.Errorf("id is required")
+	// MCP protocol: prompts/get params are name and arguments
+	name, ok := params["name"].(string)
+	if !ok || name == "" {
+		return nil, fmt.Errorf("name is required")
 	}
 
-	variables, _ := params["variables"].(map[string]string)
-	label, _ := params["label"].(string)
+	// MCP arguments maps to our variables for template injection
+	arguments, _ := params["arguments"].(map[string]string)
 
-	// Get asset detail
-	detail, err := h.indexer.GetByID(ctx, id)
+	// MCP name maps to our asset ID
+	detail, err := h.indexer.GetByID(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("asset not found: %s", id)
+		return nil, fmt.Errorf("prompt not found: %s", name)
 	}
 
 	// Get asset content from file
-	content, err := h.indexer.GetFileContent(ctx, id)
+	content, err := h.indexer.GetFileContent(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read asset content: %w", err)
+		return nil, fmt.Errorf("failed to read prompt content: %w", err)
 	}
 
-	// Apply variable injection if provided
-	if len(variables) > 0 {
-		content, err = h.triggerService.InjectVariables(ctx, content, variables)
+	// Apply variable injection if arguments provided
+	if len(arguments) > 0 {
+		content, err = h.triggerService.InjectVariables(ctx, content, arguments)
 		if err != nil {
 			return nil, fmt.Errorf("variable injection failed: %w", err)
 		}
 	}
 
-	// Build result
-	result := map[string]any{
-		"content":     content,
+	// MCP protocol returns: { description?, messages: [{ role, content }] }
+	// We treat the prompt as a user message
+	return map[string]any{
 		"description": detail.Description,
-		"asset_type":  detail.AssetType,
-		"tags":        detail.Tags,
-	}
-
-	_ = label // Would use label to determine which snapshot
-	return result, nil
+		"messages": []map[string]any{
+			{"role": "user", "content": content},
+		},
+	}, nil
 }
 
 func (h *MCPHandler) handlePromptsEval(ctx context.Context, params map[string]any) (any, error) {
