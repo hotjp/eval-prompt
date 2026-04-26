@@ -131,6 +131,9 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	// Rewrite API
 	mux.HandleFunc("POST /api/v1/rewrite", evalHandler.Rewrite)
 
+	// Chat API
+	mux.HandleFunc("POST /api/v1/chat", evalHandler.Chat)
+
 	// Trigger API routes
 	mux.HandleFunc("POST /api/v1/trigger/match", triggerHandler.MatchTrigger)
 	mux.HandleFunc("POST /api/v1/trigger/validate", triggerHandler.ValidateAntiPatterns)

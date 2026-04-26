@@ -444,6 +444,10 @@ export const llmApi = {
     const { data } = await llmAxios.post('/rewrite', { content, instruction, model_name: modelName, disable_thinking: disableThinking })
     return data
   },
+  chat: async (prompt: string, modelName?: string) => {
+    const { data } = await llmAxios.post('/chat', { prompt, model_name: modelName })
+    return data
+  },
   diff: async (oldContent: string, newContent: string, oldVersion: string, newVersion: string) => {
     const { data } = await llmAxios.post('/eval/diff', { old_content: oldContent, new_content: newContent, old_version: oldVersion, new_version: newVersion })
     return data

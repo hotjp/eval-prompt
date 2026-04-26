@@ -547,6 +547,38 @@ func cleanRewriteResponse(s string) string {
 	return strings.TrimSpace(s)
 }
 
+// ChatRequest represents a chat request.
+type ChatRequest struct {
+	Prompt string `json:"prompt"`
+}
+
+// Chat handles POST /api/v1/chat.
+func (h *EvalHandler) Chat(w http.ResponseWriter, r *http.Request) {
+	if h.llmInvoker == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "LLM not configured")
+		return
+	}
+
+	var req ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request: %v", err)
+		return
+	}
+
+	if req.Prompt == "" {
+		h.writeError(w, http.StatusBadRequest, "prompt is required")
+		return
+	}
+
+	resp, err := h.llmInvoker.Invoke(r.Context(), req.Prompt, h.defaultModel, 0.7)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "chat failed: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]string{"content": resp.Content})
+}
+
 // writeJSON writes a JSON response.
 func (h *EvalHandler) writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")

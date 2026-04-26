@@ -132,7 +132,6 @@ function EditorViewV2() {
   const [chatLoading, setChatLoading] = useState(false)
   const llmConfigs = getLLMConfigs()
   const [selectedModel, setSelectedModel] = useState<string>(llmConfigs.find(c => c.default_model)?.name || llmConfigs[0]?.name || '')
-  const [disableThinking, setDisableThinking] = useState(true)
 
   // Variables state
   const [variables, setVariables] = useState<Array<{ key: string; value: string }>>(() => {
@@ -406,11 +405,11 @@ function EditorViewV2() {
     setChatLoading(true)
 
     try {
-      const result = await llmApi.rewrite(promptValue, chatInput, selectedModel, false)
+      const result = await llmApi.chat(chatInput, selectedModel)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
-        content: result.rewritten || '改写完成',
+        content: result.content || '响应完成',
         timestamp: Date.now(),
       }
       setChatMessages(prev => [...prev, assistantMessage])
