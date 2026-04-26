@@ -147,9 +147,24 @@ func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]an
 		filters.Tags = []string{tag}
 	}
 
-	results, err := h.indexer.Search(ctx, "", filters)
+	// Extract query and limit
+	query, _ := params["query"].(string)
+	limit, _ := params["limit"].(int)
+	if limit <= 0 {
+		limit = 20 // default limit
+	}
+	if limit > 100 {
+		limit = 100 // max limit
+	}
+
+	results, err := h.indexer.Search(ctx, query, filters)
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
+	}
+
+	// Apply limit
+	if len(results) > limit {
+		results = results[:limit]
 	}
 
 	// Convert to MCP format
@@ -159,7 +174,7 @@ func (h *MCPHandler) handlePromptsList(ctx context.Context, params map[string]an
 			"id":          r.ID,
 			"name":        r.Name,
 			"description": r.Description,
-			"asset_type":    r.AssetType,
+			"asset_type":  r.AssetType,
 			"tags":        r.Tags,
 		}
 	}
