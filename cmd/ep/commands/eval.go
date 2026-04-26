@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/gitbridge"
@@ -249,6 +250,10 @@ var evalSetupCmd = &cobra.Command{
 		assetID := args[0]
 		evalsDir, _ := cmd.Flags().GetString("evals-dir")
 		model, _ := cmd.Flags().GetString("model")
+
+		if err := pathutil.ValidateID(assetID); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
 
 		if evalsDir == "" {
 			evalsDir = "evals" // default to "evals" directory

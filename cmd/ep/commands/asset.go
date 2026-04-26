@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/search"
@@ -249,6 +250,10 @@ var assetRmCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
 
+		if err := pathutil.ValidateID(id); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
+
 		// Find the file
 		filePath := filepath.Join("prompts", id+".md")
 		content, err := os.ReadFile(filePath)
@@ -294,6 +299,10 @@ var assetArchiveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
 
+		if err := pathutil.ValidateID(id); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
+
 		// Find the file
 		filePath := filepath.Join("prompts", id+".md")
 		content, err := os.ReadFile(filePath)
@@ -334,6 +343,10 @@ var assetRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
+
+		if err := pathutil.ValidateID(id); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
 
 		// Find the file
 		filePath := filepath.Join("prompts", id+".md")
@@ -377,6 +390,10 @@ var assetPromoteCmd = &cobra.Command{
 		assetID := args[0]
 		snapshotID := args[1]
 
+		if err := pathutil.ValidateID(assetID); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
+
 		// Find the file
 		filePath := filepath.Join("prompts", assetID+".md")
 		content, err := os.ReadFile(filePath)
@@ -417,6 +434,10 @@ var assetDemoteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
+
+		if err := pathutil.ValidateID(assetID); err != nil {
+			return fmt.Errorf("invalid asset id: %w", err)
+		}
 
 		// Find the file
 		filePath := filepath.Join("prompts", assetID+".md")

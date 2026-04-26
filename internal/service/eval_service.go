@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/yamlutil"
 )
 
@@ -370,6 +371,10 @@ func (s *EvalService) ListEvalCases(ctx context.Context, assetID string) ([]*dom
 
 // ListEvalRuns lists all eval runs for an asset from its frontmatter eval_history.
 func (s *EvalService) ListEvalRuns(ctx context.Context, assetID string) ([]*EvalRun, error) {
+	if err := pathutil.ValidateID(assetID); err != nil {
+		return nil, fmt.Errorf("invalid asset id: %w", err)
+	}
+
 	// Read the asset's .md file and parse eval_history from frontmatter
 	filePath := filepath.Join("prompts", assetID+".md")
 	content, err := os.ReadFile(filePath)
@@ -435,6 +440,10 @@ func (s *EvalService) ListEvalRuns(ctx context.Context, assetID string) ([]*Eval
 
 // CompareEval compares two evaluation runs for the same asset.
 func (s *EvalService) CompareEval(ctx context.Context, assetID string, v1, v2 string) (*CompareResult, error) {
+	if err := pathutil.ValidateID(assetID); err != nil {
+		return nil, fmt.Errorf("invalid asset id: %w", err)
+	}
+
 	// Read asset's eval history
 	filePath := filepath.Join("prompts", assetID+".md")
 	content, err := os.ReadFile(filePath)
@@ -503,6 +512,11 @@ func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalRe
 	// Find the run in asset's eval history
 	if s.evalsDir == "" {
 		return nil, fmt.Errorf("evals directory not configured")
+	}
+
+	// Validate runID format to prevent path traversal
+	if err := pathutil.ValidateID(runID); err != nil {
+		return nil, fmt.Errorf("invalid run id: %w", err)
 	}
 
 	entries, err := os.ReadDir(s.evalsDir)
