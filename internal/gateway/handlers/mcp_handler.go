@@ -212,8 +212,8 @@ func (h *MCPHandler) handlePromptsGet(ctx context.Context, params map[string]any
 		return nil, fmt.Errorf("prompt not found: %s", name)
 	}
 
-	// Get asset content from file
-	content, err := h.indexer.GetFileContent(ctx, name)
+	// Get asset content from file (strips frontmatter for consumer-facing use)
+	content, err := h.indexer.GetBody(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read prompt content: %w", err)
 	}

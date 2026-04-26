@@ -71,6 +71,10 @@ type AssetIndexer interface {
 	// Returns the file content or error if the file doesn't exist.
 	GetFileContent(ctx context.Context, id string) (string, error)
 
+	// GetBody reads the prompt file, strips frontmatter, and returns only the markdown body.
+	// This is the consumer-facing method — frontmatter is internal implementation.
+	GetBody(ctx context.Context, id string) (string, error)
+
 	// SaveFileContent writes the full file content (including frontmatter) to a prompt file and commits it to Git.
 	// If the file doesn't exist, it creates it. Returns the commit hash.
 	SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error)
