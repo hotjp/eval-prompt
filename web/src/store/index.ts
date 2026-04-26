@@ -43,7 +43,7 @@ interface AppState {
   runningEval: { id: string; assetId: string; assetName: string } | null
   evalConcurrency: number
   showInitRepoModal: boolean
-  initRepoModalReason: 'create' | 'api_error' | null
+  initRepoModalReason: 'create' | 'api_error' | 'manual' | null
 
   setAssets: (assets: Asset[]) => void
   setCurrentAsset: (asset: Asset | null) => void
@@ -53,7 +53,7 @@ interface AppState {
   setLoading: (loading: boolean) => void
   setRunningEval: (data: { id: string; assetId: string; assetName: string } | null) => void
   setEvalConcurrency: (concurrency: number) => void
-  setShowInitRepoModal: (show: boolean, reason?: 'create' | 'api_error') => void
+  setShowInitRepoModal: (show: boolean, reason?: 'create' | 'api_error' | 'manual') => void
 }
 
 export const useStore = create<AppState>((set) => ({
