@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,10 +50,7 @@ var evalRunCmd = &cobra.Command{
 			snapshot = "latest"
 		}
 
-		evalService, err := service.NewEvalServiceWithDefaultStorage()
-		if err != nil {
-			return fmt.Errorf("Failed to initialize storage: %w", err)
-		}
+		evalService := service.NewEvalService()
 		svcReq := &service.RunEvalRequest{
 			AssetID:         assetID,
 			SnapshotVersion: snapshot,
@@ -118,10 +114,7 @@ var evalCasesCmd = &cobra.Command{
 		assetID := args[0]
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		evalService, err := service.NewEvalServiceWithDefaultStorage()
-		if err != nil {
-			return fmt.Errorf("Failed to initialize storage: %w", err)
-		}
+		evalService := service.NewEvalService()
 
 		cases, err := evalService.ListEvalCases(context.Background(), assetID)
 		if err != nil {
@@ -160,9 +153,7 @@ var evalCompareCmd = &cobra.Command{
 		evalService := service.NewEvalService()
 		result, err := evalService.CompareEval(context.Background(), assetID, v1, v2)
 		if err != nil {
-			if errors.Is(err, service.ErrNotImplemented) {
-				return fmt.Errorf("Compare failed: %w", err)
-			}
+			return fmt.Errorf("Compare failed: %w", err)
 		}
 
 		switch format {
@@ -364,10 +355,7 @@ var evalCancelCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		executionID := args[0]
-		evalService, err := service.NewEvalServiceWithDefaultStorage()
-		if err != nil {
-			return fmt.Errorf("Failed to initialize storage: %w", err)
-		}
+		evalService := service.NewEvalService()
 
 		if err := evalService.CancelExecution(context.Background(), executionID); err != nil {
 			return fmt.Errorf("Failed to cancel eval: %w", err)

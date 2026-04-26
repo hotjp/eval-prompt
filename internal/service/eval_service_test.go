@@ -2,110 +2,100 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 )
 
-func TestEvalService_RunEval_NotImplemented(t *testing.T) {
+func TestEvalService_RunEval_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.RunEval(ctx, &RunEvalRequest{AssetID: "asset-id", SnapshotVersion: "v1.0.0"})
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
-		return // expected
+	// RunEval now checks for LLM invoker first
+	if err != nil && err.Error() == "LLM invoker not configured" {
+		return // expected (LLM not configured in test)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'LLM invoker not configured', got %v", err)
 }
 
-func TestEvalService_GetEvalRun_NotImplemented(t *testing.T) {
+func TestEvalService_GetEvalRun_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.GetEvalRun(ctx, "run-id")
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
-		return // expected
+	// GetEvalRun requires prompts directory to exist
+	if err != nil && err.Error() == "failed to read prompts directory: open prompts: no such file or directory" {
+		return // expected (prompts directory doesn't exist in test)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'failed to read prompts directory', got %v", err)
 }
 
-func TestEvalService_ListEvalRuns_NotImplemented(t *testing.T) {
+func TestEvalService_ListEvalRuns_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.ListEvalRuns(ctx, "asset-id")
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
-		return // expected
+	// ListEvalRuns requires prompts directory and asset file to exist
+	if err != nil && err.Error() == "failed to read asset file: open prompts/asset-id.md: no such file or directory" {
+		return // expected (asset file doesn't exist in test)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'failed to read asset file', got %v", err)
 }
 
-func TestEvalService_CompareEval_NotImplemented(t *testing.T) {
+func TestEvalService_CompareEval_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.CompareEval(ctx, "asset-id", "v1.0.0", "v2.0.0")
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
-		return // expected
+	// CompareEval requires prompts directory and asset file to exist
+	if err != nil && err.Error() == "failed to read asset file: open prompts/asset-id.md: no such file or directory" {
+		return // expected (asset file doesn't exist in test)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'failed to read asset file', got %v", err)
 }
 
-func TestEvalService_GenerateReport_NotImplemented(t *testing.T) {
+func TestEvalService_GenerateReport_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.GenerateReport(ctx, "run-id")
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
-		return // expected
+	// GenerateReport requires evals directory to be configured
+	if err != nil && err.Error() == "evals directory not configured" {
+		return // expected (evalsDir not set in test)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'evals directory not configured', got %v", err)
 }
 
-func TestEvalService_DiagnoseEval_NotImplemented(t *testing.T) {
+func TestEvalService_DiagnoseEval_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
 	_, err := svc.DiagnoseEval(ctx, "run-id")
 	if err == nil {
-		t.Error("expected error for not implemented")
+		t.Error("expected error for not configured")
 	}
-	// When storage is not initialized, returns specific error
-	if err != nil && err.Error() == "storage not initialized" {
+	// DiagnoseEval checks for LLM invoker first
+	if err != nil && err.Error() == "LLM invoker not available" {
+		return // expected (LLM not configured in test)
+	}
+	if err != nil && err.Error() == "diagnose eval requires file-based storage implementation" {
 		return // expected
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented or 'storage not initialized', got %v", err)
-	}
+	t.Errorf("expected 'LLM invoker not available' or 'diagnose eval requires file-based storage implementation', got %v", err)
 }
 
 func TestNotImplementedError(t *testing.T) {

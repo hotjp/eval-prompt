@@ -75,6 +75,28 @@ type TriggerEntry struct {
 	Confidence float64  `yaml:"confidence,omitempty"`
 }
 
+// RubricCheck represents a single check item in a test case rubric.
+type RubricCheck struct {
+	Check    string  `yaml:"check"`
+	Weight   float64 `yaml:"weight,omitempty"`
+	Criteria string  `yaml:"criteria,omitempty"`
+}
+
+// TestCaseExpected represents the expected output for a test case.
+type TestCaseExpected struct {
+	Score   int    `yaml:"score,omitempty"`
+	Content string `yaml:"content,omitempty"`
+}
+
+// TestCase represents a test case in the front matter.
+type TestCase struct {
+	ID      string            `yaml:"id"`
+	Name    string            `yaml:"name,omitempty"`
+	Input   interface{}       `yaml:"input,omitempty"`
+	Expected *TestCaseExpected `yaml:"expected,omitempty"`
+	Rubric  []RubricCheck     `yaml:"rubric,omitempty"`
+}
+
 // FrontMatter represents the YAML front matter in a .md prompt file.
 // This is the canonical format for storing prompt metadata in the filesystem.
 type FrontMatter struct {
@@ -92,6 +114,7 @@ type FrontMatter struct {
 	Labels                 []LabelEntry       `yaml:"labels,omitempty"`
 	RecommendedSnapshotID  string            `yaml:"recommended_snapshot_id,omitempty"`
 	Triggers               []TriggerEntry    `yaml:"triggers,omitempty"`
+	TestCases              []TestCase        `yaml:"test_cases,omitempty"`
 }
 
 // Validate validates the front matter structure.
@@ -119,16 +142,17 @@ func (f *FrontMatter) HasLabels() bool {
 // EvalPromptFrontMatter represents the YAML front matter in an eval prompt .md file.
 // This is the canonical format for storing eval prompt metadata in the filesystem.
 type EvalPromptFrontMatter struct {
-	ID           string   `yaml:"id"`
-	Name         string   `yaml:"name"`
-	Description  string   `yaml:"description,omitempty"`
-	Version      string   `yaml:"version,omitempty"`
-	ContentHash  string   `yaml:"content_hash"`
-	State        string   `yaml:"state"`
-	AssetType      string   `yaml:"asset_type,omitempty"`
-	Tags         []string `yaml:"tags,omitempty"`
-	EvalCaseIDs  []string `yaml:"eval_case_ids,omitempty"`
-	Model        string   `yaml:"model"`
+	ID           string     `yaml:"id"`
+	Name         string     `yaml:"name"`
+	Description  string     `yaml:"description,omitempty"`
+	Version      string     `yaml:"version,omitempty"`
+	ContentHash  string     `yaml:"content_hash"`
+	State        string     `yaml:"state"`
+	AssetType      string     `yaml:"asset_type,omitempty"`
+	Tags         []string   `yaml:"tags,omitempty"`
+	EvalCaseIDs  []string   `yaml:"eval_case_ids,omitempty"`
+	Model        string     `yaml:"model"`
+	TestCases    []TestCase `yaml:"test_cases,omitempty"`
 }
 
 // Validate validates the eval prompt front matter structure.

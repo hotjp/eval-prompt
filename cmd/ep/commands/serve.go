@@ -117,6 +117,14 @@ var serveCmd = &cobra.Command{
 		}
 		indexer.SetGitBridge(gitBridge)
 
+		// Reconcile index with filesystem on startup
+		report, err := indexer.Reconcile(cmd.Context())
+		if err != nil {
+			logger.Warn("reconcile failed", "error", err)
+		} else if report.Added > 0 || report.Updated > 0 || report.Deleted > 0 {
+			logger.Info("reconcile completed", "added", report.Added, "updated", report.Updated, "deleted", report.Deleted)
+		}
+
 		// Create trigger service
 		triggerService := service.NewTriggerService(indexer, gitBridge)
 

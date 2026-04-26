@@ -130,6 +130,7 @@ func TestE2E_CLI_CompleteWorkflow(t *testing.T) {
 				strings.Contains(output, "not found") ||
 				strings.Contains(output, "not implemented") ||
 				strings.Contains(output, "failed") ||
+				strings.Contains(output, "not configured") ||
 				strings.Contains(output, "storage not initialized"),
 			"eval report should handle missing run gracefully")
 	})
