@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +34,13 @@ var serveCmd = &cobra.Command{
 		host, _ := cmd.Flags().GetString("host")
 		noBrowser, _ := cmd.Flags().GetBool("no-browser")
 
+		// Kill any existing ep instance on this port
 		addr := fmt.Sprintf("%s:%d", host, port)
+		if err := killPort(port); err != nil {
+			logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+			logger.Warn("failed to kill existing process", "port", port, "error", err)
+		}
+
 		fmt.Printf("启动服务: http://%s\n", addr)
 
 		// Initialize services
@@ -245,13 +253,28 @@ var serveCmd = &cobra.Command{
 			}
 		}()
 
+		// Wait a bit for server to start, then check if it's running
+		time.Sleep(500 * time.Millisecond)
+
+		// Check if server is actually listening
+		if lsofOutput, err := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port)).Output(); err == nil {
+			if !strings.Contains(string(lsofOutput), "LISTEN") {
+				fmt.Printf("\nError: Failed to start server on port %d\n", port)
+				fmt.Printf("Another process may be using this port.\n")
+				fmt.Printf("Kill it with: pkill -f 'ep serve' || true\n\n")
+				return nil
+			}
+		}
+
 		// Print startup info
-		fmt.Printf("服务已启动: http://%s\n", addr)
+		fmt.Printf("\n服务已启动: http://%s\n", addr)
 		fmt.Printf("API 端点: http://%s/mcp/v1\n", addr)
-		fmt.Printf("SSE 端点: http://%s/mcp/v1/sse\n", addr)
+		fmt.Printf("SSE 端点: http://%s/mcp/v1/sse\n\n", addr)
 
 		if !noBrowser {
-			fmt.Println("正在打开浏览器...")
+			url := fmt.Sprintf("http://%s", addr)
+			fmt.Printf("正在打开浏览器: %s\n", url)
+			exec.Command("open", url).Start()
 		}
 
 		// Wait for shutdown signal or restart request
@@ -270,6 +293,31 @@ var serveCmd = &cobra.Command{
 
 		 return nil
 	},
+}
+
+// killPort kills any process listening on the given port
+func killPort(port int) error {
+	cmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
+	output, err := cmd.Output()
+	if err != nil {
+		// No process on this port
+		return nil
+	}
+	pids := strings.TrimSpace(string(output))
+	if pids == "" {
+		return nil
+	}
+	// Kill each PID
+	for _, pid := range strings.Split(pids, "\n") {
+		if pid == "" {
+			continue
+		}
+		killCmd := exec.Command("kill", pid)
+		if err := killCmd.Run(); err != nil {
+			return fmt.Errorf("failed to kill process %s: %w", pid, err)
+		}
+	}
+	return nil
 }
 
 func init() {
