@@ -1195,8 +1195,7 @@ install:
 ### 12.2 分发方式
 
 - **GitHub Release**：预编译二进制（Linux/macOS/Windows）
-- **Homebrew**：`brew install eval-prompt/tap/ep`
-- **直接下载**：`curl -sSL https://eval-prompt.dev/install | sh`
+- **直接下载**：`curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh`
 
 ### 12.3 首次运行
 

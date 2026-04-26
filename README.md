@@ -43,7 +43,7 @@ Compared to Python/TypeScript tools: **10x faster**, **5x less memory**.
 
 ```bash
 # 1. Install
-curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
 
 # 2. Initialize project
 ep init ./my-prompts
@@ -172,7 +172,7 @@ export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
 
 ```bash
 # macOS / Linux / Git Bash
-curl -fsSL https://gist.github.com/{owner}/{gist-id}/raw/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
 
 # Windows (PowerShell)
 iwr -useb https://gist.github.com/{owner}/{gist-id}/raw/install.ps1 | iex
