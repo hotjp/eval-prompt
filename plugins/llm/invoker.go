@@ -71,6 +71,11 @@ func (n *NoopInvoker) Invoke(_ context.Context, _, _ string, _ float64) (*LLMRes
 	return nil, errNoop
 }
 
+// InvokeWithOptions implements Interface.
+func (n *NoopInvoker) InvokeWithOptions(_ context.Context, _, _ string, _ float64, _ InvokeOptions) (*LLMResponse, error) {
+	return nil, errNoop
+}
+
 // InvokeWithSchema implements LLMInvoker.
 func (n *NoopInvoker) InvokeWithSchema(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
 	return nil, errNoop
@@ -84,10 +89,17 @@ func (n *NoopInvoker) Ping(_ context.Context) error {
 // Ensure NoopInvoker implements the service.LLMInvoker interface.
 var _ Interface = (*NoopInvoker)(nil)
 
+// InvokeOptions contains additional options for LLM invocation.
+type InvokeOptions struct {
+	DisableThinking bool // Disable chain-of-thought thinking (for OpenAI o1, Claude, etc.)
+}
+
 // Interface is the LLMInvoker interface alias for the plugin layer.
 type Interface interface {
 	Invoke(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error)
 	InvokeWithSchema(ctx context.Context, prompt string, schema json.RawMessage) (json.RawMessage, error)
+	// InvokeWithOptions is like Invoke but with additional options like DisableThinking.
+	InvokeWithOptions(ctx context.Context, prompt string, model string, temperature float64, opts InvokeOptions) (*LLMResponse, error)
 	// Ping performs a lightweight health check. Returns nil if healthy, error otherwise.
 	// If PingPath is empty, returns nil (skip check).
 	Ping(ctx context.Context) error

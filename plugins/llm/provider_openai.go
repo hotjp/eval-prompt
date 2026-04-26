@@ -45,6 +45,11 @@ type openaiChatRequest struct {
 	Messages    []msg   `json:"messages"`
 	Temperature float64 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens,omitempty"`
+	Thinking    *thinkingBlock `json:"thinking,omitempty"`
+}
+
+type thinkingBlock struct {
+	Type string `json:"type"` // "disabled" to disable
 }
 
 type msg struct {
@@ -86,6 +91,21 @@ func (p *OpenAIProvider) Invoke(ctx context.Context, prompt string, model string
 			{Role: "user", Content: prompt},
 		},
 		Temperature: temperature,
+	}
+	return p.doChat(ctx, body, model)
+}
+
+// InvokeWithOptions implements Provider.
+func (p *OpenAIProvider) InvokeWithOptions(ctx context.Context, prompt string, model string, temperature float64, opts InvokeOptions) (*LLMResponse, error) {
+	body := openaiChatRequest{
+		Model: model,
+		Messages: []msg{
+			{Role: "user", Content: prompt},
+		},
+		Temperature: temperature,
+	}
+	if opts.DisableThinking {
+		body.Thinking = &thinkingBlock{Type: "disabled"}
 	}
 	return p.doChat(ctx, body, model)
 }

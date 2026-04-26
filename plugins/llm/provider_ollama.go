@@ -111,6 +111,13 @@ func (p *OllamaProvider) Invoke(ctx context.Context, prompt string, model string
 	}, nil
 }
 
+// InvokeWithOptions implements Provider. Ollama does not support disabling thinking via API.
+func (p *OllamaProvider) InvokeWithOptions(ctx context.Context, prompt string, model string, temperature float64, opts InvokeOptions) (*LLMResponse, error) {
+	// Ollama doesn't have a standard API parameter to disable thinking
+	// Just delegate to regular Invoke
+	return p.Invoke(ctx, prompt, model, temperature)
+}
+
 // InvokeWithSchema implements Provider using Ollama's JSON mode.
 func (p *OllamaProvider) InvokeWithSchema(ctx context.Context, prompt string, schema json.RawMessage) (json.RawMessage, error) {
 	// Ollama supports JSON output via format: "json"

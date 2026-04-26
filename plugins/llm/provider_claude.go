@@ -51,6 +51,8 @@ type claudeRequest struct {
 	MaxTokens   int              `json:"max_tokens"`
 	// For structured output via JSON schema
 	Beta string `json:"-"` // "json-schema-2025-03-01"
+	// Disable thinking for Claude models that support it
+	Thinking *thinkingBlock `json:"thinking,omitempty"`
 }
 
 type claudeResponse struct {
@@ -106,6 +108,75 @@ func (p *ClaudeProvider) Invoke(ctx context.Context, prompt string, model string
 	req.Header.Set("x-api-key", p.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 	req.Header.Set("anthropic-beta", "json-schema-2025-03-01")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("claude: do request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("claude: read body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp claudeErrorResponse
+		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error.Message != "" {
+			return nil, fmt.Errorf("claude: %s: %s", errResp.Error.Type, errResp.Error.Message)
+		}
+		return nil, fmt.Errorf("claude: status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var claudeResp claudeResponse
+	if err := json.Unmarshal(respBody, &claudeResp); err != nil {
+		return nil, fmt.Errorf("claude: unmarshal response: %w", err)
+	}
+
+	content := ""
+	for _, block := range claudeResp.Content {
+		if block.Type == "text" {
+			content += block.Text
+		}
+	}
+
+	return &LLMResponse{
+		Content:    content,
+		Model:      claudeResp.Model,
+		TokensIn:   claudeResp.Usage.InputTokens,
+		TokensOut:  claudeResp.Usage.OutputTokens,
+		StopReason: claudeResp.StopReason,
+		RawResponse: respBody,
+	}, nil
+}
+
+// InvokeWithOptions implements Provider.
+func (p *ClaudeProvider) InvokeWithOptions(ctx context.Context, prompt string, model string, temperature float64, opts InvokeOptions) (*LLMResponse, error) {
+	reqBody := claudeRequest{
+		Model: model,
+		Messages: []claudeMessage{
+			{Role: "user", Content: prompt},
+		},
+		Temperature: temperature,
+		MaxTokens:   4096,
+	}
+	if opts.DisableThinking {
+		reqBody.Thinking = &thinkingBlock{Type: "disabled"}
+	}
+
+	payload, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("claude: marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.Endpoint+"/messages", bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("claude: create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", p.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
 
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)

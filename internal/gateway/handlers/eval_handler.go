@@ -517,14 +517,8 @@ func cleanRewriteResponse(s string) string {
 	// (Go regex has issues matching Chinese chars between think tags)
 	s = strings.ReplaceAll(s, "<think>", "")
 	s = strings.ReplaceAll(s, "</think>", "")
+	s = strings.ReplaceAll(s, "</think>", "")
 
-	// Also remove any orphaned think content (line that starts with <think)
-	lines := strings.Split(s, "\n")
-	for i, line := range lines {
-		lines[i] = strings.TrimPrefix(line, "<think>")
-		lines[i] = strings.TrimPrefix(lines[i], "<thinking>")
-	}
-	s = strings.Join(lines, "\n")
 
 	// Remove markdown code block markers
 	s = strings.ReplaceAll(s, "```", "")
