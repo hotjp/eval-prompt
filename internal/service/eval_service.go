@@ -745,6 +745,9 @@ func (s *EvalService) ListEvalRuns(ctx context.Context, assetID string) ([]*Eval
 	// Read the asset's .md file and parse eval_history from frontmatter
 	filePath := filepath.Join("prompts", assetID+".md")
 	content, err := os.ReadFile(filePath)
+	if os.IsNotExist(err) {
+		return []*EvalRun{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read asset file: %w", err)
 	}

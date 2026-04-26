@@ -119,6 +119,8 @@ function EditorViewV2() {
   const [showRewriteInput, setShowRewriteInput] = useState(false)
   const [rewriteInstruction, setRewriteInstruction] = useState('')
   const [rewriting, setRewriting] = useState(false)
+  const [rewritePreview, setRewritePreview] = useState('')
+  const [showRewritePreview, setShowRewritePreview] = useState(false)
   const [activeTab, setActiveTab] = useState('editor')
   const loadedRef = useRef(false)
   const autoSaveTimer = useRef<number | undefined>(undefined)
@@ -130,6 +132,7 @@ function EditorViewV2() {
   const [chatLoading, setChatLoading] = useState(false)
   const llmConfigs = getLLMConfigs()
   const [selectedModel, setSelectedModel] = useState<string>(llmConfigs.find(c => c.default_model)?.name || llmConfigs[0]?.name || '')
+  const [disableThinking, setDisableThinking] = useState(true)
 
   // Variables state
   const [variables, setVariables] = useState<Array<{ key: string; value: string }>>(() => {
@@ -360,11 +363,9 @@ function EditorViewV2() {
     }
     setRewriting(true)
     try {
-      const result = await llmApi.rewrite(promptValue, rewriteInstruction, selectedModel)
-      setPromptValue(result.rewritten)
-      setShowRewriteInput(false)
-      setRewriteInstruction('')
-      message.success('Rewrite applied')
+      const result = await llmApi.rewrite(promptValue, rewriteInstruction, selectedModel, true)
+      setRewritePreview(result.rewritten)
+      setShowRewritePreview(true)
     } catch (err: any) {
       if (err?.response?.status === 503) {
         message.warning('请先在设置中配置 LLM')
@@ -374,6 +375,20 @@ function EditorViewV2() {
     } finally {
       setRewriting(false)
     }
+  }
+
+  const handleApplyRewrite = () => {
+    setPromptValue(rewritePreview)
+    setShowRewritePreview(false)
+    setShowRewriteInput(false)
+    setRewriteInstruction('')
+    setRewritePreview('')
+    message.success('Rewrite applied')
+  }
+
+  const handleCancelRewrite = () => {
+    setShowRewritePreview(false)
+    setRewritePreview('')
   }
 
   const handleChatSend = async () => {
@@ -391,7 +406,7 @@ function EditorViewV2() {
     setChatLoading(true)
 
     try {
-      const result = await llmApi.rewrite(promptValue, chatInput, selectedModel)
+      const result = await llmApi.rewrite(promptValue, chatInput, selectedModel, false)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -617,7 +632,7 @@ function EditorViewV2() {
           {chatMessages.map((msg) => (
             <div key={msg.id} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">
-                <pre>{msg.content}</pre>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
               </div>
             </div>
           ))}
@@ -715,6 +730,34 @@ function EditorViewV2() {
               Review &amp; Merge Later
             </Button>
           </Space>
+        </Space>
+      </Modal>
+
+      {/* Rewrite Preview Modal */}
+      <Modal
+        title="Rewrite Preview"
+        open={showRewritePreview}
+        width={900}
+        onCancel={handleCancelRewrite}
+        footer={[
+          <Button key="cancel" onClick={handleCancelRewrite}>
+            Cancel
+          </Button>,
+          <Button key="apply" type="primary" onClick={handleApplyRewrite}>
+            Apply Rewrite
+          </Button>,
+        ]}
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <p>Review the rewritten content below:</p>
+          <DiffEditor
+            height={400}
+            language="markdown"
+            original={promptValue}
+            modified={rewritePreview}
+            theme="vs-dark"
+            options={{ minimap: { enabled: false }, renderSideBySide: true }}
+          />
         </Space>
       </Modal>
     </div>

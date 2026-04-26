@@ -76,7 +76,7 @@ function EvalPanelView() {
     setLoading(true)
     try {
       const [assetData, runsData] = await Promise.all([
-        assetApi.get(assetId),
+        assetApi.get(assetId).catch(() => null),
         evalApi.list(assetId),
       ])
       setAsset(assetData)
