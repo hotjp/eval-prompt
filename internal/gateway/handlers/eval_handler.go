@@ -511,34 +511,10 @@ Rewritten text:`, req.Instruction, req.Content)
 	h.writeJSON(w, http.StatusOK, map[string]string{"rewritten": rewritten})
 }
 
-// cleanRewriteResponse removes think tags, markdown formatting, and trims whitespace.
+// cleanRewriteResponse does basic cleanup and preserves think tags and markdown.
 func cleanRewriteResponse(s string) string {
-	// Remove think tags using simple string replacement
-	// (Go regex has issues matching Chinese chars between think tags)
-	s = strings.ReplaceAll(s, "<think>", "")
-	s = strings.ReplaceAll(s, "</think>", "")
-	s = strings.ReplaceAll(s, "</think>", "")
-
-
-	// Remove markdown code block markers
-	s = strings.ReplaceAll(s, "```", "")
-
-	// Remove bold/italic markers
-	s = strings.ReplaceAll(s, "**", "")
-	s = strings.ReplaceAll(s, "*", "")
-	s = strings.ReplaceAll(s, "_", "")
-
-	// Remove headers but preserve content
-	s = strings.ReplaceAll(s, "# ", "")
-	s = strings.ReplaceAll(s, "## ", "")
-	s = strings.ReplaceAll(s, "### ", "")
-
-	// Remove leading dashes in markdown lists
-	s = strings.ReplaceAll(s, "- ", "")
-
-	// Trim whitespace but preserve newlines
+	// Trim whitespace
 	s = strings.TrimSpace(s)
-
 	return s
 }
 
