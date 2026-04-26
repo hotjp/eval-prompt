@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Layout, Card, Table, Tag, Button, Space, Modal, Form, Input, message, Popconfirm, Select, Menu, Tooltip, List } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, RobotOutlined, LockOutlined, FolderOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, SwapOutlined, RocketOutlined, SendOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, RobotOutlined, LockOutlined, FolderOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, SwapOutlined, RocketOutlined, SendOutlined, GlobalOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { getAssetTypes, saveAssetTypesToAPI, AssetTypeConfig } from '../config/bizLines'
@@ -8,6 +8,8 @@ import { getTags, saveTagsToAPI, TagConfig } from '../config/tags'
 import { getLLMConfigs, saveLLMConfigsToAPI, LLMConfig as LLMConfigType } from '../config/llmConfig'
 import { adminApi, llmConfigApi, type RepoListResponse } from '../api/client'
 import ColorPicker from '../components/ColorPicker'
+import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 
 const { Sider, Content } = Layout
 
@@ -15,14 +17,17 @@ type AssetType = AssetTypeConfig & { assetCount?: number; built_in?: boolean }
 type TagItem = TagConfig & { usageCount?: number; built_in?: boolean }
 type LLMConfigItem = LLMConfigType & { key: string; default?: boolean }
 
-type SettingsSection = 'categories' | 'llm' | 'repo'
+type SettingsSection = 'categories' | 'llm' | 'repo' | 'language'
 
 function SettingsView() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [currentLang, setCurrentLang] = useState(() => localStorage.getItem('lang') || 'en-US')
   const [selectedSection, setSelectedSection] = useState<SettingsSection>(() => {
     const section = searchParams.get('section')
     if (section === 'llm') return 'llm'
     if (section === 'repo') return 'repo'
+    if (section === 'language') return 'language'
     return 'categories'
   })
   const [bizLines, setAssetTypes] = useState<AssetType[]>(() => getAssetTypes().map((b, i) => ({ ...b, key: b.name || `biz-${i}`, assetCount: 0 })))
@@ -83,6 +88,11 @@ function SettingsView() {
       icon: <FolderOutlined />,
       label: 'Repository',
     },
+    {
+      key: 'language',
+      icon: <GlobalOutlined />,
+      label: 'Language',
+    },
   ]
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -104,6 +114,9 @@ function SettingsView() {
       }).catch(() => {
         setRepoList(null)
       })
+    } else if (key === 'language') {
+      setSelectedSection('language')
+      setSearchParams({ section: 'language' })
     }
   }
 
@@ -534,6 +547,48 @@ function SettingsView() {
       )
     }
 
+    if (selectedSection === 'language') {
+      const handleLangChange = async (lang: string) => {
+        setCurrentLang(lang)
+        localStorage.setItem('lang', lang)
+        // Change i18next language
+        await i18n.changeLanguage(lang)
+        // Persist to server config
+        try {
+          await adminApi.saveConfig({ lang })
+          message.success(t('common_success'))
+        } catch (err) {
+          // Config save failed, but local change is still valid
+          console.warn('Failed to save lang to server config:', err)
+        }
+      }
+
+      return (
+        <Card title="Language / 语言">
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <div>
+              <p style={{ color: '#666', marginBottom: 16 }}>
+                Select your preferred language. This affects the UI display language.
+              </p>
+              <Select
+                value={currentLang}
+                onChange={handleLangChange}
+                style={{ width: 200 }}
+                options={[
+                  { value: 'en-US', label: 'English' },
+                  { value: 'zh-CN', label: '中文' },
+                ]}
+              />
+            </div>
+            <div style={{ color: '#999', fontSize: 12 }}>
+              <p>Note: Server-side config requires restart to take effect.</p>
+              <p>注意：服务器端配置需要重启服务才能生效。</p>
+            </div>
+          </Space>
+        </Card>
+      )
+    }
+
     return null
   }
 
@@ -545,7 +600,7 @@ function SettingsView() {
       >
         <Menu
           mode="inline"
-          selectedKeys={[selectedSection === 'categories' ? 'bizlines' : selectedSection === 'llm' ? 'llm-configs' : 'repo']}
+          selectedKeys={[selectedSection === 'categories' ? 'bizlines' : selectedSection === 'llm' ? 'llm-configs' : selectedSection === 'repo' ? 'repo' : 'language']}
           defaultOpenKeys={['taxonomy', 'llm']}
           items={menuItems}
           onClick={handleMenuClick}

@@ -362,6 +362,39 @@ func (h *AdminHandler) UpdateRepoConfig(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ConfigUpdateRequest represents a request to update config fields.
+type ConfigUpdateRequest map[string]interface{}
+
+// SaveConfig handles PUT /api/v1/admin/config
+func (h *AdminHandler) SaveConfig(w http.ResponseWriter, r *http.Request) {
+	if h.config == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "config not available")
+		return
+	}
+
+	var req ConfigUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	// Handle lang field
+	if lang, ok := req["lang"]; ok {
+		if langStr, ok := lang.(string); ok {
+			h.config.Lang = langStr
+			h.logger.Info("language updated", "lang", langStr, "layer", "L5")
+		}
+	}
+
+	if err := h.config.Save(); err != nil {
+		h.logger.Error("failed to save config", "error", err, "layer", "L5")
+		h.writeError(w, http.StatusInternalServerError, "failed to save config: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 // RepoInfo represents information about a single repository.
 type RepoInfo struct {
 	Path   string `json:"path"`

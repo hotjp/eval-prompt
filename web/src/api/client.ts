@@ -183,6 +183,9 @@ export const adminApi = {
     const { data } = await api.post('/admin/open-folder')
     return data
   },
+  saveConfig: async (config: Record<string, any>): Promise<void> => {
+    await api.put('/admin/config', config)
+  },
 }
 
 export interface AssetListResponse {
