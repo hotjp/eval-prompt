@@ -1,8 +1,7 @@
 .editor-v2-container {
   display: flex;
-  height: calc(100vh - 64px);
+  height: 100%;
   gap: 8px;
-  padding: 8px;
   background: #f5f5f5;
 }
 

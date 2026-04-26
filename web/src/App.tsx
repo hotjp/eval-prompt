@@ -32,7 +32,7 @@ function App() {
     <Layout style={{ height: '100vh' }}>
       <Sidebar />
       <Layout style={{ padding: '0', height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
-        <Content style={{ height: '100%', overflow: 'auto' }}>
+        <Content style={{ height: '100%', overflow: 'auto', padding: 8 }}>
           <Routes>
             <Route path="/" element={<Navigate to="/assets" replace />} />
             <Route path="/assets" element={<AssetListView />} />
