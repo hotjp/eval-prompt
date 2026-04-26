@@ -118,11 +118,6 @@ var serveCmd = &cobra.Command{
 					break
 				}
 			}
-			// Fallback to gpt-4o if defaultModel still not set
-			if defaultModel == "" {
-				defaultModel = "gpt-4o"
-				logger.Info("using fallback default model", "model", defaultModel)
-			}
 		}
 
 		// Create plugin instances
