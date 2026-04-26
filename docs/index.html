@@ -943,6 +943,7 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#deployment"><i class="fas fa-server"></i>部署</a></li>
           <li class="nav-item"><a class="nav-link" href="#pain-points"><i class="fas fa-fire"></i>痛点</a></li>
           <li class="nav-item"><a class="nav-link" href="#features"><i class="fas fa-star"></i>特性</a></li>
           <li class="nav-item"><a class="nav-link" href="#web-ui"><i class="fas fa-desktop"></i>Web UI</a></li>
@@ -1059,6 +1060,86 @@
             <div class="feature-icon"><i class="fas fa-book"></i></div>
             <h3>知识库</h3>
             <p>带版本控制的知识沉淀，支持 Markdown 文件，可追溯可对比可回滚。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Deployment Modes -->
+  <section class="section section-alt" id="deployment">
+    <div class="container">
+      <h2 class="section-title">部署形态</h2>
+      <p class="section-subtitle">三种模式，适配从个人到团队的各种场景</p>
+      <div class="row g-4">
+        <div class="col-md-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-laptop"></i></div>
+            <h3>个人本地</h3>
+            <p>在本地机器初始化 Git 仓库，运行 <code>ep serve</code>，浏览器打开管理界面。</p>
+            <ul style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem; padding-left: 1.2rem;">
+              <li>Prompt 资产存本地 Git</li>
+              <li>多设备通过 Git 同步</li>
+              <li>无需网络，随时可用</li>
+            </ul>
+            <div style="margin-top: 1.5rem; padding: 0.8rem 1rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; font-family: monospace; font-size: 0.85rem;">
+              <span style="color: var(--go-cyan);">$</span> ep init ~/my-prompts<br>
+              <span style="color: var(--go-cyan);">$</span> ep serve
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-users"></i></div>
+            <h3>团队 Git 协作</h3>
+            <p>团队共享一个私有 GitHub/Gitea 仓库，各自本地运行 <code>ep serve</code>，通过 Git PR 协作。</p>
+            <ul style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem; padding-left: 1.2rem;">
+              <li>Prompt 也有 code review</li>
+              <li>版本历史可追溯</li>
+              <li>生产部署有质量 gate</li>
+            </ul>
+            <div style="margin-top: 1.5rem; padding: 0.8rem 1rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; font-family: monospace; font-size: 0.85rem;">
+              <span style="color: #6a6a8a;">#</span> 成员 A: git push → PR<br>
+              <span style="color: #6a6a8a;">#</span> 成员 B: review → merge<br>
+              <span style="color: #6a6a8a;">#</span> 成员 A: git pull 同步
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4" data-animate>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-server"></i></div>
+            <h3>服务器集中部署</h3>
+            <p>在 Linux 服务器上部署一份，作为团队共享的私有化服务，浏览器 + MCP 访问。</p>
+            <ul style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem; padding-left: 1.2rem;">
+              <li>API key 只需配一份</li>
+              <li>团队共享资产和评测历史</li>
+              <li>数据不出域，完全私有</li>
+            </ul>
+            <div style="margin-top: 1.5rem; padding: 0.8rem 1rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; font-family: monospace; font-size: 0.85rem;">
+              <span style="color: #6a6a8a;">#</span> Linux 服务器<br>
+              <span style="color: var(--go-cyan);">$</span> nohup ep serve &<br>
+              <span style="color: #6a6a8a;">#</span> 团队浏览器访问
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 3rem; padding: 1.5rem; background: rgba(0,217,255,0.05); border: 1px solid rgba(0,217,255,0.15); border-radius: 0.8rem;">
+        <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+          <div style="text-align: center;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">🌐</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">私有 GitHub</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">🔄</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Git 同步</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">🖥️</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">集中服务</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">🔒</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">数据不出域</div>
           </div>
         </div>
       </div>

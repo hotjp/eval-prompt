@@ -143,6 +143,20 @@ ep sync reconcile
 | **Cross-Model Adaptation** | Auto-adjust format for Claude ↔ GPT ↔ local models |
 | **Sandbox Security** | File isolation, command whitelist, execution timeout |
 
+## Deployment Modes
+
+Three ways to deploy, from solo to team:
+
+| Mode | Use Case |
+|---|---|
+| **Personal Local** | `ep init` on your machine, sync via Git across devices |
+| **Team Git Collaboration** | Shared private GitHub/Gitea repo, each runs `ep serve` locally, PR-based workflow |
+| **Centralized Server** | Deploy on Linux server, team accesses via browser + MCP, API key configured once |
+
+- **Personal local**: Best for individual developers managing prompts across multiple machines
+- **Team Git**: Small teams (3-10) with Git workflow habits, full code review on prompts
+- **Server deployment**: Shared private service on a Linux box, team shares assets + eval history, data never leaves your network
+
 ## Configuration
 
 ```yaml
