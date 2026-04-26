@@ -156,6 +156,29 @@ web/                     # React 前端源码
 
 ---
 
+## 开发启动
+
+需要两个终端分别启动前后端：
+
+```bash
+# 终端1：启动前端 Vite 开发服务器（支持 HMR）
+cd web && npm run dev
+
+# 终端2：启动后端服务
+go run ./cmd/ep/ serve
+```
+
+- 前端默认：http://localhost:5173
+- 后端默认：http://localhost:8080
+- Vite 已配置代理，API 请求自动转发到后端
+
+如需一次性启动（后台运行）：
+```bash
+(cd web && npm run dev) & go run ./cmd/ep/ serve
+```
+
+---
+
 ## 代码生成规则
 
 ### 错误码格式

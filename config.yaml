@@ -1,30 +1,20 @@
+path: config.yaml
+lang: en-US
+server:
+    port: 8080
+    host: 127.0.0.1
+    metricsport: 9090
+    pprofport: 6060
+    readtimeout: 30s
+    writetimeout: 30s
 database:
     dsn: ""
+    maxopen: 25
     maxidle: 5
     maxlifetime: 5m0s
-    maxopen: 25
-path: config.yaml
-plugins:
-    llm:
-        - name: minimax
-          provider: openai-compatible
-          api_key: sk-cp-RoPFThCxbKCkoA-O6V8SmL8xLD8dqC1mwL11sAutso2F-MpsPSfOuCaKCoiozms4GnyJSwApuH4SLEFSrTtPoddwIoJN7JrsBGQ7MjWoQrOfX22ewTPf-AI
-          endpoint: https://api.minimaxi.com/v1
-          default_model: MiniMax-M2.7-highspeed
-          default: false
-          ping_path: ""
-    search:
-        apikey: ""
-        enabled: false
-        type: basic
-        url: ""
-promptassets:
-    assetsdir: prompts
-    concurrency: 4
-    evalsdir: .evals
-    evalthreshold: 80
-    repopath: /Users/kingj/code/eval-prompt/~/test
-    tracesdir: .traces
+telemetry:
+    enabled: false
+    endpoint: localhost:4317
 sandbox:
     allowedcommands:
         - npm
@@ -45,61 +35,84 @@ sandbox:
         - '| bash'
         - curl .* | sh
     maxexecutiontime: 1m0s
-    maxfilecount: 1000
     maxfilesize: 10485760
-server:
-    host: 127.0.0.1
-    metricsport: 9090
-    port: 8080
-    pprofport: 6060
-    readtimeout: 30s
-    writetimeout: 30s
+    maxfilecount: 1000
+plugins:
+    llm:
+        - name: minimax
+          provider: openai-compatible
+          api_key: sk-cp-RoPFThCxbKCkoA-O6V8SmL8xLD8dqC1mwL11sAutso2F-MpsPSfOuCaKCoiozms4GnyJSwApuH4SLEFSrTtPoddwIoJN7JrsBGQ7MjWoQrOfX22ewTPf-AI
+          endpoint: https://api.minimaxi.com/v1
+          default_model: MiniMax-M2.7-highspeed
+          default: false
+          ping_path: ""
+    search:
+        enabled: false
+        type: basic
+        url: ""
+        apikey: ""
+promptassets:
+    repopath: /Users/kingj/repo
+    assetsdir: prompts
+    evalsdir: .evals
+    tracesdir: .traces
+    evalthreshold: 80
+    concurrency: 4
 taxonomy:
-    bizlines:
-        - builtin: false
+    assettypes:
+        - name: prompt
+          description: 提示词
           color: blue
-          description: 技术研发
-          name: tech
-        - builtin: false
-          color: red
-          description: 舆情业务
-          name: opinion
-        - builtin: false
-          color: green
-          description: 营销业务
-          name: marketing
-        - builtin: false
+          builtin: false
+        - name: agent
+          description: Agent 描述文件
           color: purple
-          description: 内容创作
-          name: content
-    tags:
-        - builtin: false
+          builtin: false
+        - name: skill
+          description: Skill
           color: green
-          name: prod
-        - builtin: false
+          builtin: false
+        - name: knowledge
+          description: 知识库
           color: orange
-          name: draft
-        - builtin: false
-          color: blue
-          name: llm
-        - builtin: false
-          color: purple
-          name: rag
-        - builtin: false
-          color: cyan
-          name: agent
-        - builtin: false
+          builtin: false
+        - name: system
+          description: 系统配置
           color: red
-          name: security
-        - builtin: false
+          builtin: false
+        - name: workflow
+          description: 工作流
+          color: cyan
+          builtin: false
+        - name: tool
+          description: 工具描述
           color: geekblue
-          name: ops
-        - builtin: false
+          builtin: false
+    tags:
+        - name: prod
+          color: green
+          builtin: false
+        - name: draft
+          color: orange
+          builtin: false
+        - name: llm
+          color: blue
+          builtin: false
+        - name: rag
+          color: purple
+          builtin: false
+        - name: agent
+          color: cyan
+          builtin: false
+        - name: security
+          color: red
+          builtin: false
+        - name: ops
+          color: geekblue
+          builtin: false
+        - name: go
           color: lime
-          name: go
-        - builtin: false
+          builtin: false
+        - name: review
           color: gold
-          name: review
-telemetry:
-    enabled: false
-    endpoint: localhost:4317
+          builtin: false
