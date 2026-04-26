@@ -87,6 +87,16 @@ func RepoPath(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldRepoPath, v))
 }
 
+// AssetType applies equality check predicate on the "asset_type" field. It's identical to AssetTypeEQ.
+func AssetType(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldAssetType, v))
+}
+
+// Category applies equality check predicate on the "category" field. It's identical to CategoryEQ.
+func Category(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldCategory, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Asset {
 	return predicate.Asset(sql.FieldEQ(FieldName, v))
@@ -450,6 +460,156 @@ func StateIn(vs ...State) predicate.Asset {
 // StateNotIn applies the NotIn predicate on the "state" field.
 func StateNotIn(vs ...State) predicate.Asset {
 	return predicate.Asset(sql.FieldNotIn(FieldState, vs...))
+}
+
+// AssetTypeEQ applies the EQ predicate on the "asset_type" field.
+func AssetTypeEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldAssetType, v))
+}
+
+// AssetTypeNEQ applies the NEQ predicate on the "asset_type" field.
+func AssetTypeNEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldNEQ(FieldAssetType, v))
+}
+
+// AssetTypeIn applies the In predicate on the "asset_type" field.
+func AssetTypeIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldIn(FieldAssetType, vs...))
+}
+
+// AssetTypeNotIn applies the NotIn predicate on the "asset_type" field.
+func AssetTypeNotIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldNotIn(FieldAssetType, vs...))
+}
+
+// AssetTypeGT applies the GT predicate on the "asset_type" field.
+func AssetTypeGT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGT(FieldAssetType, v))
+}
+
+// AssetTypeGTE applies the GTE predicate on the "asset_type" field.
+func AssetTypeGTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGTE(FieldAssetType, v))
+}
+
+// AssetTypeLT applies the LT predicate on the "asset_type" field.
+func AssetTypeLT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLT(FieldAssetType, v))
+}
+
+// AssetTypeLTE applies the LTE predicate on the "asset_type" field.
+func AssetTypeLTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLTE(FieldAssetType, v))
+}
+
+// AssetTypeContains applies the Contains predicate on the "asset_type" field.
+func AssetTypeContains(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContains(FieldAssetType, v))
+}
+
+// AssetTypeHasPrefix applies the HasPrefix predicate on the "asset_type" field.
+func AssetTypeHasPrefix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasPrefix(FieldAssetType, v))
+}
+
+// AssetTypeHasSuffix applies the HasSuffix predicate on the "asset_type" field.
+func AssetTypeHasSuffix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasSuffix(FieldAssetType, v))
+}
+
+// AssetTypeIsNil applies the IsNil predicate on the "asset_type" field.
+func AssetTypeIsNil() predicate.Asset {
+	return predicate.Asset(sql.FieldIsNull(FieldAssetType))
+}
+
+// AssetTypeNotNil applies the NotNil predicate on the "asset_type" field.
+func AssetTypeNotNil() predicate.Asset {
+	return predicate.Asset(sql.FieldNotNull(FieldAssetType))
+}
+
+// AssetTypeEqualFold applies the EqualFold predicate on the "asset_type" field.
+func AssetTypeEqualFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEqualFold(FieldAssetType, v))
+}
+
+// AssetTypeContainsFold applies the ContainsFold predicate on the "asset_type" field.
+func AssetTypeContainsFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContainsFold(FieldAssetType, v))
+}
+
+// CategoryEQ applies the EQ predicate on the "category" field.
+func CategoryEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEQ(FieldCategory, v))
+}
+
+// CategoryNEQ applies the NEQ predicate on the "category" field.
+func CategoryNEQ(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldNEQ(FieldCategory, v))
+}
+
+// CategoryIn applies the In predicate on the "category" field.
+func CategoryIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldIn(FieldCategory, vs...))
+}
+
+// CategoryNotIn applies the NotIn predicate on the "category" field.
+func CategoryNotIn(vs ...string) predicate.Asset {
+	return predicate.Asset(sql.FieldNotIn(FieldCategory, vs...))
+}
+
+// CategoryGT applies the GT predicate on the "category" field.
+func CategoryGT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGT(FieldCategory, v))
+}
+
+// CategoryGTE applies the GTE predicate on the "category" field.
+func CategoryGTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldGTE(FieldCategory, v))
+}
+
+// CategoryLT applies the LT predicate on the "category" field.
+func CategoryLT(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLT(FieldCategory, v))
+}
+
+// CategoryLTE applies the LTE predicate on the "category" field.
+func CategoryLTE(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldLTE(FieldCategory, v))
+}
+
+// CategoryContains applies the Contains predicate on the "category" field.
+func CategoryContains(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContains(FieldCategory, v))
+}
+
+// CategoryHasPrefix applies the HasPrefix predicate on the "category" field.
+func CategoryHasPrefix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasPrefix(FieldCategory, v))
+}
+
+// CategoryHasSuffix applies the HasSuffix predicate on the "category" field.
+func CategoryHasSuffix(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldHasSuffix(FieldCategory, v))
+}
+
+// CategoryIsNil applies the IsNil predicate on the "category" field.
+func CategoryIsNil() predicate.Asset {
+	return predicate.Asset(sql.FieldIsNull(FieldCategory))
+}
+
+// CategoryNotNil applies the NotNil predicate on the "category" field.
+func CategoryNotNil() predicate.Asset {
+	return predicate.Asset(sql.FieldNotNull(FieldCategory))
+}
+
+// CategoryEqualFold applies the EqualFold predicate on the "category" field.
+func CategoryEqualFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldEqualFold(FieldCategory, v))
+}
+
+// CategoryContainsFold applies the ContainsFold predicate on the "category" field.
+func CategoryContainsFold(v string) predicate.Asset {
+	return predicate.Asset(sql.FieldContainsFold(FieldCategory, v))
 }
 
 // And groups predicates with the AND operator between them.

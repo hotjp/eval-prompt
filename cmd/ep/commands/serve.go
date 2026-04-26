@@ -208,6 +208,8 @@ var serveCmd = &cobra.Command{
 			ConfigManager:  configManager,
 			GitBridge:      gitBridge,
 			SemanticAnalyzer: semanticService,
+			ExecutionStore:  executionStore,
+			CallStore:       callStore,
 			AdminHandler:    adminHandler,
 			LLMConfigHandler: llmConfigHandler,
 			TaxonomyHandler: taxonomyHandler,

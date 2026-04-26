@@ -33,6 +33,8 @@ type RouterConfig struct {
 	ConfigManager     service.ConfigManager
 	GitBridge         service.GitBridger
 	SemanticAnalyzer  service.SemanticAnalyzer
+	ExecutionStore    *service.ExecutionFileStore
+	CallStore         *service.LLMCallFileStore
 	// Pre-created handlers (optional — if provided, router uses them; otherwise creates its own)
 	AdminHandler      *handlers.AdminHandler
 	LLMConfigHandler  *handlers.LLMConfigHandler
@@ -79,6 +81,8 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	if taxonomyHandler == nil {
 		taxonomyHandler = handlers.NewTaxonomyHandler(nil, logger, "", cfg.ConfigManager)
 	}
+	executionHandler := handlers.NewExecutionHandler(cfg.ExecutionStore, logger)
+	callHandler := handlers.NewCallHandler(cfg.CallStore, logger)
 
 	// Build middleware chain
 	chain := func(h http.Handler) http.Handler {
@@ -116,8 +120,10 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/eval/diff", evalHandler.DiffEval)
 
 	// Execution API routes (called by frontend)
-	mux.HandleFunc("GET /api/v1/executions/{id}", evalHandler.GetExecution)
+	mux.HandleFunc("GET /api/v1/executions", executionHandler.ListExecutions)
+	mux.HandleFunc("GET /api/v1/executions/{id}", executionHandler.GetExecution)
 	mux.HandleFunc("POST /api/v1/executions/{id}/cancel", evalHandler.CancelExecution)
+	mux.HandleFunc("GET /api/v1/executions/{id}/calls", callHandler.ListCallsByExecution)
 
 	// Rewrite API
 	mux.HandleFunc("POST /api/v1/rewrite", evalHandler.Rewrite)

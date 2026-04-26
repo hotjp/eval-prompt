@@ -9,6 +9,8 @@ const noPrefixApi = axios.create({
   timeout: 10000,
 })
 
+export type AssetCategory = 'content' | 'eval' | 'metric'
+
 export interface AssetSummary {
   id: string
   name: string
@@ -17,11 +19,23 @@ export interface AssetSummary {
   tags: string[]
   state: string
   latest_score?: number
+  category?: AssetCategory
+  test_cases?: TestCase[]
+  rubric?: RubricItem[]
 }
 
 export interface AssetDetail extends AssetSummary {
   labels: Record<string, string>
   snapshots: Snapshot[]
+  category?: AssetCategory
+  eval_history?: EvalHistoryEntry[]
+  eval_stats?: Record<string, EvalStats>
+  triggers?: TriggerEntry[]
+  test_cases?: TestCase[]
+  recommended_snapshot_id?: string
+  rubric?: RubricItem[]
+  metric_refs?: string[]
+  used_by?: string[]
 }
 
 export interface Snapshot {
@@ -31,6 +45,51 @@ export interface Snapshot {
   reason: string
   eval_score?: number
   created_at: string
+}
+
+export interface EvalHistoryEntry {
+  run_id: string
+  snapshot_id: string
+  score?: number
+  deterministic_score?: number
+  rubric_score?: number
+  status: string
+  model?: string
+  tokens_in?: number
+  tokens_out?: number
+  latency_ms?: number
+  created_at: string
+  commit_hash?: string
+  author?: string
+}
+
+export interface EvalStats {
+  count: number
+  mean: number
+  stddev: number
+  min: number
+  max: number
+}
+
+export interface TriggerEntry {
+  id: string
+  pattern: string
+  description?: string
+}
+
+export interface TestCase {
+  id: string
+  name: string
+  description?: string
+  input: string
+  expected?: string
+  rubric?: string
+}
+
+export interface RubricItem {
+  check: string
+  weight: number
+  criteria: string
 }
 
 export interface EvalRun {
@@ -112,6 +171,27 @@ export interface Execution {
   updated_at: string
 }
 
+export interface LLMCall {
+  id: string
+  run_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  model: string
+  temperature: number
+  prompt_content: string
+  response_content: string
+  raw_json?: string
+  tokens_in?: number
+  tokens_out?: number
+  latency_ms?: number
+  error?: string
+  created_at: string
+}
+
+export interface ExecutionListResponse {
+  executions: Execution[]
+  total: number
+}
+
 export interface RepoConfig {
   repo_path: string
   assets_dir: string
@@ -190,10 +270,11 @@ export interface AssetListResponse {
 }
 
 export const assetApi = {
-  list: async (filters?: { asset_type?: string; tag?: string }): Promise<AssetListResponse> => {
+  list: async (filters?: { asset_type?: string; tag?: string; category?: string }): Promise<AssetListResponse> => {
     const params = new URLSearchParams()
     if (filters?.asset_type) params.append('asset_type', filters.asset_type)
     if (filters?.tag) params.append('tag', filters.tag)
+    if (filters?.category) params.append('category', filters.category)
     const { data } = await api.get(`/assets?${params}`)
     return { assets: data.assets || [], total: data.total || 0 }
   },
@@ -203,7 +284,7 @@ export const assetApi = {
     return data
   },
 
-  create: async (asset: { id: string; name: string; description?: string; asset_type?: string; tags?: string[]; content?: string }): Promise<void> => {
+  create: async (asset: { id: string; name: string; description?: string; asset_type?: string; tags?: string[]; content?: string; test_cases?: string; rubric?: string; category?: string }): Promise<void> => {
     await api.post('/assets', asset)
   },
 
@@ -285,6 +366,25 @@ export const evalApi = {
   list: async (assetId: string): Promise<EvalRun[]> => {
     const { data } = await api.get(`/evals?asset_id=${assetId}`)
     return data.runs || []
+  },
+}
+
+export const executionApi = {
+  list: async (filters?: { status?: string }): Promise<ExecutionListResponse> => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append('status', filters.status)
+    const { data } = await api.get(`/executions?${params}`)
+    return { executions: data.executions || [], total: data.total || 0 }
+  },
+
+  get: async (executionId: string): Promise<Execution> => {
+    const { data } = await api.get(`/executions/${executionId}`)
+    return data
+  },
+
+  getCalls: async (executionId: string): Promise<LLMCall[]> => {
+    const { data } = await api.get(`/executions/${executionId}/calls`)
+    return data.calls || []
   },
 }
 

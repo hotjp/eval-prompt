@@ -136,6 +136,46 @@ func (_u *AssetUpdate) SetNillableState(v *asset.State) *AssetUpdate {
 	return _u
 }
 
+// SetAssetType sets the "asset_type" field.
+func (_u *AssetUpdate) SetAssetType(v string) *AssetUpdate {
+	_u.mutation.SetAssetType(v)
+	return _u
+}
+
+// SetNillableAssetType sets the "asset_type" field if the given value is not nil.
+func (_u *AssetUpdate) SetNillableAssetType(v *string) *AssetUpdate {
+	if v != nil {
+		_u.SetAssetType(*v)
+	}
+	return _u
+}
+
+// ClearAssetType clears the value of the "asset_type" field.
+func (_u *AssetUpdate) ClearAssetType() *AssetUpdate {
+	_u.mutation.ClearAssetType()
+	return _u
+}
+
+// SetCategory sets the "category" field.
+func (_u *AssetUpdate) SetCategory(v string) *AssetUpdate {
+	_u.mutation.SetCategory(v)
+	return _u
+}
+
+// SetNillableCategory sets the "category" field if the given value is not nil.
+func (_u *AssetUpdate) SetNillableCategory(v *string) *AssetUpdate {
+	if v != nil {
+		_u.SetCategory(*v)
+	}
+	return _u
+}
+
+// ClearCategory clears the value of the "category" field.
+func (_u *AssetUpdate) ClearCategory() *AssetUpdate {
+	_u.mutation.ClearCategory()
+	return _u
+}
+
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdate) Mutation() *AssetMutation {
 	return _u.mutation
@@ -195,6 +235,16 @@ func (_u *AssetUpdate) check() error {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AssetType(); ok {
+		if err := asset.AssetTypeValidator(v); err != nil {
+			return &ValidationError{Name: "asset_type", err: fmt.Errorf(`ent: validator failed for field "Asset.asset_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Category(); ok {
+		if err := asset.CategoryValidator(v); err != nil {
+			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Asset.category": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -241,6 +291,18 @@ func (_u *AssetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.AssetType(); ok {
+		_spec.SetField(asset.FieldAssetType, field.TypeString, value)
+	}
+	if _u.mutation.AssetTypeCleared() {
+		_spec.ClearField(asset.FieldAssetType, field.TypeString)
+	}
+	if value, ok := _u.mutation.Category(); ok {
+		_spec.SetField(asset.FieldCategory, field.TypeString, value)
+	}
+	if _u.mutation.CategoryCleared() {
+		_spec.ClearField(asset.FieldCategory, field.TypeString)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -370,6 +432,46 @@ func (_u *AssetUpdateOne) SetNillableState(v *asset.State) *AssetUpdateOne {
 	return _u
 }
 
+// SetAssetType sets the "asset_type" field.
+func (_u *AssetUpdateOne) SetAssetType(v string) *AssetUpdateOne {
+	_u.mutation.SetAssetType(v)
+	return _u
+}
+
+// SetNillableAssetType sets the "asset_type" field if the given value is not nil.
+func (_u *AssetUpdateOne) SetNillableAssetType(v *string) *AssetUpdateOne {
+	if v != nil {
+		_u.SetAssetType(*v)
+	}
+	return _u
+}
+
+// ClearAssetType clears the value of the "asset_type" field.
+func (_u *AssetUpdateOne) ClearAssetType() *AssetUpdateOne {
+	_u.mutation.ClearAssetType()
+	return _u
+}
+
+// SetCategory sets the "category" field.
+func (_u *AssetUpdateOne) SetCategory(v string) *AssetUpdateOne {
+	_u.mutation.SetCategory(v)
+	return _u
+}
+
+// SetNillableCategory sets the "category" field if the given value is not nil.
+func (_u *AssetUpdateOne) SetNillableCategory(v *string) *AssetUpdateOne {
+	if v != nil {
+		_u.SetCategory(*v)
+	}
+	return _u
+}
+
+// ClearCategory clears the value of the "category" field.
+func (_u *AssetUpdateOne) ClearCategory() *AssetUpdateOne {
+	_u.mutation.ClearCategory()
+	return _u
+}
+
 // Mutation returns the AssetMutation object of the builder.
 func (_u *AssetUpdateOne) Mutation() *AssetMutation {
 	return _u.mutation
@@ -442,6 +544,16 @@ func (_u *AssetUpdateOne) check() error {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AssetType(); ok {
+		if err := asset.AssetTypeValidator(v); err != nil {
+			return &ValidationError{Name: "asset_type", err: fmt.Errorf(`ent: validator failed for field "Asset.asset_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Category(); ok {
+		if err := asset.CategoryValidator(v); err != nil {
+			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Asset.category": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -505,6 +617,18 @@ func (_u *AssetUpdateOne) sqlSave(ctx context.Context) (_node *Asset, err error)
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.AssetType(); ok {
+		_spec.SetField(asset.FieldAssetType, field.TypeString, value)
+	}
+	if _u.mutation.AssetTypeCleared() {
+		_spec.ClearField(asset.FieldAssetType, field.TypeString)
+	}
+	if value, ok := _u.mutation.Category(); ok {
+		_spec.SetField(asset.FieldCategory, field.TypeString, value)
+	}
+	if _u.mutation.CategoryCleared() {
+		_spec.ClearField(asset.FieldCategory, field.TypeString)
 	}
 	_node = &Asset{config: _u.config}
 	_spec.Assign = _node.assignValues

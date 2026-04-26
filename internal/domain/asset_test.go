@@ -269,12 +269,13 @@ func TestAsset_TransitionTo(t *testing.T) {
 }
 
 func TestNewAsset(t *testing.T) {
-	asset := NewAsset("Test", "desc", "biz", []string{"tag1"}, "hash123", "/path", "/repo")
+	asset := NewAsset("Test", "desc", "biz", "category", []string{"tag1"}, "hash123", "/path", "/repo")
 
 	require.NotEmpty(t, asset.ID.String())
 	require.Equal(t, "Test", asset.Name)
 	require.Equal(t, "desc", asset.Description)
 	require.Equal(t, "biz", asset.AssetType)
+	require.Equal(t, "category", asset.Category)
 	require.Equal(t, []string{"tag1"}, asset.Tags)
 	require.Equal(t, "hash123", asset.ContentHash)
 	require.Equal(t, "/path", asset.FilePath)
@@ -285,7 +286,7 @@ func TestNewAsset(t *testing.T) {
 
 func TestNewAssetWithID(t *testing.T) {
 	specificID := ID{value: "01ARZ3NDEKTSV4RRFFQ69G5FAV"}
-	asset := NewAssetWithID(specificID, "Test", "desc", "biz", []string{"tag1"}, "hash123", "/path", "/repo")
+	asset := NewAssetWithID(specificID, "Test", "desc", "biz", "category", []string{"tag1"}, "hash123", "/path", "/repo")
 
 	require.Equal(t, specificID, asset.ID)
 	require.Equal(t, "Test", asset.Name)

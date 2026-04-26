@@ -27,6 +27,10 @@ const (
 	FieldRepoPath = "repo_path"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
+	// FieldAssetType holds the string denoting the asset_type field in the database.
+	FieldAssetType = "asset_type"
+	// FieldCategory holds the string denoting the category field in the database.
+	FieldCategory = "category"
 	// Table holds the table name of the asset in the database.
 	Table = "assets"
 )
@@ -41,6 +45,8 @@ var Columns = []string{
 	FieldFilePath,
 	FieldRepoPath,
 	FieldState,
+	FieldAssetType,
+	FieldCategory,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -62,6 +68,10 @@ var (
 	FilePathValidator func(string) error
 	// RepoPathValidator is a validator for the "repo_path" field. It is called by the builders before save.
 	RepoPathValidator func(string) error
+	// AssetTypeValidator is a validator for the "asset_type" field. It is called by the builders before save.
+	AssetTypeValidator func(string) error
+	// CategoryValidator is a validator for the "category" field. It is called by the builders before save.
+	CategoryValidator func(string) error
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -131,4 +141,14 @@ func ByRepoPath(opts ...sql.OrderTermOption) OrderOption {
 // ByState orders the results by the state field.
 func ByState(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldState, opts...).ToFunc()
+}
+
+// ByAssetType orders the results by the asset_type field.
+func ByAssetType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAssetType, opts...).ToFunc()
+}
+
+// ByCategory orders the results by the category field.
+func ByCategory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCategory, opts...).ToFunc()
 }

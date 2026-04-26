@@ -30,7 +30,11 @@ type Asset struct {
 	// RepoPath holds the value of the "repo_path" field.
 	RepoPath string `json:"repo_path,omitempty"`
 	// State holds the value of the "state" field.
-	State        asset.State `json:"state,omitempty"`
+	State asset.State `json:"state,omitempty"`
+	// AssetType holds the value of the "asset_type" field.
+	AssetType string `json:"asset_type,omitempty"`
+	// Category holds the value of the "category" field.
+	Category     string `json:"category,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -41,7 +45,7 @@ func (*Asset) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case asset.FieldTags:
 			values[i] = new([]byte)
-		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldContentHash, asset.FieldFilePath, asset.FieldRepoPath, asset.FieldState:
+		case asset.FieldID, asset.FieldName, asset.FieldDescription, asset.FieldContentHash, asset.FieldFilePath, asset.FieldRepoPath, asset.FieldState, asset.FieldAssetType, asset.FieldCategory:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -108,6 +112,18 @@ func (_m *Asset) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.State = asset.State(value.String)
 			}
+		case asset.FieldAssetType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field asset_type", values[i])
+			} else if value.Valid {
+				_m.AssetType = value.String
+			}
+		case asset.FieldCategory:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field category", values[i])
+			} else if value.Valid {
+				_m.Category = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -164,6 +180,12 @@ func (_m *Asset) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.State))
+	builder.WriteString(", ")
+	builder.WriteString("asset_type=")
+	builder.WriteString(_m.AssetType)
+	builder.WriteString(", ")
+	builder.WriteString("category=")
+	builder.WriteString(_m.Category)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -117,6 +117,7 @@ type FrontMatter struct {
 	AssetType              string            `yaml:"asset_type,omitempty"`
 	Tags                   []string          `yaml:"tags,omitempty"`
 	UpdatedAt              time.Time         `yaml:"updated_at,omitempty"`
+	Category               string            `yaml:"category,omitempty"` // content/eval/metric
 	EvalHistory            []EvalHistoryEntry `yaml:"eval_history,omitempty"`
 	EvalStats              EvalStats         `yaml:"eval_stats,omitempty"`
 	Labels                 []LabelEntry       `yaml:"labels,omitempty"`

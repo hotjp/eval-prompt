@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/plugins/llm"
 )
 
@@ -76,7 +77,7 @@ type AssetIndexer interface {
 
 	// CreatePlaceholder creates a placeholder .md file with draft state and commits it to Git.
 	// This marks the asset as "claimed" so other Git users know it's taken.
-	CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error
+	CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error
 
 	// ReInit reinitializes the indexer with a new repository path.
 	// It clears the current index and updates the git bridge path.
@@ -86,6 +87,7 @@ type AssetIndexer interface {
 // SearchFilters contains filter criteria for asset search.
 type SearchFilters struct {
 	RepoPath string
+	Category string
 	AssetType  string
 	Tags     []string
 	State    string
@@ -97,6 +99,7 @@ type AssetSummary struct {
 	ID          string
 	Name        string
 	Description string
+	Category    string
 	AssetType     string
 	Tags        []string
 	State       string
@@ -113,6 +116,12 @@ type AssetDetail struct {
 	State       string
 	Snapshots   []SnapshotSummary
 	Labels      []LabelInfo
+	Category              string                    `json:"category,omitempty"`
+	EvalHistory          []domain.EvalHistoryEntry `json:"eval_history,omitempty"`
+	EvalStats            domain.EvalStats         `json:"eval_stats,omitempty"`
+	Triggers             []domain.TriggerEntry    `json:"triggers,omitempty"`
+	TestCases            []domain.TestCase         `json:"test_cases,omitempty"`
+	RecommendedSnapshotID string                   `json:"recommended_snapshot_id,omitempty"`
 }
 
 // SnapshotSummary is a condensed snapshot representation.
@@ -140,6 +149,22 @@ type ReconcileReport struct {
 	Errors  []string
 }
 
+// ParseLabels converts domain.LabelEntry slice to LabelInfo slice.
+func ParseLabels(fmLabels []domain.LabelEntry) []LabelInfo {
+	if fmLabels == nil {
+		return []LabelInfo{}
+	}
+	result := make([]LabelInfo, len(fmLabels))
+	for i, l := range fmLabels {
+		result[i] = LabelInfo{
+			Name:       l.Name,
+			SnapshotID: l.Snapshot,
+			UpdatedAt:  func() time.Time { t, _ := time.Parse("2006-01-02", l.Date); return t }(),
+		}
+	}
+	return result
+}
+
 // FileMetadata contains metadata embedded in a prompt file's frontmatter.
 type FileMetadata struct {
 	Name        string
@@ -155,7 +180,8 @@ type Asset struct {
 	ID          string
 	Name        string
 	Description string
-	AssetType     string
+	AssetType   string
+	Category    string
 	Tags        []string
 	ContentHash string
 	FilePath    string

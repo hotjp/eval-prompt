@@ -54,7 +54,7 @@ func (m *mockSyncIndexer) SaveFileContent(ctx context.Context, id, fullContent, 
 	return "", nil
 }
 
-func (m *mockSyncIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (m *mockSyncIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	return nil
 }
 

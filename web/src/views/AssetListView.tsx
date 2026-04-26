@@ -1,13 +1,25 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Tag, Input, Button, Space, message, Spin, Row, Col, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
 import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
 import { assetApi, adminApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
 import { useStore } from '../store'
-import { getAssetTypes, getAssetTypeColor } from '../config/bizLines'
+import { getAssetTypes } from '../config/bizLines'
 import { getTagColor } from '../config/tags'
+
+const categoryColors: Record<string, string> = {
+  content: 'blue',
+  eval: 'purple',
+  metric: 'cyan',
+}
+
+const categoryLabels: Record<string, string> = {
+  content: 'Prompt',
+  eval: 'Eval Case',
+  metric: 'Metric',
+}
 
 const { Search } = Input
 
@@ -22,6 +34,7 @@ type ViewMode = 'active' | 'archived'
 
 function AssetListView() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedAssetType, setSelectedAssetType] = useState<string>('all')
@@ -29,6 +42,8 @@ function AssetListView() {
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('active')
   const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
+
+  const selectedCategory = searchParams.get('category') || ''
 
   const initRef = useRef(false)
 
@@ -41,7 +56,7 @@ function AssetListView() {
   const loadAssets = async () => {
     setLoading(true)
     try {
-      const data = await assetApi.list()
+      const data = await assetApi.list({ category: selectedCategory || undefined })
       setAssets(data.assets)
     } catch {
       message.error('Failed to load assets')
@@ -142,11 +157,12 @@ function AssetListView() {
   const filteredAssets = (viewMode === 'archived' ? archivedAssets : activeAssets).filter((asset) => {
     const matchBiz = selectedAssetType === 'all' || asset.asset_type === selectedAssetType
     const matchTags = selectedTags.length === 0 || selectedTags.every((t) => asset.tags?.includes(t))
+    const matchCategory = !selectedCategory || asset.category === selectedCategory
     const matchSearch =
       !searchText ||
       asset.name.toLowerCase().includes(searchText.toLowerCase()) ||
       asset.description?.toLowerCase().includes(searchText.toLowerCase())
-    return matchBiz && matchTags && matchSearch
+    return matchBiz && matchTags && matchSearch && matchCategory
   })
 
   const getCountByAssetType = (biz: string) =>
@@ -306,10 +322,10 @@ function AssetListView() {
                     </Dropdown>
                   }
                 >
-                  {/* Biz Line corner badge */}
+                  {/* Category badge */}
                   <div style={{ position: 'absolute', top: 8, left: 8 }}>
-                    <Tag color={getAssetTypeColor(asset.asset_type)} style={{ margin: 0 }}>
-                      {asset.asset_type}
+                    <Tag color={categoryColors[asset.category || 'content'] || 'default'} style={{ margin: 0 }}>
+                      {categoryLabels[asset.category || 'content'] || asset.category || 'Prompt'}
                     </Tag>
                   </div>
                   <div style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', paddingTop: 20, marginBottom: 6 }} onClick={() => navigate(`/assets/${asset.id}/edit`)}>
@@ -328,7 +344,26 @@ function AssetListView() {
                     {(asset.description?.length || 0) > 50 ? '...' : ''}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {asset.latest_score !== undefined && asset.latest_score !== null ? (
+                    {asset.category === 'content' && (
+                      asset.latest_score !== undefined && asset.latest_score !== null ? (
+                        <span style={{ fontSize: 11, color: '#888' }}>
+                          Latest: {(asset.latest_score * 100).toFixed(0)}%
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#bbb' }}>No eval yet</span>
+                      )
+                    )}
+                    {asset.category === 'eval' && (
+                      <span style={{ fontSize: 11, color: '#888' }}>
+                        {asset.test_cases?.length || 0} test cases
+                      </span>
+                    )}
+                    {asset.category === 'metric' && (
+                      <span style={{ fontSize: 11, color: '#888' }}>
+                        {asset.rubric?.length || 0} rubric checks
+                      </span>
+                    )}
+                    {(!asset.category || asset.category === 'content') && asset.latest_score !== undefined && asset.latest_score !== null && (
                       <Tag
                         color={
                           asset.latest_score >= 0.8 ? 'green' :
@@ -338,8 +373,6 @@ function AssetListView() {
                       >
                         {(asset.latest_score * 100).toFixed(0)}%
                       </Tag>
-                    ) : (
-                      <span style={{ fontSize: 11, color: '#bbb' }}>No eval</span>
                     )}
                     <Tag color={asset.state === 'active' ? 'green' : asset.state === 'draft' ? 'orange' : 'default'}>
                       {asset.state}

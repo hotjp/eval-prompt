@@ -17,7 +17,7 @@ type MockAssetIndexer struct {
 	GetByIDFunc         func(ctx context.Context, id string) (*service.AssetDetail, error)
 	SaveFunc            func(ctx context.Context, asset service.Asset) error
 	DeleteFunc          func(ctx context.Context, id string) error
-	CreatePlaceholderFunc func(ctx context.Context, id, name, bizLine string, tags []string) error
+	CreatePlaceholderFunc func(ctx context.Context, id, name, bizLine string, tags []string, category string) error
 	GetFileContentFunc  func(ctx context.Context, id string) (string, error)
 	SaveFileContentFunc func(ctx context.Context, id, content, commitMsg string) (string, error)
 }
@@ -64,9 +64,9 @@ func (m *MockAssetIndexer) Reconcile(ctx context.Context) (service.ReconcileRepo
 	return service.ReconcileReport{}, nil
 }
 
-func (m *MockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (m *MockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	if m.CreatePlaceholderFunc != nil {
-		return m.CreatePlaceholderFunc(ctx, id, name, bizLine, tags)
+		return m.CreatePlaceholderFunc(ctx, id, name, bizLine, tags, category)
 	}
 	return nil
 }

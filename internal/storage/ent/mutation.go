@@ -58,6 +58,8 @@ type AssetMutation struct {
 	file_path     *string
 	repo_path     *string
 	state         *asset.State
+	asset_type    *string
+	category      *string
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Asset, error)
@@ -462,6 +464,104 @@ func (m *AssetMutation) ResetState() {
 	m.state = nil
 }
 
+// SetAssetType sets the "asset_type" field.
+func (m *AssetMutation) SetAssetType(s string) {
+	m.asset_type = &s
+}
+
+// AssetType returns the value of the "asset_type" field in the mutation.
+func (m *AssetMutation) AssetType() (r string, exists bool) {
+	v := m.asset_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAssetType returns the old "asset_type" field's value of the Asset entity.
+// If the Asset object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AssetMutation) OldAssetType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAssetType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAssetType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAssetType: %w", err)
+	}
+	return oldValue.AssetType, nil
+}
+
+// ClearAssetType clears the value of the "asset_type" field.
+func (m *AssetMutation) ClearAssetType() {
+	m.asset_type = nil
+	m.clearedFields[asset.FieldAssetType] = struct{}{}
+}
+
+// AssetTypeCleared returns if the "asset_type" field was cleared in this mutation.
+func (m *AssetMutation) AssetTypeCleared() bool {
+	_, ok := m.clearedFields[asset.FieldAssetType]
+	return ok
+}
+
+// ResetAssetType resets all changes to the "asset_type" field.
+func (m *AssetMutation) ResetAssetType() {
+	m.asset_type = nil
+	delete(m.clearedFields, asset.FieldAssetType)
+}
+
+// SetCategory sets the "category" field.
+func (m *AssetMutation) SetCategory(s string) {
+	m.category = &s
+}
+
+// Category returns the value of the "category" field in the mutation.
+func (m *AssetMutation) Category() (r string, exists bool) {
+	v := m.category
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCategory returns the old "category" field's value of the Asset entity.
+// If the Asset object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AssetMutation) OldCategory(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCategory is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCategory requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCategory: %w", err)
+	}
+	return oldValue.Category, nil
+}
+
+// ClearCategory clears the value of the "category" field.
+func (m *AssetMutation) ClearCategory() {
+	m.category = nil
+	m.clearedFields[asset.FieldCategory] = struct{}{}
+}
+
+// CategoryCleared returns if the "category" field was cleared in this mutation.
+func (m *AssetMutation) CategoryCleared() bool {
+	_, ok := m.clearedFields[asset.FieldCategory]
+	return ok
+}
+
+// ResetCategory resets all changes to the "category" field.
+func (m *AssetMutation) ResetCategory() {
+	m.category = nil
+	delete(m.clearedFields, asset.FieldCategory)
+}
+
 // Where appends a list predicates to the AssetMutation builder.
 func (m *AssetMutation) Where(ps ...predicate.Asset) {
 	m.predicates = append(m.predicates, ps...)
@@ -496,7 +596,7 @@ func (m *AssetMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AssetMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.name != nil {
 		fields = append(fields, asset.FieldName)
 	}
@@ -517,6 +617,12 @@ func (m *AssetMutation) Fields() []string {
 	}
 	if m.state != nil {
 		fields = append(fields, asset.FieldState)
+	}
+	if m.asset_type != nil {
+		fields = append(fields, asset.FieldAssetType)
+	}
+	if m.category != nil {
+		fields = append(fields, asset.FieldCategory)
 	}
 	return fields
 }
@@ -540,6 +646,10 @@ func (m *AssetMutation) Field(name string) (ent.Value, bool) {
 		return m.RepoPath()
 	case asset.FieldState:
 		return m.State()
+	case asset.FieldAssetType:
+		return m.AssetType()
+	case asset.FieldCategory:
+		return m.Category()
 	}
 	return nil, false
 }
@@ -563,6 +673,10 @@ func (m *AssetMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRepoPath(ctx)
 	case asset.FieldState:
 		return m.OldState(ctx)
+	case asset.FieldAssetType:
+		return m.OldAssetType(ctx)
+	case asset.FieldCategory:
+		return m.OldCategory(ctx)
 	}
 	return nil, fmt.Errorf("unknown Asset field %s", name)
 }
@@ -621,6 +735,20 @@ func (m *AssetMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetState(v)
 		return nil
+	case asset.FieldAssetType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAssetType(v)
+		return nil
+	case asset.FieldCategory:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCategory(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Asset field %s", name)
 }
@@ -657,6 +785,12 @@ func (m *AssetMutation) ClearedFields() []string {
 	if m.FieldCleared(asset.FieldRepoPath) {
 		fields = append(fields, asset.FieldRepoPath)
 	}
+	if m.FieldCleared(asset.FieldAssetType) {
+		fields = append(fields, asset.FieldAssetType)
+	}
+	if m.FieldCleared(asset.FieldCategory) {
+		fields = append(fields, asset.FieldCategory)
+	}
 	return fields
 }
 
@@ -676,6 +810,12 @@ func (m *AssetMutation) ClearField(name string) error {
 		return nil
 	case asset.FieldRepoPath:
 		m.ClearRepoPath()
+		return nil
+	case asset.FieldAssetType:
+		m.ClearAssetType()
+		return nil
+	case asset.FieldCategory:
+		m.ClearCategory()
 		return nil
 	}
 	return fmt.Errorf("unknown Asset nullable field %s", name)
@@ -705,6 +845,12 @@ func (m *AssetMutation) ResetField(name string) error {
 		return nil
 	case asset.FieldState:
 		m.ResetState()
+		return nil
+	case asset.FieldAssetType:
+		m.ResetAssetType()
+		return nil
+	case asset.FieldCategory:
+		m.ResetCategory()
 		return nil
 	}
 	return fmt.Errorf("unknown Asset field %s", name)

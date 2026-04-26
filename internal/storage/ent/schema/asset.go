@@ -21,6 +21,8 @@ func (Asset) Fields() []ent.Field {
 		field.String("file_path").MaxLen(512).NotEmpty(),
 		field.String("repo_path").MaxLen(512).Optional(), // repo isolation
 		field.Enum("state").Values("created", "evaluating", "evaluated", "promoted", "archived").Default("created"),
+		field.String("asset_type").MaxLen(64).Optional(),
+		field.String("category").MaxLen(32).Optional(), // content/eval/metric
 	}
 }
 

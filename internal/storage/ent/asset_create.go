@@ -77,6 +77,34 @@ func (_c *AssetCreate) SetNillableState(v *asset.State) *AssetCreate {
 	return _c
 }
 
+// SetAssetType sets the "asset_type" field.
+func (_c *AssetCreate) SetAssetType(v string) *AssetCreate {
+	_c.mutation.SetAssetType(v)
+	return _c
+}
+
+// SetNillableAssetType sets the "asset_type" field if the given value is not nil.
+func (_c *AssetCreate) SetNillableAssetType(v *string) *AssetCreate {
+	if v != nil {
+		_c.SetAssetType(*v)
+	}
+	return _c
+}
+
+// SetCategory sets the "category" field.
+func (_c *AssetCreate) SetCategory(v string) *AssetCreate {
+	_c.mutation.SetCategory(v)
+	return _c
+}
+
+// SetNillableCategory sets the "category" field if the given value is not nil.
+func (_c *AssetCreate) SetNillableCategory(v *string) *AssetCreate {
+	if v != nil {
+		_c.SetCategory(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AssetCreate) SetID(v string) *AssetCreate {
 	_c.mutation.SetID(v)
@@ -166,6 +194,16 @@ func (_c *AssetCreate) check() error {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Asset.state": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.AssetType(); ok {
+		if err := asset.AssetTypeValidator(v); err != nil {
+			return &ValidationError{Name: "asset_type", err: fmt.Errorf(`ent: validator failed for field "Asset.asset_type": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.Category(); ok {
+		if err := asset.CategoryValidator(v); err != nil {
+			return &ValidationError{Name: "category", err: fmt.Errorf(`ent: validator failed for field "Asset.category": %w`, err)}
+		}
+	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := asset.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Asset.id": %w`, err)}
@@ -233,6 +271,14 @@ func (_c *AssetCreate) createSpec() (*Asset, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.State(); ok {
 		_spec.SetField(asset.FieldState, field.TypeEnum, value)
 		_node.State = value
+	}
+	if value, ok := _c.mutation.AssetType(); ok {
+		_spec.SetField(asset.FieldAssetType, field.TypeString, value)
+		_node.AssetType = value
+	}
+	if value, ok := _c.mutation.Category(); ok {
+		_spec.SetField(asset.FieldCategory, field.TypeString, value)
+		_node.Category = value
 	}
 	return _node, _spec
 }

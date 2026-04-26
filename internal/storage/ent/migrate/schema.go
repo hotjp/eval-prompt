@@ -18,6 +18,8 @@ var (
 		{Name: "file_path", Type: field.TypeString, Size: 512},
 		{Name: "repo_path", Type: field.TypeString, Nullable: true, Size: 512},
 		{Name: "state", Type: field.TypeEnum, Enums: []string{"created", "evaluating", "evaluated", "promoted", "archived"}, Default: "created"},
+		{Name: "asset_type", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "category", Type: field.TypeString, Nullable: true, Size: 32},
 	}
 	// AssetsTable holds the schema information for the "assets" table.
 	AssetsTable = &schema.Table{

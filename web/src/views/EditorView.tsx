@@ -306,6 +306,22 @@ function EditorView() {
     return <div>Asset not found</div>
   }
 
+  // For eval/metric assets, show a message that editing is done via dedicated views
+  const category = asset?.category || 'content'
+  if (category !== 'content') {
+    return (
+      <Card title={asset?.name || id}>
+        <Space direction="vertical">
+          <Tag color="blue">{category}</Tag>
+          <p>This asset type does not use the markdown editor.</p>
+          <p>For <strong>eval</strong> assets, edit test cases in the Cases tab.</p>
+          <p>For <strong>metric</strong> assets, edit rubrics in the Rubric tab.</p>
+          <Button onClick={() => navigate(`/assets/${id}`)}>Go to Detail View</Button>
+        </Space>
+      </Card>
+    )
+  }
+
   return (
     <div>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>

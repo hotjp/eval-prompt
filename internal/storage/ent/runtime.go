@@ -81,6 +81,14 @@ func init() {
 	assetDescRepoPath := assetFields[6].Descriptor()
 	// asset.RepoPathValidator is a validator for the "repo_path" field. It is called by the builders before save.
 	asset.RepoPathValidator = assetDescRepoPath.Validators[0].(func(string) error)
+	// assetDescAssetType is the schema descriptor for asset_type field.
+	assetDescAssetType := assetFields[8].Descriptor()
+	// asset.AssetTypeValidator is a validator for the "asset_type" field. It is called by the builders before save.
+	asset.AssetTypeValidator = assetDescAssetType.Validators[0].(func(string) error)
+	// assetDescCategory is the schema descriptor for category field.
+	assetDescCategory := assetFields[9].Descriptor()
+	// asset.CategoryValidator is a validator for the "category" field. It is called by the builders before save.
+	asset.CategoryValidator = assetDescCategory.Validators[0].(func(string) error)
 	// assetDescID is the schema descriptor for id field.
 	assetDescID := assetFields[0].Descriptor()
 	// asset.IDValidator is a validator for the "id" field. It is called by the builders before save.

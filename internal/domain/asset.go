@@ -10,7 +10,8 @@ type Asset struct {
 	ID          ID
 	Name        string
 	Description string
-	AssetType     string
+	AssetType   string
+	Category    string
 	Tags        []string
 	ContentHash string
 	FilePath    string
@@ -120,13 +121,14 @@ func (a *Asset) canTransitionTo(to State, event EventType) bool {
 }
 
 // NewAsset creates a new Asset with the given parameters.
-func NewAsset(name, description, bizLine string, tags []string, contentHash, filePath, repoPath string) *Asset {
+func NewAsset(name, description, bizLine, category string, tags []string, contentHash, filePath, repoPath string) *Asset {
 	now := time.Now()
 	return &Asset{
 		ID:          NewAutoID(),
 		Name:        name,
 		Description: description,
-		AssetType:     bizLine,
+		AssetType:   bizLine,
+		Category:    category,
 		Tags:        tags,
 		ContentHash: contentHash,
 		FilePath:    filePath,
@@ -139,13 +141,14 @@ func NewAsset(name, description, bizLine string, tags []string, contentHash, fil
 }
 
 // NewAssetWithID creates a new Asset with a specific ID.
-func NewAssetWithID(id ID, name, description, bizLine string, tags []string, contentHash, filePath, repoPath string) *Asset {
+func NewAssetWithID(id ID, name, description, bizLine, category string, tags []string, contentHash, filePath, repoPath string) *Asset {
 	now := time.Now()
 	return &Asset{
 		ID:          id,
 		Name:        name,
 		Description: description,
-		AssetType:     bizLine,
+		AssetType:   bizLine,
+		Category:    category,
 		Tags:        tags,
 		ContentHash: contentHash,
 		FilePath:    filePath,
@@ -159,11 +162,14 @@ func NewAssetWithID(id ID, name, description, bizLine string, tags []string, con
 
 // AssetSummary is a lightweight representation of an asset for listing.
 type AssetSummary struct {
-	ID        ID
-	Name      string
-	AssetType   string
-	State     State
-	UpdatedAt time.Time
+	ID            ID
+	Name          string
+	AssetType     string
+	Category      string
+	Tags          []string
+	State         State
+	UpdatedAt     time.Time
+	LatestScore   *float64
 }
 
 // AssetDetail is a detailed representation of an asset.

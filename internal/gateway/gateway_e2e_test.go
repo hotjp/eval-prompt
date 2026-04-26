@@ -715,7 +715,7 @@ func (m *e2eMockAssetIndexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *e2eMockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (m *e2eMockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	return nil
 }
 

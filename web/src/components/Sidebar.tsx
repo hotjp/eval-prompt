@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
-import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal } from 'antd'
+import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal, Select } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   AppstoreOutlined,
   SwapOutlined,
@@ -39,10 +39,12 @@ type Status = 'ok' | 'error' | 'loading' | 'degraded'
 
 function Sidebar() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [serverStatus, setServerStatus] = useState<Status>('loading')
   const [healthData, setHealthData] = useState<HealthStatus | null>(null)
   const [repoStatus, setRepoStatus] = useState<{ current?: RepoStatus; repos: RepoEntry[]; is_first_use: boolean } | null>(null)
   const [assetCount, setAssetCount] = useState(0)
+  const [categoryCounts, setCategoryCounts] = useState({ content: 0, eval: 0, metric: 0 })
   const [loading, setLoading] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
@@ -101,8 +103,17 @@ function Sidebar() {
     try {
       const res = await assetApi.list()
       setAssetCount(res.total)
+      // Compute category counts
+      const counts = { content: 0, eval: 0, metric: 0 }
+      res.assets.forEach(a => {
+        if (a.category === 'content') counts.content++
+        else if (a.category === 'eval') counts.eval++
+        else if (a.category === 'metric') counts.metric++
+      })
+      setCategoryCounts(counts)
     } catch {
       setAssetCount(0)
+      setCategoryCounts({ content: 0, eval: 0, metric: 0 })
     }
   }
 
@@ -258,8 +269,37 @@ function Sidebar() {
     ),
   }
 
+  const currentCategory = searchParams.get('category') || ''
+
+  const handleCategoryChange = (value: string) => {
+    if (value) {
+      setSearchParams({ category: value })
+      navigate('/assets')
+    } else {
+      setSearchParams({})
+      navigate('/assets')
+    }
+  }
+
   const navItems = [
-    { key: '/assets', icon: <AppstoreOutlined />, label: <span>Assets {assetCount > 0 && <span style={{ color: '#8c8c8c', fontWeight: 'normal' }}>({assetCount})</span>}</span> },
+    {
+      key: '/assets',
+      icon: <AppstoreOutlined />,
+      label: (
+        <Select
+          value={currentCategory}
+          onChange={handleCategoryChange}
+          placeholder="All Assets"
+          style={{ minWidth: 140 }}
+          options={[
+            { value: '', label: `All Assets (${assetCount})` },
+            { value: 'content', label: `Prompts (${categoryCounts.content})` },
+            { value: 'eval', label: `Eval Cases (${categoryCounts.eval})` },
+            { value: 'metric', label: `Metrics (${categoryCounts.metric})` },
+          ]}
+        />
+      ),
+    },
     { key: '/compare', icon: <SwapOutlined />, label: 'Compare' },
     { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
   ]

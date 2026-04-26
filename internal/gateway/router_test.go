@@ -165,7 +165,7 @@ func (m *mockAssetIndexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	return nil
 }
 

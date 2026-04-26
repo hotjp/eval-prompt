@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Row, Col, Statistic, Button, Space, Spin, message, Table, Tag, Select, Progress } from 'antd'
+import { Card, Row, Col, Statistic, Button, Space, Spin, message, Table, Tag, Select, Progress, InputNumber } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import * as echarts from 'echarts'
 import { assetApi, evalApi } from '../api/client'
@@ -17,6 +17,8 @@ function EvalPanelView() {
   const [running, setRunning] = useState(false)
   const [execution, setExecution] = useState<Execution | null>(null)
   const [evalMode, setEvalMode] = useState<string>('single')
+  const [evalModel, setEvalModel] = useState<string>('')
+  const [evalTemperature, setEvalTemperature] = useState<number>(0.7)
   const evalConcurrency = useStore((state) => state.evalConcurrency)
 
   const chartRef = useRef<HTMLDivElement>(null)
@@ -100,6 +102,8 @@ function EvalPanelView() {
         asset_id: id,
         mode: evalMode,
         concurrency: evalConcurrency,
+        model: evalModel || undefined,
+        temperature: evalTemperature,
       })
       useStore.getState().setRunningEval({ id: result.execution_id, assetId: id, assetName: asset?.name || id })
       message.info('Eval started, execution ID: ' + result.execution_id)
@@ -197,6 +201,30 @@ function EvalPanelView() {
                   { value: 'batch', label: 'Batch' },
                   { value: 'matrix', label: 'Matrix' },
                 ]}
+              />
+              <Select
+                value={evalModel}
+                onChange={setEvalModel}
+                style={{ width: 160 }}
+                disabled={running}
+                placeholder="Select model"
+                allowClear
+                options={[
+                  { value: 'gpt-4o', label: 'GPT-4o' },
+                  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+                  { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
+                  { value: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku' },
+                ]}
+              />
+              <span>Temp:</span>
+              <InputNumber
+                value={evalTemperature}
+                onChange={(v) => setEvalTemperature(v ?? 0.7)}
+                min={0}
+                max={2}
+                step={0.1}
+                disabled={running}
+                style={{ width: 80 }}
               />
               <span>Concurrency: {evalConcurrency}</span>
               <Button

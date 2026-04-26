@@ -67,6 +67,13 @@ func (i *Indexer) persist() error {
 		Tags        []string                  `json:"tags"`
 		State       string                    `json:"state"`
 		Snapshots   []service.SnapshotSummary `json:"snapshots"`
+		Category    string                    `json:"category"`
+		EvalHistory []domain.EvalHistoryEntry `json:"eval_history"`
+		EvalStats   domain.EvalStats         `json:"eval_stats"`
+		Triggers    []domain.TriggerEntry    `json:"triggers"`
+		TestCases   []domain.TestCase         `json:"test_cases"`
+		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
+		Labels      []service.LabelInfo       `json:"labels"`
 	}
 	data := make([]persistEntry, 0, len(i.assets))
 	for _, entry := range i.assets {
@@ -78,6 +85,13 @@ func (i *Indexer) persist() error {
 			Tags:        entry.detail.Tags,
 			State:       entry.detail.State,
 			Snapshots:   entry.detail.Snapshots,
+			Category:    entry.detail.Category,
+			EvalHistory: entry.detail.EvalHistory,
+			EvalStats:   entry.detail.EvalStats,
+			Triggers:    entry.detail.Triggers,
+			TestCases:   entry.detail.TestCases,
+			RecommendedSnapshotID: entry.detail.RecommendedSnapshotID,
+			Labels:      entry.detail.Labels,
 		})
 	}
 	enc := json.NewEncoder(f)
@@ -107,6 +121,13 @@ func (i *Indexer) Load() error {
 		Tags        []string                  `json:"tags"`
 		State       string                    `json:"state"`
 		Snapshots   []service.SnapshotSummary `json:"snapshots"`
+		Category    string                    `json:"category"`
+		EvalHistory []domain.EvalHistoryEntry `json:"eval_history"`
+		EvalStats   domain.EvalStats         `json:"eval_stats"`
+		Triggers    []domain.TriggerEntry    `json:"triggers"`
+		TestCases   []domain.TestCase         `json:"test_cases"`
+		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
+		Labels      []service.LabelInfo       `json:"labels"`
 	}
 	var data []persistEntry
 	if err := json.NewDecoder(f).Decode(&data); err != nil {
@@ -134,7 +155,13 @@ func (i *Indexer) Load() error {
 				Tags:        pe.Tags,
 				State:       pe.State,
 				Snapshots:   pe.Snapshots,
-				Labels:      nil,
+				Category:    pe.Category,
+				EvalHistory: pe.EvalHistory,
+				EvalStats:   pe.EvalStats,
+				Triggers:    pe.Triggers,
+				TestCases:   pe.TestCases,
+				RecommendedSnapshotID: pe.RecommendedSnapshotID,
+				Labels:      pe.Labels,
 			},
 		}
 	}
@@ -260,7 +287,8 @@ func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *se
 		ID:          fm.ID,
 		Name:        fm.Name,
 		Description: fm.Description,
-		AssetType:     fm.AssetType,
+		AssetType:   fm.AssetType,
+		Category:    fm.Category,
 		Tags:        fm.Tags,
 		State:       fm.State,
 		ContentHash: fm.ContentHash,
@@ -294,6 +322,13 @@ func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *se
 		Tags:        asset.Tags,
 		State:       asset.State,
 		Snapshots:   snapshots,
+		Category:              fm.Category,
+		EvalHistory:          fm.EvalHistory,
+		EvalStats:            fm.EvalStats,
+		Triggers:             fm.Triggers,
+		TestCases:            fm.TestCases,
+		RecommendedSnapshotID: fm.RecommendedSnapshotID,
+		Labels:               service.ParseLabels(fm.Labels),
 	}}
 	if existed {
 		report.Updated++
@@ -326,7 +361,8 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 				ID:          entry.asset.ID,
 				Name:        entry.asset.Name,
 				Description: entry.asset.Description,
-				AssetType:     entry.asset.AssetType,
+				AssetType:   entry.asset.AssetType,
+				Category:    entry.asset.Category,
 				Tags:        entry.asset.Tags,
 				State:       entry.asset.State,
 				LatestScore: latestScore,
@@ -359,7 +395,8 @@ func (i *Indexer) Save(ctx context.Context, asset service.Asset) error {
 			ID:          asset.ID,
 			Name:        asset.Name,
 			Description: asset.Description,
-			AssetType:     asset.AssetType,
+			AssetType:   asset.AssetType,
+			Category:    asset.Category,
 			Tags:        asset.Tags,
 			State:       asset.State,
 			Snapshots:   []service.SnapshotSummary{},
@@ -439,7 +476,7 @@ func (i *Indexer) SaveFileContent(ctx context.Context, id, fullContent, commitMe
 }
 
 // CreatePlaceholder creates a draft placeholder file and commits it to Git.
-func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	if err := pathutil.ValidateID(id); err != nil {
 		return err
 	}
@@ -458,11 +495,12 @@ func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine strin
 	}
 
 	fm := &domain.FrontMatter{
-		ID:      id,
-		Name:    name,
+		ID:       id,
+		Name:     name,
 		AssetType: bizLine,
-		Tags:    tags,
-		State:   "draft",
+		Tags:     tags,
+		State:    "draft",
+		Category: category,
 	}
 
 	fullContent, err := yamlutil.FormatMarkdown(fm, `
@@ -617,6 +655,11 @@ func matchAsset(asset service.Asset, query string, filters service.SearchFilters
 
 	// State filter
 	if filters.State != "" && filters.State != asset.State {
+		return false
+	}
+
+	// Category filter
+	if filters.Category != "" && filters.Category != asset.Category {
 		return false
 	}
 

@@ -144,6 +144,10 @@ type EvalService struct {
 	// File-based stores for eval execution
 	executionStore *ExecutionFileStore
 	callStore     *LLMCallFileStore
+
+	// File manager for frontmatter operations
+	fileManager   AssetFileManager
+	configManager ConfigManager
 }
 
 // NewEvalService creates a new EvalService.
@@ -202,6 +206,18 @@ func (s *EvalService) WithExecutionStore(store *ExecutionFileStore) *EvalService
 // WithCallStore sets the LLM call file store.
 func (s *EvalService) WithCallStore(store *LLMCallFileStore) *EvalService {
 	s.callStore = store
+	return s
+}
+
+// WithFileManager sets the file manager for frontmatter operations.
+func (s *EvalService) WithFileManager(fileManager AssetFileManager) *EvalService {
+	s.fileManager = fileManager
+	return s
+}
+
+// WithConfigManager sets the config manager for indexer refresh notifications.
+func (s *EvalService) WithConfigManager(configManager ConfigManager) *EvalService {
+	s.configManager = configManager
 	return s
 }
 
@@ -398,6 +414,11 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 		slog.Warn("failed to update execution progress", "error", err)
 	}
 
+	// Update asset frontmatter with eval history
+	if err := s.updateAssetEvalHistory(ctx, exec); err != nil {
+		slog.Warn("failed to update asset eval_history", "error", err)
+	}
+
 	return exec, nil
 }
 
@@ -491,6 +512,99 @@ func (s *EvalService) appendFailedCall(ctx context.Context, execID, runID, asset
 	}
 }
 
+// updateAssetEvalHistory updates the asset's frontmatter with eval execution history.
+func (s *EvalService) updateAssetEvalHistory(ctx context.Context, exec *domain.EvalExecution) error {
+	if s.fileManager == nil {
+		slog.Warn("fileManager not configured, skipping eval_history update")
+		return nil
+	}
+
+	// 1. Get all calls for this execution
+	calls, err := s.callStore.ListByExecution(ctx, exec.ID)
+	if err != nil {
+		return fmt.Errorf("failed to list calls: %w", err)
+	}
+
+	if len(calls) == 0 {
+		slog.Info("no calls found for execution, skipping eval_history update", "execution_id", exec.ID)
+		return nil
+	}
+
+	// 2. Read asset frontmatter
+	fm, err := s.fileManager.GetFrontmatter(ctx, exec.AssetID)
+	if err != nil {
+		return fmt.Errorf("failed to get frontmatter: %w", err)
+	}
+
+	// 3. Calculate aggregate stats from calls
+	var totalTokensIn, totalTokensOut int
+	var totalLatencyMs int64
+	var successCount int
+	completedCalls := make([]*LLMCall, 0, len(calls))
+	for _, call := range calls {
+		totalTokensIn += call.TokensIn
+		totalTokensOut += call.TokensOut
+		totalLatencyMs += call.LatencyMs
+		if call.Status == "completed" {
+			successCount++
+			completedCalls = append(completedCalls, call)
+		}
+	}
+
+	// 4. Construct EvalHistoryEntry (score暂设为0，因为当前RunEval没有评分逻辑)
+	entry := domain.EvalHistoryEntry{
+		RunID:              exec.ID,
+		SnapshotID:         exec.SnapshotID,
+		Score:              0, // TODO: 评分逻辑待补充
+		DeterministicScore: 0,
+		RubricScore:        0,
+		Model:              exec.Model,
+		EvalCaseVersion:    "", // RunEval doesn't track specific case version
+		TokensIn:           totalTokensIn,
+		TokensOut:          totalTokensOut,
+		DurationMs:         totalLatencyMs,
+		Date:               time.Now().Format("2006-01-02"),
+		By:                 "system",
+	}
+	fm.EvalHistory = append(fm.EvalHistory, entry)
+
+	// 5. Update eval_stats using Welford algorithm
+	if fm.EvalStats == nil {
+		fm.EvalStats = make(domain.EvalStats)
+	}
+	stat := fm.EvalStats[exec.Model]
+	// Score暂设为0，后续评分逻辑补充后使用实际分数
+	stat.Update(0)
+	stat.LastRun = time.Now().Format("2006-01-02")
+	fm.EvalStats[exec.Model] = stat
+
+	// 6. Write back frontmatter
+	commitMsg := fmt.Sprintf("Update eval_history for asset %s after execution %s", exec.AssetID, exec.ID)
+	if _, err := s.fileManager.UpdateFrontmatter(ctx, exec.AssetID, func(f *domain.FrontMatter) error {
+		f.EvalHistory = fm.EvalHistory
+		f.EvalStats = fm.EvalStats
+		return nil
+	}, commitMsg); err != nil {
+		return fmt.Errorf("failed to update frontmatter: %w", err)
+	}
+
+	// 7. Git commit via gitBridger
+	if s.gitBridger != nil {
+		// Get the file path for the asset
+		filePath := fmt.Sprintf("prompts/%s.md", exec.AssetID)
+		if _, err := s.gitBridger.StageAndCommit(ctx, filePath, commitMsg); err != nil {
+			slog.Warn("failed to commit eval_history", "error", err)
+		}
+	}
+
+	// 8. Notify indexer to refresh
+	if s.configManager != nil {
+		s.configManager.Notify(ctx, "repo", []string{exec.AssetID})
+	}
+
+	return nil
+}
+
 // GetExecution retrieves an eval execution by ID.
 // Eval executions are tracked via in-memory coordinators.
 func (s *EvalService) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
@@ -520,8 +634,19 @@ func (s *EvalService) CancelExecution(ctx context.Context, executionID string) e
 }
 
 // ListExecutions lists eval executions with pagination.
-// Currently only returns running executions from memory.
 func (s *EvalService) ListExecutions(ctx context.Context, offset, limit int) ([]*domain.EvalExecution, int, error) {
+	// If no running executions in memory, use executionStore for proper pagination
+	hasCoordinators := false
+	s.coordinators.Range(func(key, value interface{}) bool {
+		hasCoordinators = true
+		return false // stop after first found
+	})
+	if !hasCoordinators {
+		executions, total, err := s.executionStore.List(ctx, offset, limit)
+		return executions, total, err
+	}
+
+	// Collect in-memory running executions
 	executions := make([]*domain.EvalExecution, 0)
 	s.coordinators.Range(func(key, value interface{}) bool {
 		if coord, ok := value.(*Coordinator); ok {

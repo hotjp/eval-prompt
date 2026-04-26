@@ -57,7 +57,7 @@ func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, fullContent,
 	return "", nil
 }
 
-func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
 	return nil
 }
 

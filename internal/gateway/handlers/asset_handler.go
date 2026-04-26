@@ -145,16 +145,80 @@ func mergeTriggers(existing, incoming []domain.TriggerEntry) []domain.TriggerEnt
 
 // AssetResponse represents the API response for an asset.
 type AssetResponse struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
-	AssetType     string             `json:"asset_type,omitempty"`
-	Tags        []string           `json:"tags,omitempty"`
-	State       string             `json:"state,omitempty"`
-	Labels      map[string]string  `json:"labels,omitempty"`
-	Snapshots   []SnapshotResponse `json:"snapshots,omitempty"`
-	CreatedAt   time.Time          `json:"created_at,omitempty"`
-	UpdatedAt   time.Time          `json:"updated_at,omitempty"`
+	ID                     string                  `json:"id"`
+	Name                   string                  `json:"name"`
+	Description            string                  `json:"description,omitempty"`
+	AssetType              string                  `json:"asset_type,omitempty"`
+	Tags                   []string                `json:"tags,omitempty"`
+	State                  string                  `json:"state,omitempty"`
+	Labels                 map[string]string       `json:"labels,omitempty"`
+	Snapshots              []SnapshotResponse      `json:"snapshots,omitempty"`
+	CreatedAt              time.Time               `json:"created_at,omitempty"`
+	UpdatedAt              time.Time               `json:"updated_at,omitempty"`
+	Category               string                  `json:"category,omitempty"`
+	EvalHistory            []EvalHistoryResponse   `json:"eval_history,omitempty"`
+	EvalStats              EvalStatsResponse       `json:"eval_stats,omitempty"`
+	Triggers               []TriggerResponse       `json:"triggers,omitempty"`
+	TestCases              []TestCaseResponse     `json:"test_cases,omitempty"`
+	RecommendedSnapshotID  string                  `json:"recommended_snapshot_id,omitempty"`
+}
+
+// EvalHistoryResponse represents an eval history entry in API response.
+type EvalHistoryResponse struct {
+	RunID              string  `json:"run_id"`
+	SnapshotID         string  `json:"snapshot_id"`
+	Score              int     `json:"score"`
+	DeterministicScore float64 `json:"deterministic_score"`
+	RubricScore        int     `json:"rubric_score"`
+	Model              string  `json:"model"`
+	EvalCaseVersion    string  `json:"eval_case_version"`
+	TokensIn           int     `json:"tokens_in"`
+	TokensOut          int     `json:"tokens_out"`
+	DurationMs         int64   `json:"duration_ms"`
+	Date               string  `json:"date"`
+	By                 string  `json:"by"`
+}
+
+// EvalStatsResponse represents eval statistics in API response.
+type EvalStatsResponse map[string]ModelStatResponse
+
+// ModelStatResponse represents statistics for a single model.
+type ModelStatResponse struct {
+	Count   int     `json:"count"`
+	Mean    float64 `json:"mean"`
+	StdDev  float64 `json:"stddev"`
+	Min     float64 `json:"min"`
+	Max     float64 `json:"max"`
+	LastRun string  `json:"last_run"`
+}
+
+// TriggerResponse represents a trigger entry in API response.
+type TriggerResponse struct {
+	Pattern    string   `json:"pattern"`
+	Examples   []string `json:"examples,omitempty"`
+	Confidence float64  `json:"confidence,omitempty"`
+}
+
+// TestCaseResponse represents a test case in API response.
+type TestCaseResponse struct {
+	ID       string                  `json:"id"`
+	Name     string                  `json:"name,omitempty"`
+	Input    interface{}             `json:"input,omitempty"`
+	Expected *TestCaseExpectedResponse `json:"expected,omitempty"`
+	Rubric   []TestCaseRubricResponse `json:"rubric,omitempty"`
+}
+
+// TestCaseExpectedResponse represents expected output for a test case.
+type TestCaseExpectedResponse struct {
+	Score   int    `json:"score,omitempty"`
+	Content string `json:"content,omitempty"`
+}
+
+// TestCaseRubricResponse represents a rubric check in a test case.
+type TestCaseRubricResponse struct {
+	Check    string  `json:"check"`
+	Weight   float64 `json:"weight,omitempty"`
+	Criteria string  `json:"criteria,omitempty"`
 }
 
 // SnapshotResponse represents a snapshot in API response.
@@ -174,6 +238,7 @@ type SnapshotResponse struct {
 //	@Tags assets
 //	@Accept json
 //	@Produce json
+//	@Param category query string false "Category filter (content/eval/metric)"
 //	@Param asset_type query string false "Business line filter"
 //	@Param tag query string false "Tag filter"
 //	@Param state query string false "State filter"
@@ -182,12 +247,14 @@ type SnapshotResponse struct {
 func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	category := r.URL.Query().Get("category")
 	bizLine := r.URL.Query().Get("asset_type")
 	tag := r.URL.Query().Get("tag")
 	state := r.URL.Query().Get("state")
 
 	filters := service.SearchFilters{
 		RepoPath: h.getCurrentRepoPath(),
+		Category: category,
 		AssetType:  bizLine,
 		State:    state,
 	}
@@ -207,6 +274,7 @@ func (h *AssetHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
 			ID:          r.ID,
 			Name:        r.Name,
 			Description: r.Description,
+			Category:    r.Category,
 			AssetType:     r.AssetType,
 			Tags:        r.Tags,
 			State:       r.State,
@@ -264,15 +332,86 @@ func (h *AssetHandler) GetAsset(w http.ResponseWriter, r *http.Request) {
 		labels[l.Name] = l.SnapshotID
 	}
 
+	// Convert eval history
+	evalHistory := make([]EvalHistoryResponse, len(detail.EvalHistory))
+	for i, eh := range detail.EvalHistory {
+		evalHistory[i] = EvalHistoryResponse{
+			RunID:              eh.RunID,
+			SnapshotID:         eh.SnapshotID,
+			Score:              eh.Score,
+			DeterministicScore: eh.DeterministicScore,
+			RubricScore:        eh.RubricScore,
+			Model:              eh.Model,
+			EvalCaseVersion:    eh.EvalCaseVersion,
+			TokensIn:           eh.TokensIn,
+			TokensOut:          eh.TokensOut,
+			DurationMs:         eh.DurationMs,
+			Date:               eh.Date,
+			By:                 eh.By,
+		}
+	}
+
+	// Convert eval stats
+	evalStats := make(EvalStatsResponse)
+	for model, stat := range detail.EvalStats {
+		evalStats[model] = ModelStatResponse{
+			Count:   stat.Count,
+			Mean:    stat.Mean,
+			StdDev:  stat.StdDev(),
+			Min:     stat.Min,
+			Max:     stat.Max,
+			LastRun: stat.LastRun,
+		}
+	}
+
+	// Convert triggers
+	triggers := make([]TriggerResponse, len(detail.Triggers))
+	for i, t := range detail.Triggers {
+		triggers[i] = TriggerResponse{
+			Pattern:    t.Pattern,
+			Examples:   t.Examples,
+			Confidence: t.Confidence,
+		}
+	}
+
+	// Convert test cases
+	testCases := make([]TestCaseResponse, len(detail.TestCases))
+	for i, tc := range detail.TestCases {
+		testCases[i] = TestCaseResponse{
+			ID:   tc.ID,
+			Name: tc.Name,
+			Input: tc.Input,
+		}
+		if tc.Expected != nil {
+			testCases[i].Expected = &TestCaseExpectedResponse{
+				Score:   tc.Expected.Score,
+				Content: tc.Expected.Content,
+			}
+		}
+		for _, r := range tc.Rubric {
+			testCases[i].Rubric = append(testCases[i].Rubric, TestCaseRubricResponse{
+				Check:    r.Check,
+				Weight:   r.Weight,
+				Criteria: r.Criteria,
+			})
+		}
+	}
+
 	resp := AssetResponse{
-		ID:          detail.ID,
-		Name:        detail.Name,
-		Description: detail.Description,
-		AssetType:     detail.AssetType,
-		Tags:        detail.Tags,
-		State:       detail.State,
-		Snapshots:   snapshots,
-		Labels:      labels,
+		ID:                     detail.ID,
+		Name:                   detail.Name,
+		Description:            detail.Description,
+		AssetType:              detail.AssetType,
+		Tags:                   detail.Tags,
+		State:                  detail.State,
+		Snapshots:              snapshots,
+		Labels:                 labels,
+		Category:               detail.Category,
+		EvalHistory:            evalHistory,
+		EvalStats:              evalStats,
+		Triggers:               triggers,
+		TestCases:              testCases,
+		RecommendedSnapshotID:  detail.RecommendedSnapshotID,
 	}
 
 	h.writeJSON(w, http.StatusOK, resp)
@@ -286,6 +425,7 @@ type CreateAssetRequest struct {
 	AssetType     string   `json:"asset_type,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	Content     string   `json:"content,omitempty"`
+	Category    string   `json:"category,omitempty"`
 }
 
 // CreateAsset handles POST /api/v1/assets.
@@ -330,7 +470,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create placeholder file and commit to Git (best effort — non-fatal if git unavailable)
-	if err := h.indexer.CreatePlaceholder(ctx, req.ID, req.Name, req.AssetType, req.Tags); err != nil {
+	if err := h.indexer.CreatePlaceholder(ctx, req.ID, req.Name, req.AssetType, req.Tags, req.Category); err != nil {
 		// Log but don't fail — placeholder is a courtesy for Git users
 		h.logger.Warn("failed to create placeholder file", "asset_id", req.ID, "error", err, "layer", "L5")
 	}
