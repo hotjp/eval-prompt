@@ -35,7 +35,7 @@ type SemanticAnalyzer interface {
 type AnalyzeContentRequest struct {
     Content     string // prompt 文本内容
     Description string // 可选，资产描述
-    BizLine    string // 可选，业务线提示
+    AssetType    string // 可选，业务线提示
 }
 
 // AnalyzeContentResult 是 AnalyzeContent 的输出。

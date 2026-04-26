@@ -7,14 +7,6 @@
       "claimed_at": "2026-04-24T22:46:45.054874",
       "last_heartbeat": "2026-04-24T22:46:45.054874",
       "checkpoint": null
-    },
-    "task_055": {
-      "session_id": "task_055_202604251507_e3b7",
-      "task_id": "task_055",
-      "status": "claimed",
-      "claimed_at": "2026-04-25T15:07:38.378927",
-      "last_heartbeat": "2026-04-25T15:07:38.378927",
-      "checkpoint": null
     }
   }
 }

@@ -51,6 +51,7 @@ function Sidebar() {
   const [gitSyncing, setGitSyncing] = useState(false)
   const runningEval = useStore(s => s.runningEval)
   const showInitRepoModal = useStore(s => s.showInitRepoModal)
+  const initRepoModalReason = useStore(s => s.initRepoModalReason)
   const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
 
   useEffect(() => {
@@ -537,7 +538,7 @@ function Sidebar() {
                   key: 'init',
                   label: 'Initialize New Repo',
                   icon: <FolderOutlined />,
-                  onClick: () => setShowInitRepoModal(true),
+                  onClick: () => setShowInitRepoModal(true, 'manual'),
                 },
                 { type: 'divider' as const },
                 {
@@ -604,7 +605,7 @@ function Sidebar() {
                   key: 'init',
                   label: 'Initialize New Repo',
                   icon: <FolderOutlined />,
-                  onClick: () => setShowInitRepoModal(true),
+                  onClick: () => setShowInitRepoModal(true, 'manual'),
                 },
               ],
             }}
@@ -625,16 +626,23 @@ function Sidebar() {
     </Header>
 
     <Modal
-      title="Initialize New Repository"
+      title={initRepoModalReason === 'api_error' ? '无法创建资产' : '初始化仓库'}
       open={showInitRepoModal}
       onOk={handleInitRepo}
       onCancel={() => { setShowInitRepoModal(false); setInitPath('') }}
-      okText="Initialize"
+      okText="初始化"
       confirmLoading={initLoading}
     >
-      <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
-        Directory path — recommended to be under your home directory. Will be created as Git repo if needed.
-      </div>
+      {initRepoModalReason === 'api_error' ? (
+        <div style={{ fontSize: 13, color: '#595959' }}>
+          <p style={{ marginBottom: 12 }}>无法连接到服务器，请检查服务状态后再试。</p>
+          <p>如果你是首次使用，需要先初始化一个本地仓库来存储 Prompt 资产。</p>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
+          目录路径 — 建议放在 home 目录下。如果目录不存在，将自动创建为 Git 仓库。
+        </div>
+      )}
       <Input
         placeholder="$HOME/path/to/repo"
         value={initPath}

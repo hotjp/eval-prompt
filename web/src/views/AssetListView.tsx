@@ -54,13 +54,13 @@ function AssetListView() {
     try {
       const status = await adminApi.getRepoStatus()
       if (!status.current?.valid) {
-        setShowInitRepoModal(true)
+        setShowInitRepoModal(true, 'create')
         return
       }
       navigate('/assets/new')
     } catch {
-      // fallback: let the page handle errors if API is unavailable
-      navigate('/assets/new')
+      // API unavailable — treat as no valid repo, show init modal
+      setShowInitRepoModal(true, 'api_error')
     }
   }
 

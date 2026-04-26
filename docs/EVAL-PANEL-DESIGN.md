@@ -1,6 +1,6 @@
 # Eval Panel 完整设计方案
 
-**版本**: V2.0
+**版本**: V3.0
 **状态**: 设计完成，待实现
 **日期**: 2026-04-25
 **目标读者**: 开发团队、架构评审
@@ -26,6 +26,12 @@ Eval 运行结果是高价值数据：
 - 可用于趋势分析、模型对比、回归测试
 
 ### 1.3 设计原则
+
+**文件优先 / Agent 优先 / CLI 优先**：
+- 数据全在文件系统 + Git，SQLite 只是 index/cache
+- Web UI 是辅助查看器，不是 source of truth
+- Agent 通过 MCP 协议消费
+- CLI 是主要交互方式（`ep eval run` 是核心入口）
 
 **三层分离**：LLM Call 原子与评价逻辑分离，支持历史数据重新评分。
 
@@ -986,7 +992,7 @@ ORDER BY std_dev DESC;
 
 ### 11.1 架构概览
 
-执行引擎负责协调 Eval 的实际执行过程，支持并发执行和取消。
+执行引擎负责协调 Eval 的实际执行过程，支持并发执行和取消。**任务队列使用 SQLite 持久化 + 内存缓冲**，保证服务重启后能恢复。
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -997,6 +1003,7 @@ ORDER BY std_dev DESC;
 │  - 聚合 Results                                               │
 │  - 处理取消信号                                                │
 │  - 维护进度状态                                                │
+│  - 持久化任务队列（SQLite）                                     │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
         ┌───────────────────┼───────────────────┐
@@ -1231,7 +1238,27 @@ func (c *Coordinator) collectResults() {
 }
 ```
 
-### 11.3 幂等性保证
+### 11.3 持久化任务队列
+
+任务队列使用 SQLite 持久化 + 内存缓冲，服务重启后可恢复。
+
+**设计**：
+- `Execution` 表：主任务单，状态流转
+- `WorkItem` 表：子任务项，记录每个 Case × Run 的执行状态
+
+**服务重启恢复流程**：
+1. 启动时扫描 `Execution` 表，`status = running` 的为 in-flight
+2. 界面展示「Execution 中断」状态，提供「继续」或「取消」按钮
+3. 人类选择后，Coordinator 重新接管并继续执行
+
+**WorkItem 状态机**：
+```
+pending → running → completed
+              └→ failed
+              └→ cancelled（被人类取消）
+```
+
+### 11.4 幂等性保证
 
 相同 `prompt_hash + model + temperature` 的 Run 不会重复执行。
 
@@ -1256,7 +1283,7 @@ func (w *Worker) findExistingRun(run *RunResult) *Run {
 }
 ```
 
-### 11.4 执行流程状态机
+### 11.5 执行流程状态机
 
 ```
                     Coordinator 状态机
@@ -1686,11 +1713,11 @@ eval_storage:
 
 ---
 
-## 十四、成本后置计算
+## 十四、Token 统计
 
 ### 14.1 设计原则
 
-**不实时计算，事后聚合**。Token 计数在 Run 保存时记录，成本计算在分析时按需进行。
+**只记录 Token，不计算费用**。费用计算需要维护价格表（不同模型、不同版本价格不同），配置复杂且易过时。Token 数量已足够用于分析，后续可离线手动做费用计算。
 
 ### 14.2 Token 记录
 
@@ -1703,50 +1730,42 @@ type Run struct {
 }
 ```
 
-### 14.3 成本计算公式
+### 14.3 Token 统计
 
 ```typescript
-interface TokenPricing {
-  model: string
-  inputPer1M: number   // $/1M tokens
-  outputPer1M: number
-}
-
-const PRICING: Record<string, TokenPricing> = {
-  'gpt-4o': { inputPer1M: 5.0, outputPer1M: 15.0 },
-  'gpt-4o-mini': { inputPer1M: 0.15, outputPer1M: 0.6 },
-  'claude-3-5-sonnet': { inputPer1M: 3.0, outputPer1M: 15.0 },
-}
-
-function calculateCost(tokensIn: number, tokensOut: number, model: string): number {
-  const pricing = PRICING[model]
-  if (!pricing) return 0
-
-  return (tokensIn / 1_000_000) * pricing.inputPer1M +
-         (tokensOut / 1_000_000) * pricing.outputPer1M
-}
-```
-
-### 14.4 按需计算
-
-```typescript
-// 分析页面：按资产汇总成本
-async function getCostSummary(assetId: string, from: Date, to: Date) {
+// 分析页面：按资产汇总 Token
+async function getTokenSummary(assetId: string, from: Date, to: Date) {
   const runs = await evalApi.listRuns({ asset_id: assetId, from, to })
 
   const byModel = runs.reduce((acc, run) => {
-    const cost = calculateCost(run.tokens_in, run.tokens_out, run.model)
-    acc[run.model] = (acc[run.model] || 0) + cost
+    acc[run.model] = acc[run.model] || { tokensIn: 0, tokensOut: 0 }
+    acc[run.model].tokensIn += run.tokens_in
+    acc[run.model].tokensOut += run.tokens_out
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, { tokensIn: number; tokensOut: number }>)
 
   return {
-    total: Object.values(byModel).reduce((a, b) => a + b, 0),
-    byModel,
     totalTokensIn: runs.reduce((a, r) => a + r.tokens_in, 0),
     totalTokensOut: runs.reduce((a, r) => a + r.tokens_out, 0),
+    byModel,
   }
 }
+```
+
+### 14.4 费用分析（后续离线做）
+
+如需计算费用，可导出 Token 数据后用以下公式：
+
+```
+费用 = (tokens_in / 1_000_000) × input_price + (tokens_out / 1_000_000) × output_price
+```
+
+常见模型参考价格：
+| 模型 | Input ($/1M) | Output ($/1M) |
+|------|--------------|---------------|
+| gpt-4o | $5.00 | $15.00 |
+| gpt-4o-mini | $0.15 | $0.60 |
+| claude-3-5-sonnet | $3.00 | $15.00 |
 ```
 
 ---
@@ -1779,3 +1798,95 @@ async function getCostSummary(assetId: string, from: Date, to: Date) {
 1. Rubric 不删除，只标记为 deprecated
 2. 删除时检查是否有 Evaluation 引用
 3. 强制删除需要二次确认
+
+---
+
+## 十六、设计决策结论
+
+### 16.1 已确认决策
+
+| # | 问题 | 决策 | 原因 |
+|---|------|------|------|
+| 1 | Trace 存储 | **JSONL 文件** | 文件优先，Git 版本化，可离线访问 |
+| 2 | Run Response 存储 | **JSONL 文件** 或 **frontmatter** | 文件优先，永久保留 |
+| 3 | Offline 支持 | **不做** | Git + 文件系统本身可离线用 |
+| 4 | 实时进度推送 | **轮询** | 文件观察模式，不引入 WebSocket |
+| 5 | LLM 调用取消 | **不做** | Provider 层面难实现真正取消，用 context timeout 控制 |
+| 6 | 默认并发数 | **可配置**，有默认值 | 通过 `prompt_assets.concurrency` 配置 |
+| 7 | 完成通知 | **不做** | CLI/Agent 自己轮询状态 |
+| 8 | CLI 支持 | **必须做** | `ep eval run` 是核心入口 |
+
+### 16.2 配置接入方案
+
+#### Config 层
+
+```go
+// internal/config/config.go
+
+type PromptAssetsConfig struct {
+    // ...现有字段...
+    Concurrency int `koanf:"concurrency"`  // 新增，并发数
+}
+```
+
+默认值（`getDefaults()`）：
+```go
+"prompt_assets.concurrency": 4,
+```
+
+#### API 层
+
+```go
+// internal/gateway/handlers/eval_handler.go
+
+type RunEvalRequest struct {
+    AssetID         string   `json:"asset_id"`
+    SnapshotVersion string   `json:"snapshot_version"`
+    EvalCaseIDs     []string `json:"eval_case_ids,omitempty"`
+    Concurrency     int      `json:"concurrency,omitempty"`  // 可选，用 config 默值
+}
+```
+
+#### Frontend 层
+
+```typescript
+// web/src/store/index.ts
+
+interface AppState {
+  // ...现有字段...
+  evalConcurrency: number  // 新增
+}
+```
+
+---
+
+## 十七、实现优先级（更新）
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | | |
+| P0-1 | Concurrency 配置接入 | Config + API + Frontend |
+| P0-2 | Worker Pool 执行引擎 | SQLite 持久化任务队列 + Coordinator + Worker |
+| P0-3 | CLI `ep eval run` 命令 | 核心入口 |
+| P0-4 | Web UI 中断恢复 | 手动继续/取消 in-flight Execution |
+| **P1** | | |
+| P1-1 | Eval Execution API | 执行模式支持 |
+| P1-2 | 前端 Eval Panel UI | 核心 UI |
+| **P2** | | |
+| P2-1 | Batch/Matrix 执行 | 执行模式 |
+| P2-2 | Re-evaluation API | 核心差异化功能 |
+| P2-3 | Token 统计页面 | 汇总展示 Token 消耗 |
+| P2-4 | Trace Timeline | 可视化 |
+
+---
+
+## 十八、待落地事项
+
+以下事项需要实现时进一步确认：
+
+| # | 事项 | 决策 | 说明 |
+|---|------|------|------|
+| 1 | Worker Pool 任务队列 | **持久化队列**（SQLite + 内存缓冲） | 服务重启后能恢复，避免任务丢失 |
+| 2 | Execution 中断恢复 | **仅 Web UI 手动继续** | 人类可以在界面上手动恢复或取消，Agent 自己轮询 |
+| 3 | 成本计算 | **仅统计 Token** | 不做费用计算，Token 数量已记录，后续可离线分析 |
+| 4 | 多语言 | **只做英文** | i18n 后续统一做 |

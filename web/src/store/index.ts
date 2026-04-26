@@ -43,6 +43,7 @@ interface AppState {
   runningEval: { id: string; assetId: string; assetName: string } | null
   evalConcurrency: number
   showInitRepoModal: boolean
+  initRepoModalReason: 'create' | 'api_error' | null
 
   setAssets: (assets: Asset[]) => void
   setCurrentAsset: (asset: Asset | null) => void
@@ -52,7 +53,7 @@ interface AppState {
   setLoading: (loading: boolean) => void
   setRunningEval: (data: { id: string; assetId: string; assetName: string } | null) => void
   setEvalConcurrency: (concurrency: number) => void
-  setShowInitRepoModal: (show: boolean) => void
+  setShowInitRepoModal: (show: boolean, reason?: 'create' | 'api_error') => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -65,6 +66,7 @@ export const useStore = create<AppState>((set) => ({
   runningEval: null,
   evalConcurrency: 1,
   showInitRepoModal: false,
+  initRepoModalReason: null,
 
   setAssets: (assets) => set({ assets }),
   setCurrentAsset: (currentAsset) => set({ currentAsset }),
@@ -74,5 +76,5 @@ export const useStore = create<AppState>((set) => ({
   setLoading: (loading) => set({ loading }),
   setRunningEval: (runningEval) => set({ runningEval }),
   setEvalConcurrency: (evalConcurrency) => set({ evalConcurrency }),
-  setShowInitRepoModal: (showInitRepoModal) => set({ showInitRepoModal }),
+  setShowInitRepoModal: (show, reason) => set({ showInitRepoModal: show, initRepoModalReason: reason ?? null }),
 }))
