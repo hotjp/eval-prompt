@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/plugins/llm"
 	"github.com/eval-prompt/internal/service"
 )
 
@@ -111,6 +112,68 @@ func (h *LLMConfigHandler) UpdateLLMConfig(w http.ResponseWriter, r *http.Reques
 
 	h.logger.Info("LLM config updated", "count", len(configs), "layer", "L5")
 	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// TestByName tests an LLM provider by name with a test message.
+func (h *LLMConfigHandler) TestByName(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name    string `json:"name"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if req.Name == "" {
+		h.writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	// Find the config by name
+	h.mu.RLock()
+	var providerCfg *config.LLMProviderConfig
+	for i := range *h.cfg {
+		if (*h.cfg)[i].Name == req.Name {
+			providerCfg = &(*h.cfg)[i]
+			break
+		}
+	}
+	h.mu.RUnlock()
+
+	if providerCfg == nil {
+		h.writeError(w, http.StatusNotFound, "provider not found: %s", req.Name)
+		return
+	}
+
+	// Create a provider for this config
+	provider, err := llm.NewProvider(*providerCfg)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to create provider: %v", err)
+		return
+	}
+
+	// Use a default test message if none provided
+	testMessage := req.Message
+	if testMessage == "" {
+		testMessage = "Hello, please respond with 'OK' if you can read this message."
+	}
+
+	// Invoke the provider
+	ctx := r.Context()
+	resp, err := provider.Invoke(ctx, testMessage, providerCfg.DefaultModel, 0.3)
+	if err != nil {
+		h.writeJSON(w, http.StatusOK, map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"content": resp.Content,
+	})
 }
 
 // HandleLLMChange handles LLM configuration change notifications.

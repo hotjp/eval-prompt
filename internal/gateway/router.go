@@ -131,6 +131,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	// LLM Config API routes
 	mux.HandleFunc("GET /api/v1/llm-config", llmConfigHandler.GetLLMConfig)
 	mux.HandleFunc("PUT /api/v1/llm-config", llmConfigHandler.UpdateLLMConfig)
+	mux.HandleFunc("POST /api/v1/llm-config/test-by-name", llmConfigHandler.TestByName)
 
 	// Admin API routes
 	mux.HandleFunc("GET /api/v1/admin/status", adminHandler.GetStatus)
