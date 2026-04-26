@@ -469,6 +469,10 @@ func (h *EvalHandler) Rewrite(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusServiceUnavailable, "LLM not configured")
 		return
 	}
+	if h.defaultModel == "" {
+		h.writeError(w, http.StatusServiceUnavailable, "default model not configured: set default_model in LLM config or set default=true on a provider")
+		return
+	}
 
 	var req RewriteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
