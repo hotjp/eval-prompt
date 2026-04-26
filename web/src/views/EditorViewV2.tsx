@@ -101,8 +101,11 @@ function generateId() {
   return Math.random().toString(36).substring(2, 11)
 }
 
-function stripThinkTags(content: string): string {
-  return content.replace(/<think>[\s\S]*?<\/think>/g, '')
+function extractThinkContent(content: string): { think: string; clean: string } {
+  const thinkMatches = content.match(/<think>[\s\S]*?<\/think>/g)
+  const think = thinkMatches ? thinkMatches.join('\n').replace(/<\/?think>/g, '') : ''
+  const clean = content.replace(/<think>[\s\S]*?<\/think>/g, '')
+  return { think, clean }
 }
 
 function EditorViewV2() {
@@ -132,10 +135,23 @@ function EditorViewV2() {
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [expandedThinks, setExpandedThinks] = useState<Set<string>>(new Set())
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const llmConfigs = getLLMConfigs()
   const [selectedModel, setSelectedModel] = useState<string>(llmConfigs.find(c => c.default_model)?.name || llmConfigs[0]?.name || '')
+
+  const toggleThink = (id: string) => {
+    setExpandedThinks(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   // Variables state
   const [variables, setVariables] = useState<Array<{ key: string; value: string }>>(() => {
@@ -632,13 +648,26 @@ function EditorViewV2() {
               <p className="chat-empty-hint">可以要求 AI 改写、优化或解释当前 Prompt</p>
             </div>
           )}
-          {chatMessages.map((msg) => (
-            <div key={msg.id} className={`chat-message ${msg.role}`}>
-              <div className="message-bubble">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripThinkTags(msg.content)}</ReactMarkdown>
+          {chatMessages.map((msg) => {
+            const { think, clean } = extractThinkContent(msg.content)
+            return (
+              <div key={msg.id} className={`chat-message ${msg.role}`}>
+                <div className="message-bubble">
+                  {think && (
+                    <div className="think-block">
+                      <button className="think-toggle" onClick={() => toggleThink(msg.id)}>
+                        💭 Thinking {expandedThinks.has(msg.id) ? '▲' : '▼'}
+                      </button>
+                      {expandedThinks.has(msg.id) && (
+                        <pre className="think-content">{think}</pre>
+                      )}
+                    </div>
+                  )}
+                  {clean && <ReactMarkdown remarkPlugins={[remarkGfm]}>{clean}</ReactMarkdown>}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           {chatLoading && (
             <div className="chat-message assistant">
               <div className="message-bubble loading">
