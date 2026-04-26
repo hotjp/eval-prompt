@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 )
@@ -380,6 +381,10 @@ func (i *Indexer) Delete(ctx context.Context, id string) error {
 
 // GetFileContent reads the raw content of a prompt file from disk.
 func (i *Indexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	if err := pathutil.ValidateID(id); err != nil {
+		return "", err
+	}
+
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 
@@ -401,6 +406,10 @@ func (i *Indexer) GetFileContent(ctx context.Context, id string) (string, error)
 
 // SaveFileContent writes the full file content (including frontmatter) to a prompt file and commits it to Git.
 func (i *Indexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+	if err := pathutil.ValidateID(id); err != nil {
+		return "", err
+	}
+
 	repoPath := ""
 	if i.gitBridge != nil {
 		repoPath = i.gitBridge.RepoPath()
@@ -431,6 +440,10 @@ func (i *Indexer) SaveFileContent(ctx context.Context, id, fullContent, commitMe
 
 // CreatePlaceholder creates a draft placeholder file and commits it to Git.
 func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string) error {
+	if err := pathutil.ValidateID(id); err != nil {
+		return err
+	}
+
 	repoPath := ""
 	if i.gitBridge != nil {
 		repoPath = i.gitBridge.RepoPath()
