@@ -32,4 +32,13 @@ type AssetFileManager interface {
 	// GetBody reads the prompt file, strips frontmatter, and returns only the body.
 	// Returns the markdown body or error if the file doesn't exist.
 	GetBody(ctx context.Context, id string) (string, error)
+
+	// WriteFileOnly reads the existing file, applies the updater to frontmatter,
+	// replaces the body with newBody, then writes back WITHOUT committing to Git.
+	// If the file doesn't exist, creates it with default frontmatter and the given newBody.
+	WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error
+
+	// UpdateFrontmatterFileOnly reads existing file, applies updater to frontmatter,
+	// writes back WITHOUT committing to Git. Body is preserved.
+	UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error
 }

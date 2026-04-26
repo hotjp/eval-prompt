@@ -5,6 +5,7 @@ import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import { getAssetTypes } from '../config/assetTypes'
 import { getTags } from '../config/tags'
+import { categoryOptions } from '../config/categories'
 
 const { TextArea } = Input
 
@@ -15,11 +16,6 @@ const stateOptions = [
   { label: 'Active', value: 'active' },
   { label: 'Draft', value: 'draft' },
 ]
-const categoryOptions = [
-  { label: 'Prompt', value: 'content' },
-  { label: 'Eval Case', value: 'eval' },
-  { label: 'Metric', value: 'metric' },
-]
 
 function CreateAssetView() {
   const navigate = useNavigate()
@@ -27,23 +23,16 @@ function CreateAssetView() {
   const [saving, setSaving] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('content')
 
-  const handleCreate = async (values: { name: string; description?: string; asset_type: string; tags?: string[]; state?: string; category?: string; content?: string; test_cases?: string; rubric?: string }) => {
+  const handleCreate = async (values: { name: string; description?: string; asset_type: string; tags?: string[]; state?: string; category?: string; test_cases?: string; rubric?: string }) => {
     setSaving(true)
     try {
-      const payload: { id: string; name: string; description?: string; asset_type?: string; tags?: string[]; category?: string; content?: string; test_cases?: string; rubric?: string } = {
+      const payload = {
         id: values.name,
         name: values.name,
         description: values.description,
         asset_type: values.asset_type,
         tags: values.tags,
         category: values.category,
-      }
-      if (values.category === 'content' && values.content) {
-        payload.content = values.content
-      } else if (values.category === 'eval' && values.test_cases) {
-        payload.test_cases = values.test_cases
-      } else if (values.category === 'metric' && values.rubric) {
-        payload.rubric = values.rubric
       }
       await assetApi.create(payload)
       message.success('Asset created successfully')
@@ -57,12 +46,6 @@ function CreateAssetView() {
 
   const renderCategoryFields = () => {
     switch (selectedCategory) {
-      case 'content':
-        return (
-          <Form.Item label="Content" name="content">
-            <TextArea rows={10} style={{ width: 600 }} placeholder="Enter prompt content..." />
-          </Form.Item>
-        )
       case 'eval':
         return (
           <Form.Item label="Test Cases (YAML)" name="test_cases">

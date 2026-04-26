@@ -99,11 +99,11 @@ func (h *AssetHandler) generateTriggers(ctx context.Context, id, content string)
 	// Merge with existing triggers (keep higher confidence)
 	merged := mergeTriggers(fm.Triggers, incoming)
 
-	// Update frontmatter with merged triggers
-	_, err = h.fileManager.UpdateFrontmatter(ctx, id, func(frontmatter *domain.FrontMatter) error {
+	// Update frontmatter with merged triggers (write only, no git commit)
+	err = h.fileManager.UpdateFrontmatterFileOnly(ctx, id, func(frontmatter *domain.FrontMatter) error {
 		frontmatter.Triggers = merged
 		return nil
-	}, fmt.Sprintf("Update triggers for %s", id))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update frontmatter: %w", err)
 	}
@@ -621,7 +621,7 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Last-Modified", updatedAt)
 			}
 		}
-		body = strings.TrimSpace(strings.Join(lines[frontmatterEnd+1:], "\n"))
+		body = yamlutil.NormalizeBody(strings.Join(lines[frontmatterEnd+1:], "\n"))
 	} else {
 		// No frontmatter found, return as-is
 		body = fullContent
@@ -636,7 +636,9 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 }
 
 // SaveAssetContent handles PUT /api/v1/assets/{id}/content.
-// Reads existing frontmatter, replaces the body, writes back full file.
+// Reads existing frontmatter, replaces the body, writes back full file WITHOUT committing.
+// Triggers are generated asynchronously after the file is saved.
+// Use CommitAsset to manually commit changes.
 func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -657,44 +659,50 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	commitMsg := req.CommitMessage
-	if commitMsg == "" {
-		commitMsg = fmt.Sprintf("Update prompt %s", id)
-	}
-
-	// Conflict detection: check content_hash before writing
+	// Conflict detection: compute hash from current file's body and compare with client's hash
+	// This ensures conflict detection is based purely on body content, not frontmatter fields
 	if req.ContentHash != "" {
-		fm, err := h.fileManager.GetFrontmatter(ctx, id)
-		if err == nil && fm.ContentHash != "" && fm.ContentHash != req.ContentHash {
-			h.writeError(w, http.StatusConflict, "content has been modified by another session")
-			return
+		currentBody, err := h.fileManager.GetBody(ctx, id)
+		if err == nil {
+			currentHash := sha256.Sum256([]byte(yamlutil.NormalizeBody(currentBody)))
+			currentHashStr := hex.EncodeToString(currentHash[:8])
+			if currentHashStr != req.ContentHash {
+				h.writeError(w, http.StatusConflict, "content has been modified by another session")
+				return
+			}
 		}
 	}
 
+	// Normalize body for consistent hashing and storage
+	normalizedContent := yamlutil.NormalizeBody(req.Content)
+
 	// Compute new hash
-	hashed := sha256.Sum256([]byte(req.Content))
+	hashed := sha256.Sum256([]byte(normalizedContent))
 	newHash := hex.EncodeToString(hashed[:8])
 	now := time.Now()
 
-	// WriteContent replaces the body with req.Content and updates frontmatter
-	hash, err := h.fileManager.WriteContent(ctx, id, func(fm *domain.FrontMatter) error {
+	// WriteFileOnly saves the file without git commit
+	err := h.fileManager.WriteFileOnly(ctx, id, func(fm *domain.FrontMatter) error {
 		fm.ContentHash = newHash
 		fm.UpdatedAt = now
 		return nil
-	}, req.Content, commitMsg)
+	}, normalizedContent)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "failed to save content: %v", err)
 		return
 	}
 
-	h.logger.Info("asset content saved", "asset_id", id, "commit", hash, "layer", "L5")
+	h.logger.Info("asset content saved", "asset_id", id, "layer", "L5")
 
-	// Trigger auto-generation: analyze content and update triggers in frontmatter
+	// Async: generate triggers in background (does not block response)
 	if h.semanticAnalyzer != nil {
-		triggers, err := h.generateTriggers(ctx, id, req.Content)
-		if err == nil && len(triggers) > 0 {
-			h.logger.Info("triggers auto-generated", "asset_id", id, "count", len(triggers), "layer", "L5")
-		}
+		go func() {
+			bgCtx := context.Background()
+			triggers, err := h.generateTriggers(bgCtx, id, req.Content)
+			if err == nil && len(triggers) > 0 {
+				h.logger.Info("triggers auto-generated", "asset_id", id, "count", len(triggers), "layer", "L5")
+			}
+		}()
 	}
 
 	// Preference-Applied: return=representation
@@ -703,11 +711,83 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"id":           id,
-		"content":      req.Content,
-		"commit":       hash,
+		"content":      normalizedContent,
 		"content_hash": newHash,
 		"updated_at":   now.Format(time.RFC3339),
-		"message":      "content saved successfully",
+		"message":      "content saved successfully (use /commit to save to git)",
+	})
+}
+
+// CommitAsset handles POST /api/v1/assets/{id}/commit.
+// Commits the current state of the asset file to Git.
+func (h *AssetHandler) CommitAsset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	commitMsg := r.URL.Query().Get("message")
+	if commitMsg == "" {
+		commitMsg = fmt.Sprintf("Commit asset %s", id)
+	}
+
+	// Commit via indexer (stages and commits the existing file without modifying it)
+	hash, err := h.indexer.CommitFile(ctx, id, commitMsg)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to commit: %v", err)
+		return
+	}
+
+	h.logger.Info("asset committed", "asset_id", id, "commit", hash, "layer", "L5")
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"id":      id,
+		"commit":  hash,
+		"message": "asset committed successfully",
+	})
+}
+
+// CommitBatchAssetsRequest represents the request body for batch commit.
+type CommitBatchAssetsRequest struct {
+	IDs     []string `json:"ids"`
+	Message string   `json:"message,omitempty"`
+}
+
+// CommitBatchAssets handles POST /api/v1/assets/commit.
+// Commits multiple assets in batch.
+func (h *AssetHandler) CommitBatchAssets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req CommitBatchAssetsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		h.writeError(w, http.StatusBadRequest, "ids are required")
+		return
+	}
+
+	commitMsg := req.Message
+	if commitMsg == "" {
+		commitMsg = fmt.Sprintf("Batch commit %d assets", len(req.IDs))
+	}
+
+	commits, err := h.indexer.CommitFiles(ctx, req.IDs, commitMsg)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "batch commit failed: %v", err)
+		return
+	}
+
+	h.logger.Info("batch assets committed", "count", len(commits), "layer", "L5")
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"commits": commits,
+		"message": fmt.Sprintf("committed %d assets", len(commits)),
 	})
 }
 

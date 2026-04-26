@@ -20,6 +20,8 @@ type MockAssetIndexer struct {
 	CreatePlaceholderFunc func(ctx context.Context, id, name, bizLine string, tags []string, category string) error
 	GetFileContentFunc  func(ctx context.Context, id string) (string, error)
 	SaveFileContentFunc func(ctx context.Context, id, content, commitMsg string) (string, error)
+	CommitFileFunc      func(ctx context.Context, id string, commitMsg string) (string, error)
+	CommitFilesFunc     func(ctx context.Context, ids []string, commitMsg string) (map[string]string, error)
 }
 
 func (m *MockAssetIndexer) Search(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error) {
@@ -85,6 +87,24 @@ func (m *MockAssetIndexer) SaveFileContent(ctx context.Context, id, content, com
 	return "mock-commit-hash", nil
 }
 
+func (m *MockAssetIndexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
+	if m.CommitFileFunc != nil {
+		return m.CommitFileFunc(ctx, id, commitMsg)
+	}
+	return "mock-commit-hash", nil
+}
+
+func (m *MockAssetIndexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
+	if m.CommitFilesFunc != nil {
+		return m.CommitFilesFunc(ctx, ids, commitMsg)
+	}
+	results := make(map[string]string)
+	for _, id := range ids {
+		results[id] = "mock-commit-hash"
+	}
+	return results, nil
+}
+
 func (m *MockAssetIndexer) ReInit(ctx context.Context, path string) error {
 	return nil
 }
@@ -95,6 +115,8 @@ type MockAssetFileManager struct {
 	UpdateFrontmatterFunc func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error)
 	WriteContentFunc      func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error)
 	GetBodyFunc           func(ctx context.Context, id string) (string, error)
+	WriteFileOnlyFunc     func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error
+	UpdateFrontmatterFileOnlyFunc func(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error
 }
 
 func (m *MockAssetFileManager) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
@@ -123,6 +145,20 @@ func (m *MockAssetFileManager) GetBody(ctx context.Context, id string) (string, 
 		return m.GetBodyFunc(ctx, id)
 	}
 	return "# Test Content", nil
+}
+
+func (m *MockAssetFileManager) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
+	if m.WriteFileOnlyFunc != nil {
+		return m.WriteFileOnlyFunc(ctx, id, updater, newBody)
+	}
+	return nil
+}
+
+func (m *MockAssetFileManager) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
+	if m.UpdateFrontmatterFileOnlyFunc != nil {
+		return m.UpdateFrontmatterFileOnlyFunc(ctx, id, updater)
+	}
+	return nil
 }
 
 // MockTriggerService is a mock implementation of service.TriggerServicer.

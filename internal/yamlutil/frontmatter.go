@@ -94,6 +94,42 @@ func SerializeEvalPromptFrontMatter(fm *domain.EvalPromptFrontMatter) (string, e
 	return string(data), nil
 }
 
+// NormalizeBody normalizes markdown body content for consistent hashing.
+// - Converts CRLF to LF
+// - Removes trailing whitespace on each line
+// - Ensures single trailing newline
+// - Trims leading/trailing blank lines
+func NormalizeBody(body string) string {
+	// Convert CRLF to LF
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	// Remove \r not followed by \n (old Mac-style)
+	body = strings.ReplaceAll(body, "\r", "\n")
+
+	lines := strings.Split(body, "\n")
+	var cleaned []string
+	for _, line := range lines {
+		// Remove trailing whitespace on each line
+		cleaned = append(cleaned, strings.TrimRight(line, " \t"))
+	}
+
+	// Remove leading blank lines
+	start := 0
+	for start < len(cleaned) && cleaned[start] == "" {
+		start++
+	}
+
+	// Remove trailing blank lines
+	end := len(cleaned)
+	for end > start && cleaned[end-1] == "" {
+		end--
+	}
+
+	body = strings.Join(cleaned[start:end], "\n")
+
+	// Ensure single trailing newline
+	return strings.TrimRight(body, "\n") + "\n"
+}
+
 // FormatMarkdown formats a complete .md file with front matter and content.
 // The front matter is wrapped with --- delimiters.
 func FormatMarkdown(fm *domain.FrontMatter, content string) (string, error) {

@@ -173,6 +173,25 @@ function Sidebar() {
     navigate('/settings?section=llm')
   }
 
+  const handleCommitAll = async () => {
+    setGitSyncing(true)
+    try {
+      // Get all asset IDs and commit them
+      const res = await assetApi.list()
+      const ids = res.assets.map(a => a.id)
+      if (ids.length === 0) {
+        message.warning('No assets to commit')
+        return
+      }
+      const result = await assetApi.commitBatch(ids, 'Batch commit all assets')
+      message.success(`Committed ${Object.keys(result.commits).length} assets`)
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Commit failed')
+    } finally {
+      setGitSyncing(false)
+    }
+  }
+
   const handleReconcile = async () => {
     setGitSyncing(true)
     try {
@@ -536,6 +555,17 @@ function Sidebar() {
       />
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {repoStatus?.current?.valid && (
+          <Button
+            size="small"
+            icon={<BranchesOutlined />}
+            onClick={handleCommitAll}
+            loading={gitSyncing}
+            style={{ fontSize: 12 }}
+          >
+            Commit All
+          </Button>
+        )}
         {repoStatus?.current?.valid ? (
           <Dropdown
             menu={{

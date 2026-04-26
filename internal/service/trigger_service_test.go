@@ -65,6 +65,18 @@ func (m *mockAssetIndexer) ReInit(ctx context.Context, path string) error {
 	return nil
 }
 
+func (m *mockAssetIndexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *mockAssetIndexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
+	results := make(map[string]string)
+	for _, id := range ids {
+		results[id] = "mock-commit-hash"
+	}
+	return results, nil
+}
+
 func TestTriggerService_MatchTrigger(t *testing.T) {
 	mockIndexer := &mockAssetIndexer{
 		SearchFunc: func(ctx context.Context, query string, filters SearchFilters) ([]AssetSummary, error) {

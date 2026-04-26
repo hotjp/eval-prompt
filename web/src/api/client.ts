@@ -9,6 +9,12 @@ const noPrefixApi = axios.create({
   timeout: 10000,
 })
 
+// LLM API uses longer timeout (60s) for streaming/complex operations
+const llmAxios = axios.create({
+  baseURL: '/api/v1',
+  timeout: 60000,
+})
+
 export type AssetCategory = 'content' | 'eval' | 'metric'
 
 export interface AssetSummary {
@@ -309,8 +315,20 @@ export const assetApi = {
     return data
   },
 
-  saveContent: async (id: string, content: string, commitMessage?: string, contentHash?: string): Promise<{ id: string; content: string; commit: string; content_hash: string; updated_at: string }> => {
+  saveContent: async (id: string, content: string, commitMessage?: string, contentHash?: string): Promise<{ id: string; content: string; content_hash: string; updated_at: string; message: string }> => {
     const { data } = await api.put(`/assets/${id}/content`, { content, commit_message: commitMessage, content_hash: contentHash })
+    return data
+  },
+
+  commit: async (id: string, message?: string): Promise<{ id: string; commit: string; message: string }> => {
+    const params = message ? `?message=${encodeURIComponent(message)}` : ''
+    const { data } = await api.post(`/assets/${id}/commit${params}`)
+    return data
+  },
+
+  commitBatch: async (ids: string[], message?: string): Promise<{ commits: Record<string, string>; message: string }> => {
+    const params = message ? `?message=${encodeURIComponent(message)}` : ''
+    const { data } = await api.post(`/assets/commit${params}`, { ids })
     return data
   },
 }
@@ -423,11 +441,11 @@ export const llmConfigApi = {
 
 export const llmApi = {
   rewrite: async (content: string, instruction: string) => {
-    const { data } = await api.post('/rewrite', { content, instruction })
+    const { data } = await llmAxios.post('/rewrite', { content, instruction })
     return data
   },
   diff: async (oldContent: string, newContent: string, oldVersion: string, newVersion: string) => {
-    const { data } = await api.post('/eval/diff', { old_content: oldContent, new_content: newContent, old_version: oldVersion, new_version: newVersion })
+    const { data } = await llmAxios.post('/eval/diff', { old_content: oldContent, new_content: newContent, old_version: oldVersion, new_version: newVersion })
     return data
   },
 }

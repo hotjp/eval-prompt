@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Card, Tag, Input, Button, Space, message, Spin, Row, Col, Dropdown, Modal } from 'antd'
+import { Card, Tag, Input, Button, Space, message, Spin, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
 import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
 import { assetApi, adminApi } from '../api/client'
@@ -8,18 +8,7 @@ import type { AssetSummary } from '../api/client'
 import { useStore } from '../store'
 import { getAssetTypes } from '../config/assetTypes'
 import { getTagColor } from '../config/tags'
-
-const categoryColors: Record<string, string> = {
-  content: 'blue',
-  eval: 'purple',
-  metric: 'cyan',
-}
-
-const categoryLabels: Record<string, string> = {
-  content: 'Prompt',
-  eval: 'Eval Case',
-  metric: 'Metric',
-}
+import { categoryLabels, categoryColors } from '../config/categories'
 
 const { Search } = Input
 
@@ -99,6 +88,16 @@ function AssetListView() {
     }
   }
 
+  const handleMarkDraft = async (id: string) => {
+    try {
+      await assetApi.update(id, { state: 'draft' })
+      message.success('Asset marked as draft')
+      loadAssets()
+    } catch {
+      message.error('Failed to mark as draft')
+    }
+  }
+
   const handleDelete = async (id: string) => {
     try {
       await assetApi.delete(id)
@@ -117,6 +116,12 @@ function AssetListView() {
           label: 'Restore',
           icon: <RollbackOutlined />,
           onClick: () => handleRestore(asset.id),
+        },
+        {
+          key: 'markDraft',
+          label: 'Mark as Draft',
+          icon: <EditOutlined />,
+          onClick: () => handleMarkDraft(asset.id),
         },
         {
           key: 'delete',
@@ -294,11 +299,25 @@ function AssetListView() {
             {viewMode === 'archived' ? 'No archived assets' : 'No assets found'}
           </div>
         ) : (
-          <Row gutter={[16, 16]}>
+          <div style={{ display: 'flow-root', clear: 'both' }}>
             {filteredAssets.map((asset) => (
-              <Col key={asset.id} xs={24} sm={12} md={8} lg={6}>
+              <div key={asset.id} style={{ float: 'left', width: 280, marginRight: 16, marginBottom: 16 }}>
                 <Card
-                  bodyStyle={{ padding: 16, position: 'relative' }}
+                  headStyle={{ padding: '8px 12px', minHeight: 40 }}
+                  bodyStyle={{ padding: 12, position: 'relative' }}
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Tag color={categoryColors[asset.category || 'content'] || 'default'} style={{ margin: 0 }}>
+                        {categoryLabels[asset.category || 'content'] || asset.category}
+                      </Tag>
+                      <span
+                        style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/assets/${asset.id}/edit`) }}
+                      >
+                        {asset.name}
+                      </span>
+                    </div>
+                  }
                   actions={[
                     viewMode === 'active' && (
                       <Button key="edit" type="text" size="small" icon={<EditOutlined />} onClick={() => navigate(`/assets/${asset.id}/edit`)}>
@@ -322,15 +341,6 @@ function AssetListView() {
                     </Dropdown>
                   }
                 >
-                  {/* Category badge */}
-                  <div style={{ position: 'absolute', top: 8, left: 8 }}>
-                    <Tag color={categoryColors[asset.category || 'content'] || 'default'} style={{ margin: 0 }}>
-                      {categoryLabels[asset.category || 'content'] || asset.category || 'Prompt'}
-                    </Tag>
-                  </div>
-                  <div style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', paddingTop: 20, marginBottom: 6 }} onClick={() => navigate(`/assets/${asset.id}/edit`)}>
-                    {asset.name}
-                  </div>
                   {/* Tags below title */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                     {asset.tags?.map((tag) => (
@@ -379,9 +389,9 @@ function AssetListView() {
                     </Tag>
                   </div>
                 </Card>
-              </Col>
+              </div>
             ))}
-          </Row>
+          </div>
         )}
       </div>
     </div>

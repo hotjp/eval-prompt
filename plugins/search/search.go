@@ -573,6 +573,88 @@ func (i *Indexer) UpdateFrontmatter(ctx context.Context, id string, updater func
 	return hash, nil
 }
 
+// UpdateFrontmatterFileOnly reads the existing file, applies the updater to frontmatter,
+// writes back WITHOUT committing to Git. Body is preserved.
+func (i *Indexer) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
+	repoPath := ""
+	if i.gitBridge != nil {
+		repoPath = i.gitBridge.RepoPath()
+	}
+	if repoPath == "" {
+		return fmt.Errorf("repository not initialized")
+	}
+
+	filePath := filepath.Join(repoPath, "prompts", id+".md")
+
+	fullContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("read file %s: %w", filePath, err)
+	}
+
+	fm, body, err := yamlutil.ParseFrontMatter(string(fullContent))
+	if err != nil {
+		return fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	if err := updater(fm); err != nil {
+		return fmt.Errorf("updater rejected: %w", err)
+	}
+
+	newFullContent, err := yamlutil.FormatMarkdown(fm, body)
+	if err != nil {
+		return fmt.Errorf("format markdown: %w", err)
+	}
+
+	// Write without git commit
+	if err := os.WriteFile(filePath, []byte(newFullContent), 0644); err != nil {
+		return fmt.Errorf("write file %s: %w", filePath, err)
+	}
+
+	return nil
+}
+
+// WriteFileOnly reads the existing file, applies the updater to frontmatter,
+// replaces the body with newBody, then writes back WITHOUT committing to Git.
+// If the file doesn't exist, returns error.
+func (i *Indexer) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
+	repoPath := ""
+	if i.gitBridge != nil {
+		repoPath = i.gitBridge.RepoPath()
+	}
+	if repoPath == "" {
+		return fmt.Errorf("repository not initialized")
+	}
+
+	filePath := filepath.Join(repoPath, "prompts", id+".md")
+
+	// Read existing file
+	fullContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("read file %s: %w", filePath, err)
+	}
+
+	fm, _, err := yamlutil.ParseFrontMatter(string(fullContent))
+	if err != nil {
+		return fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	if err := updater(fm); err != nil {
+		return fmt.Errorf("updater rejected: %w", err)
+	}
+
+	newFullContent, err := yamlutil.FormatMarkdown(fm, newBody)
+	if err != nil {
+		return fmt.Errorf("format markdown: %w", err)
+	}
+
+	// Write without git commit
+	if err := os.WriteFile(filePath, []byte(newFullContent), 0644); err != nil {
+		return fmt.Errorf("write file %s: %w", filePath, err)
+	}
+
+	return nil
+}
+
 // WriteContent reads the existing file, applies the updater to frontmatter,
 // replaces the body with newBody, then writes back and commits to Git.
 // Returns the commit hash.
@@ -604,6 +686,40 @@ func (i *Indexer) WriteContent(ctx context.Context, id string, updater func(*dom
 	return hash, nil
 }
 
+// CommitFile stages and commits an existing file without modifying its content.
+// Returns the commit hash.
+func (i *Indexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
+	repoPath := ""
+	if i.gitBridge != nil {
+		repoPath = i.gitBridge.RepoPath()
+	}
+	if repoPath == "" {
+		return "", fmt.Errorf("repository not initialized")
+	}
+
+	relativePath := fmt.Sprintf("prompts/%s.md", id)
+	hash, err := i.gitBridge.StageAndCommit(ctx, relativePath, commitMsg)
+	if err != nil {
+		return "", fmt.Errorf("git commit: %w", err)
+	}
+	return hash, nil
+}
+
+// CommitFiles stages and commits multiple existing files in batch.
+// Returns a map of asset ID to commit hash.
+func (i *Indexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
+	results := make(map[string]string)
+	for _, id := range ids {
+		hash, err := i.CommitFile(ctx, id, commitMsg)
+		if err != nil {
+			// Log error but continue with other files
+			continue
+		}
+		results[id] = hash
+	}
+	return results, nil
+}
+
 // GetBody reads the file, strips frontmatter, returns only the body.
 func (i *Indexer) GetBody(ctx context.Context, id string) (string, error) {
 	fullContent, err := i.GetFileContent(ctx, id)
@@ -626,9 +742,9 @@ func (i *Indexer) GetBody(ctx context.Context, id string) (string, error) {
 	}
 
 	if frontmatterEnd >= 0 {
-		return strings.TrimSpace(strings.Join(lines[frontmatterEnd+1:], "\n")), nil
+		return yamlutil.NormalizeBody(strings.Join(lines[frontmatterEnd+1:], "\n")), nil
 	}
-	return fullContent, nil
+	return yamlutil.NormalizeBody(fullContent), nil
 }
 
 // matchAsset returns true if the asset matches the query and filters.

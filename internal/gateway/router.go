@@ -109,6 +109,8 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/assets/{id}/content", assetHandler.SaveAssetContent)
 	mux.HandleFunc("POST /api/v1/assets/{id}/archive", assetHandler.ArchiveAsset)
 	mux.HandleFunc("POST /api/v1/assets/{id}/restore", assetHandler.RestoreAsset)
+	mux.HandleFunc("POST /api/v1/assets/{id}/commit", assetHandler.CommitAsset)
+	mux.HandleFunc("POST /api/v1/assets/commit", assetHandler.CommitBatchAssets)
 
 	// Eval API routes
 	mux.HandleFunc("GET /api/v1/evals", evalHandler.ListEvalRuns)

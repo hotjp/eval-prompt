@@ -194,9 +194,8 @@ function EditorView() {
     if (!id) return
     setSaving(true)
     try {
-      const commitMsg = hasChanges ? `Update prompt ${id}` : `Create prompt ${id}`
-      const result = await assetApi.saveContent(id, forceContent || promptValue, commitMsg, contentHash)
-      message.success('Saved and committed')
+      const result = await assetApi.saveContent(id, forceContent || promptValue, undefined, contentHash)
+      message.success(result.message || 'Saved')
       // Use content from Preference-Applied response directly
       setPromptValue(result.content)
       setOriginalContent(result.content)
@@ -221,6 +220,19 @@ function EditorView() {
       } else {
         message.error('Failed to save')
       }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCommit = async () => {
+    if (!id) return
+    setSaving(true)
+    try {
+      const result = await assetApi.commit(id, `Update prompt ${id}`)
+      message.success('Committed: ' + result.commit.slice(0, 8))
+    } catch {
+      message.error('Failed to commit')
     } finally {
       setSaving(false)
     }
@@ -332,6 +344,9 @@ function EditorView() {
               {asset?.asset_type && <Tag>{asset.asset_type}</Tag>}
               {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
               {updatedAt && <Tag color="blue">Saved {formatUpdatedAt(updatedAt)}</Tag>}
+              <Button icon={<SaveOutlined />} onClick={handleCommit} loading={saving}>
+                Commit
+              </Button>
             </Space>
           }
         >
@@ -363,7 +378,7 @@ function EditorView() {
                         loading={saving}
                         disabled={!hasChanges}
                       >
-                        Save & Commit
+                        Save
                       </Button>
                       <Button
                         icon={<PlayCircleOutlined />}

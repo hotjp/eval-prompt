@@ -82,6 +82,14 @@ type AssetIndexer interface {
 	// ReInit reinitializes the indexer with a new repository path.
 	// It clears the current index and updates the git bridge path.
 	ReInit(ctx context.Context, path string) error
+
+	// CommitFile stages and commits an existing file without modifying its content.
+	// Returns the commit hash.
+	CommitFile(ctx context.Context, id string, commitMsg string) (string, error)
+
+	// CommitFiles stages and commits multiple existing files in batch.
+	// Returns a map of asset ID to commit hash.
+	CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error)
 }
 
 // SearchFilters contains filter criteria for asset search.

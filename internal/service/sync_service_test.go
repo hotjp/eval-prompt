@@ -66,6 +66,18 @@ func (m *mockSyncIndexer) ReInit(ctx context.Context, path string) error {
 	return nil
 }
 
+func (m *mockSyncIndexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *mockSyncIndexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
+	results := make(map[string]string)
+	for _, id := range ids {
+		results[id] = "mock-commit-hash"
+	}
+	return results, nil
+}
+
 func TestSyncService_Reconcile(t *testing.T) {
 	mockIndexer := &mockSyncIndexer{
 		ReconcileFunc: func(ctx context.Context) (ReconcileReport, error) {

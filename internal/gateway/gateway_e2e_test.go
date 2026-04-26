@@ -747,6 +747,26 @@ func (m *e2eMockAssetIndexer) ReInit(ctx context.Context, path string) error {
 	return nil
 }
 
+func (m *e2eMockAssetIndexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *e2eMockAssetIndexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
+	results := make(map[string]string)
+	for _, id := range ids {
+		results[id] = "mock-commit-hash"
+	}
+	return results, nil
+}
+
+func (m *e2eMockAssetIndexer) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
+	return nil
+}
+
+func (m *e2eMockAssetIndexer) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
+	return nil
+}
+
 // e2eMockTriggerService is a mock implementation of TriggerServicer for E2E testing.
 type e2eMockTriggerService struct {
 	MatchTriggerFunc         func(ctx context.Context, input string, top int) ([]*svc.MatchedPrompt, error)
