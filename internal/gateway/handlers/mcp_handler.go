@@ -181,20 +181,26 @@ func (h *MCPHandler) handlePromptsGet(ctx context.Context, params map[string]any
 		return nil, fmt.Errorf("asset not found: %s", id)
 	}
 
-	// Build result
-	result := map[string]any{
-		"content":     "", // Would load from Git/file
-		"description": detail.Description,
-		"asset_type":    detail.AssetType,
-		"tags":        detail.Tags,
+	// Get asset content from file
+	content, err := h.indexer.GetFileContent(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read asset content: %w", err)
 	}
 
 	// Apply variable injection if provided
-	if len(variables) > 0 && result["content"] != "" {
-		if triggerSvc, ok := h.triggerService.(service.TriggerServicer); ok {
-			content, _ := triggerSvc.InjectVariables(ctx, result["content"].(string), variables)
-			result["content"] = content
+	if len(variables) > 0 {
+		content, err = h.triggerService.InjectVariables(ctx, content, variables)
+		if err != nil {
+			return nil, fmt.Errorf("variable injection failed: %w", err)
 		}
+	}
+
+	// Build result
+	result := map[string]any{
+		"content":     content,
+		"description": detail.Description,
+		"asset_type":  detail.AssetType,
+		"tags":        detail.Tags,
 	}
 
 	_ = label // Would use label to determine which snapshot

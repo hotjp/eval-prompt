@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/flosch/pongo2/v6"
 )
 
 // MatchedPrompt represents a matched prompt with relevance score.
@@ -267,16 +269,38 @@ func (s *TriggerService) ValidateAntiPatterns(ctx context.Context, prompt string
 }
 
 // InjectVariables injects variables into a prompt template.
+// Supports both {{var}} and ${var} syntax for simple placeholder replacement.
+// For complex templates with filters/conditionals, uses pongo2 with {{ var }} syntax.
 func (s *TriggerService) InjectVariables(ctx context.Context, prompt string, vars map[string]string) (string, error) {
+	if len(vars) == 0 {
+		return prompt, nil
+	}
+
 	result := prompt
 
+	// First pass: simple string replacement for {{var}} and ${var} syntax
 	for key, value := range vars {
-		// Support {{var}} and ${var} syntax
+		// Support {{var}} syntax
 		placeholder := fmt.Sprintf("{{%s}}", key)
 		result = strings.ReplaceAll(result, placeholder, value)
 
+		// Support ${var} syntax
 		placeholder = fmt.Sprintf("${%s}", key)
 		result = strings.ReplaceAll(result, placeholder, value)
+	}
+
+	// Second pass: if prompt has pongo2-like syntax with spaces, try pongo2
+	// This handles filters, conditionals, etc.
+	if strings.Contains(result, "{{ ") || strings.Contains(result, "{% ") {
+		pongoCtx := pongo2.Context{}
+		for k, v := range vars {
+			pongoCtx[k] = v
+		}
+		tpl, err := pongo2.FromString(result)
+		if err == nil {
+			return tpl.Execute(pongoCtx)
+		}
+		// If pongo2 fails, return the string-replaced result (graceful degradation)
 	}
 
 	return result, nil
