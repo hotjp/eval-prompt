@@ -82,14 +82,12 @@ release:
 	@mkdir -p ./dist
 	@cd web && npm run build
 	@rm -rf internal/gateway/web/dist && cp -r web/dist internal/gateway/web/
-	@echo "  Building darwin-arm64..."
-	$(GOBUILD) -o ./dist/ep-darwin-arm64 ./cmd/ep/
-	@echo "  Building darwin-amd64..."
-	$(GOBUILD) -o ./dist/ep-darwin-amd64 ./cmd/ep/
-	@echo "  Building linux-arm64..."
-	GOOS=linux GOARCH=arm64 $(GOBUILD) -o ./dist/ep-linux-arm64 ./cmd/ep/
-	@echo "  Building linux-amd64..."
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -o ./dist/ep-linux-amd64 ./cmd/ep/
+	@echo "  Building all platforms in parallel..."
+	$(GOBUILD) -o ./dist/ep-darwin-arm64 ./cmd/ep/ &
+	$(GOBUILD) -o ./dist/ep-darwin-amd64 ./cmd/ep/ &
+	GOOS=linux GOARCH=arm64 $(GOBUILD) -o ./dist/ep-linux-arm64 ./cmd/ep/ &
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o ./dist/ep-linux-amd64 ./cmd/ep/ &
+	@wait
 	@echo "Done! Binaries in ./dist/"
 
 ## help: Show this help message
