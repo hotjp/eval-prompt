@@ -167,10 +167,6 @@ export const adminApi = {
     const { data } = await api.get('/admin/repo-status')
     return data
   },
-  initRepo: async (path: string): Promise<{ status: string }> => {
-    const { data } = await api.post('/admin/init-repo', { path })
-    return data
-  },
   reconcile: async (): Promise<{ added: number; updated: number; deleted: number; errors: string[] }> => {
     const { data } = await api.post('/admin/reconcile')
     return data
@@ -317,11 +313,6 @@ export const llmConfigApi = {
 
   save: async (configs: LLMConfig[]): Promise<void> => {
     await api.put('/llm-config', configs)
-  },
-
-  test: async (config: { provider: string; api_key: string; endpoint?: string; default_model: string; message?: string }): Promise<{ success: boolean; content?: string; error?: string }> => {
-    const { data } = await api.post('/llm-config/test', config)
-    return data
   },
 
   testByName: async (name: string, message?: string): Promise<{ success: boolean; content?: string; error?: string }> => {
