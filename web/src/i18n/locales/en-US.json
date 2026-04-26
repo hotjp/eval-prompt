@@ -1,0 +1,8 @@
+{
+  "sidebar_assets": "Assets",
+  "sidebar_settings": "Settings",
+  "asset_list_title": "Prompt Asset List",
+  "asset_list_empty": "No assets",
+  "common_loading": "Loading...",
+  "common_error": "Error occurred"
+}

@@ -1,0 +1,50 @@
+# Chinese (Simplified) language pack
+
+# Asset operations
+asset_create_success: "资产已创建: %s"
+asset_archive_success: "资产已归档: %s"
+asset_restore_success: "资产已恢复: %s"
+asset_delete_success: "资产已删除: %s"
+asset_not_found: "资产不存在: %s"
+asset_state_conflict: "资产状态冲突: %s"
+
+# Eval operations
+eval_run_started: "评测已开始: %s"
+eval_cancel_success: "评测已取消: %s"
+eval_compare_title: "评测对比"
+eval_score_delta: "分数变化: %+.2f"
+
+# Server operations
+serve_starting: "服务启动中..."
+serve_started: "服务已启动"
+serve_api_endpoint: "API 端点: %s"
+serve_sse_endpoint: "SSE 端点: %s"
+serve_opening_browser: "正在打开浏览器..."
+
+# Init operations
+init_title: "初始化提示词管理系统"
+init_git_complete: "Git 仓库已初始化"
+init_lock_added: "已添加锁文件"
+init_complete: "初始化完成"
+init_serve_hint: "运行 'ep serve' 启动服务"
+
+# Sync operations
+sync_reconcile_done: "同步完成: %d 个变更"
+sync_added: "新增: %s"
+sync_updated: "更新: %s"
+sync_deleted: "删除: %s"
+sync_error: "同步错误: %s"
+
+# Common
+common_cancel: "取消"
+common_confirm: "确认"
+common_error: "错误"
+common_loading: "加载中..."
+common_success: "成功"
+common_warning: "警告"
+
+# Error messages
+err_asset_not_found: "资产不存在"
+err_invalid_id: "无效的 ID: %s"
+err_git_not_initialized: "Git 仓库未初始化"
+err_storage_not_configured: "存储未配置"

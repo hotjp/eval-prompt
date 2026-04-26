@@ -15,6 +15,7 @@ import (
 	"github.com/eval-prompt/internal/gateway"
 	"github.com/eval-prompt/internal/gateway/handlers"
 	"github.com/eval-prompt/internal/gateway/middleware"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/storage"
 	"github.com/eval-prompt/plugins/gitbridge"
@@ -41,6 +42,14 @@ var serveCmd = &cobra.Command{
 		cfg, err := config.Load("")
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		// Initialize i18n (EP_LANG > system LANG > config > en-US)
+		if err := i18n.Init(); err != nil {
+			logger.Warn("failed to initialize i18n", "error", err)
+		} else {
+			// Apply config language if no EP_LANG override
+			i18n.SetLangIfNotEnv(cfg.Lang)
 		}
 
 		// Load taxonomy from config/taxonomy.yaml

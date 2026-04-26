@@ -1,0 +1,50 @@
+# English (US) language pack
+
+# Asset operations
+asset_create_success: "Asset created: %s"
+asset_archive_success: "Asset archived: %s"
+asset_restore_success: "Asset restored: %s"
+asset_delete_success: "Asset deleted: %s"
+asset_not_found: "Asset not found: %s"
+asset_state_conflict: "Asset state conflict: %s"
+
+# Eval operations
+eval_run_started: "Evaluation started: %s"
+eval_cancel_success: "Evaluation cancelled: %s"
+eval_compare_title: "Evaluation Comparison"
+eval_score_delta: "Score delta: %+.2f"
+
+# Server operations
+serve_starting: "Starting server..."
+serve_started: "Server started"
+serve_api_endpoint: "API endpoint: %s"
+serve_sse_endpoint: "SSE endpoint: %s"
+serve_opening_browser: "Opening browser..."
+
+# Init operations
+init_title: "Initialize Prompt Management System"
+init_git_complete: "Git repository initialized"
+init_lock_added: "Lock file added"
+init_complete: "Initialization complete"
+init_serve_hint: "Run 'ep serve' to start the server"
+
+# Sync operations
+sync_reconcile_done: "Sync complete: %d changes"
+sync_added: "Added: %s"
+sync_updated: "Updated: %s"
+sync_deleted: "Deleted: %s"
+sync_error: "Sync error: %s"
+
+# Common
+common_cancel: "Cancel"
+common_confirm: "Confirm"
+common_error: "Error"
+common_loading: "Loading..."
+common_success: "Success"
+common_warning: "Warning"
+
+# Error messages
+err_asset_not_found: "Asset not found"
+err_invalid_id: "Invalid ID: %s"
+err_git_not_initialized: "Git repository not initialized"
+err_storage_not_configured: "Storage not configured"

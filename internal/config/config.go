@@ -20,6 +20,7 @@ const DefaultConfigPath = "config.yaml"
 // Config is the root configuration structure.
 type Config struct {
 	Path         string             // path to config file (not marshaled)
+	Lang         string             `koanf:"lang"` // i18n language: en-US, zh-CN
 	Server       ServerConfig       `koanf:"server"`
 	Database     DatabaseConfig     `koanf:"database"`
 	Telemetry    TelemetryConfig    `koanf:"telemetry"`
@@ -196,6 +197,9 @@ func fileExists(path string) bool {
 // getDefaults returns the default configuration as a flat map.
 func getDefaults() map[string]interface{} {
 	return map[string]interface{}{
+		// i18n defaults
+		"lang": "en-US", // Default to English
+
 		// Server defaults
 		"server.port":          8080,
 		"server.host":          "127.0.0.1",
