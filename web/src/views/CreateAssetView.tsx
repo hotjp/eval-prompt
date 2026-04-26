@@ -9,6 +9,7 @@ import { getTags } from '../config/tags'
 const { TextArea } = Input
 
 const bizLineOptions = getAssetTypes().map((b) => ({ label: b.name, value: b.name }))
+const defaultBizLine = getAssetTypes()[0]?.name || 'prompt'
 const tagOptions = getTags().map((t) => ({ label: t.name, value: t.name }))
 const stateOptions = [
   { label: 'Active', value: 'active' },
@@ -94,7 +95,7 @@ function CreateAssetView() {
             form={form}
             layout="vertical"
             onFinish={handleCreate}
-            initialValues={{ state: 'draft', asset_type: 'common', category: 'content' }}
+            initialValues={{ state: 'draft', asset_type: defaultBizLine, category: 'content' }}
           >
             <Form.Item
               label="Category"
