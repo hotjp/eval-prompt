@@ -30,6 +30,7 @@ type RouterConfig struct {
 	StorageClient    handlers.StorageChecker
 	LLMInvoker        *handlers.LLMCheckerAdapter
 	LLMInterface     llm.Interface
+	LLMDefaultModel  string
 	ConfigManager     service.ConfigManager
 	GitBridge         service.GitBridger
 	SemanticAnalyzer  service.SemanticAnalyzer
@@ -64,7 +65,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		evalHandler.SetSemanticAnalyzer(cfg.SemanticAnalyzer)
 	}
 	if cfg.LLMInterface != nil {
-		evalHandler.SetLLMInvoker(cfg.LLMInterface)
+		evalHandler.SetLLMInvoker(cfg.LLMInterface, cfg.LLMDefaultModel)
 	}
 	triggerHandler := handlers.NewTriggerHandler(cfg.TriggerService, logger)
 	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, logger)

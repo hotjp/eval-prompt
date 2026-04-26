@@ -205,6 +205,7 @@ var serveCmd = &cobra.Command{
 			StorageClient:   storageChecker,
 			LLMInvoker:     llmChecker,
 			LLMInterface:   llmInvoker,
+			LLMDefaultModel: defaultModel,
 			ConfigManager:  configManager,
 			GitBridge:      gitBridge,
 			SemanticAnalyzer: semanticService,

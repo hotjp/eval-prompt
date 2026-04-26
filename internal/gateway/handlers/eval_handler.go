@@ -20,6 +20,7 @@ type EvalHandler struct {
 	logger            *slog.Logger
 	semanticAnalyzer  service.SemanticAnalyzer
 	llmInvoker       llm.Interface
+	defaultModel     string
 }
 
 // NewEvalHandler creates a new EvalHandler.
@@ -36,9 +37,10 @@ func (h *EvalHandler) SetSemanticAnalyzer(sa service.SemanticAnalyzer) {
 	h.semanticAnalyzer = sa
 }
 
-// SetLLMInvoker sets the LLM invoker for rewrite operations.
-func (h *EvalHandler) SetLLMInvoker(invoker llm.Interface) {
+// SetLLMInvoker sets the LLM invoker and default model for rewrite operations.
+func (h *EvalHandler) SetLLMInvoker(invoker llm.Interface, defaultModel string) {
 	h.llmInvoker = invoker
+	h.defaultModel = defaultModel
 }
 
 // RunEvalRequest represents the request body for running an eval.
@@ -491,7 +493,7 @@ Original text:
 
 Rewritten text:`, req.Instruction, req.Content)
 
-	resp, err := h.llmInvoker.Invoke(r.Context(), prompt, "", 0.3)
+	resp, err := h.llmInvoker.Invoke(r.Context(), prompt, h.defaultModel, 0.3)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "rewrite failed: %v", err)
 		return
