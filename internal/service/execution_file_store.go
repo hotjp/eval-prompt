@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -177,7 +178,7 @@ func (s *ExecutionFileStore) UpdateProgress(ctx context.Context, id string, comp
 }
 
 func (s *ExecutionFileStore) Archive(ctx context.Context, id string) error {
-	return nil
+	return errors.New("archive not implemented: see FUTURE.md")
 }
 
 func (s *ExecutionFileStore) IsArchived(ctx context.Context, id string) bool {

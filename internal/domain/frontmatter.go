@@ -156,7 +156,7 @@ type EvalPromptFrontMatter struct {
 	Version      string     `yaml:"version,omitempty"`
 	ContentHash  string     `yaml:"content_hash"`
 	State        string     `yaml:"state"`
-	AssetType      string     `yaml:"asset_type,omitempty"`
+	AssetType    string     `yaml:"asset_type,omitempty"`
 	Tags         []string   `yaml:"tags,omitempty"`
 	EvalCaseIDs  []string   `yaml:"eval_case_ids,omitempty"`
 	Model        string     `yaml:"model"`
