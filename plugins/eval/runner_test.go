@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/eval-prompt/plugins/llm"
 	"github.com/eval-prompt/internal/service"
 	"github.com/stretchr/testify/require"
 )
@@ -15,11 +16,11 @@ type mockLLMInvoker struct {
 	responseErr     error
 }
 
-func (m *mockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*service.LLMResponse, error) {
+func (m *mockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
 	if m.responseErr != nil {
 		return nil, m.responseErr
 	}
-	return &service.LLMResponse{
+	return &llm.LLMResponse{
 		Content: m.responseContent,
 		Model:   model,
 	}, nil
@@ -183,7 +184,7 @@ func TestRunner_RunRubric(t *testing.T) {
 				responseErr:     tt.mockErr,
 			}
 
-			result, err := runner.RunRubric(context.Background(), tt.output, tt.rubric, mockInvoker)
+			result, err := runner.RunRubric(context.Background(), tt.output, tt.rubric, mockInvoker, "test-model")
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -198,7 +199,7 @@ func TestRunner_RunRubric(t *testing.T) {
 
 func TestRunner_RunRubric_NoInvoker(t *testing.T) {
 	runner := NewRunner()
-	_, err := runner.RunRubric(context.Background(), "output", service.Rubric{}, nil)
+	_, err := runner.RunRubric(context.Background(), "output", service.Rubric{}, nil, "test-model")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "LLMInvoker is required")
 }
@@ -212,7 +213,7 @@ func TestRunner_RunRubric_InvokeError(t *testing.T) {
 	_, err := runner.RunRubric(context.Background(), "output", service.Rubric{
 		MaxScore: 100,
 		Checks:   []service.RubricCheck{{ID: "c1", Weight: 10}},
-	}, mockInvoker)
+	}, mockInvoker, "test-model")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "LLM invocation failed")
 }
@@ -230,7 +231,7 @@ func TestRunner_RunRubric_InvalidJSONResponse(t *testing.T) {
 		},
 	}
 
-	result, err := runner.RunRubric(context.Background(), "output", rubric, mockInvoker)
+	result, err := runner.RunRubric(context.Background(), "output", rubric, mockInvoker, "test-model")
 	require.NoError(t, err)
 	// Should use fallback parser and return results
 	require.NotNil(t, result.Details)
