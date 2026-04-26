@@ -99,6 +99,37 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
+# Check if already installed and compare versions
+if command -v ep >/dev/null 2>&1; then
+    CURRENT_VERSION=$(ep --version 2>/dev/null | awk '{print $2}')
+    # Remove 'v' prefix if present
+    CURRENT_VERSION="${CURRENT_VERSION#v}"
+    LATEST_VERSION="${VERSION#v}"
+    if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+        echo "Already up to date: v$CURRENT_VERSION"
+        echo ""
+        echo "Starting server..."
+        PORT=18880
+        # Kill any existing instance on the default port
+        if lsof -i:$PORT > /dev/null 2>&1; then
+            kill $(lsof -ti:$PORT) 2>/dev/null || true
+            sleep 1
+        fi
+        nohup ep serve --port $PORT > /tmp/ep.log 2>&1 &
+        sleep 2
+        if curl -s --connect-timeout 2 http://127.0.0.1:$PORT > /dev/null 2>&1; then
+            echo "Server running at: http://127.0.0.1:$PORT"
+            open http://127.0.0.1:$PORT 2>/dev/null || true
+        else
+            echo "Server started in background. Logs: /tmp/ep.log"
+            echo "Access at: http://127.0.0.1:$PORT"
+        fi
+        exit 0
+    else
+        echo "Upgrading: v$CURRENT_VERSION → v$LATEST_VERSION"
+    fi
+fi
+
 FILENAME="${BINARY_NAME}-${OS}-${ARCH}"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
 CHECKSUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}.sha256"
