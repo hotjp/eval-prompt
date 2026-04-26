@@ -15,8 +15,7 @@ import (
 // MCPHandler handles MCP (Model Context Protocol) SSE endpoints.
 type MCPHandler struct {
 	triggerService service.TriggerServicer
-	evalService    service.EvalServiceer
-	indexer        service.AssetIndexer
+	indexer       service.AssetIndexer
 
 	// SSE clients
 	clients    map[string]chan string
@@ -25,13 +24,12 @@ type MCPHandler struct {
 }
 
 // NewMCPHandler creates a new MCPHandler.
-func NewMCPHandler(triggerService service.TriggerServicer, evalService service.EvalServiceer, indexer service.AssetIndexer, logger *slog.Logger) *MCPHandler {
+func NewMCPHandler(triggerService service.TriggerServicer, indexer service.AssetIndexer, logger *slog.Logger) *MCPHandler {
 	return &MCPHandler{
 		triggerService: triggerService,
-		evalService:    evalService,
-		indexer:        indexer,
-		clients:        make(map[string]chan string),
-		slog:           logger,
+		indexer:       indexer,
+		clients:       make(map[string]chan string),
+		slog:          logger,
 	}
 }
 
@@ -116,8 +114,6 @@ func (h *MCPHandler) HandlePOST(w http.ResponseWriter, r *http.Request) {
 		result, err = h.handlePromptsList(ctx, req.Params)
 	case "prompts/get":
 		result, err = h.handlePromptsGet(ctx, req.Params)
-	case "prompts/eval":
-		result, err = h.handlePromptsEval(ctx, req.Params)
 	default:
 		h.writeError(w, -32601, fmt.Sprintf("Method not found: %s", req.Method))
 		return
@@ -235,31 +231,6 @@ func (h *MCPHandler) handlePromptsGet(ctx context.Context, params map[string]any
 		"messages": []map[string]any{
 			{"role": "user", "content": content},
 		},
-	}, nil
-}
-
-func (h *MCPHandler) handlePromptsEval(ctx context.Context, params map[string]any) (any, error) {
-	id, ok := params["id"].(string)
-	if !ok || id == "" {
-		return nil, fmt.Errorf("id is required")
-	}
-	snapshotVersion, _ := params["snapshot_version"].(string)
-	caseID, _ := params["case_id"].(string)
-
-	// Run eval
-	svcReq := &service.RunEvalRequest{
-		AssetID:         id,
-		SnapshotVersion: snapshotVersion,
-		EvalCaseIDs:     []string{caseID},
-	}
-	execution, err := h.evalService.RunEval(ctx, svcReq)
-	if err != nil {
-		return nil, fmt.Errorf("eval run: %w", err)
-	}
-
-	return map[string]any{
-		"execution_id": execution.ID,
-		"status":       execution.Status,
 	}, nil
 }
 

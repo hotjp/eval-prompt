@@ -52,7 +52,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	}
 
 	// Create handler instances — use pre-created handlers if provided
-	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.EvalService, cfg.IndexService, logger)
+	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.IndexService, logger)
 	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger, cfg.AdminConfig)
 	if cfg.SemanticAnalyzer != nil {
 		assetHandler = assetHandler.WithSemanticAnalyzer(cfg.SemanticAnalyzer, "")

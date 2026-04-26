@@ -13,11 +13,10 @@ import (
 
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/service/mocks"
-	"github.com/eval-prompt/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockEvalService, *mock.MockAssetIndexer) {
+func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockAssetIndexer) {
 	mockTrigger := &mock.MockTriggerService{
 		MatchTriggerFunc: func(ctx context.Context, input string, top int) ([]*service.MatchedPrompt, error) {
 			return []*service.MatchedPrompt{
@@ -26,14 +25,6 @@ func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockEvalS
 		},
 		InjectVariablesFunc: func(ctx context.Context, prompt string, vars map[string]string) (string, error) {
 			return "injected: " + prompt, nil
-		},
-	}
-	mockEval := &mock.MockEvalService{
-		RunEvalFunc: func(ctx context.Context, req *service.RunEvalRequest) (*domain.EvalExecution, error) {
-			return &domain.EvalExecution{
-				ID:     "execution-123",
-				Status: domain.ExecutionStatusRunning,
-			}, nil
 		},
 	}
 	mockIndexer := &mock.MockAssetIndexer{
@@ -56,11 +47,11 @@ func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockEvalS
 		},
 	}
 	logger := slog.Default()
-	return NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger), mockTrigger, mockEval, mockIndexer
+	return NewMCPHandler(mockTrigger, mockIndexer, logger), mockTrigger, mockIndexer
 }
 
 func TestMCPHandler_HandlePOST_PromptsList(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -82,7 +73,7 @@ func TestMCPHandler_HandlePOST_PromptsList(t *testing.T) {
 }
 
 func TestMCPHandler_HandlePOST_PromptsGet(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -102,29 +93,8 @@ func TestMCPHandler_HandlePOST_PromptsGet(t *testing.T) {
 	require.Equal(t, "2.0", resp.JSONRPC)
 }
 
-func TestMCPHandler_HandlePOST_PromptsEval(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
-
-	body := `{"jsonrpc": "2.0", "method": "prompts/eval", "params": {"id": "common/test", "snapshot_version": "v1"}, "id": 1}`
-	req := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	rec := httptest.NewRecorder()
-
-	mux.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusOK, rec.Code)
-
-	var resp MCPResponse
-	err := json.Unmarshal(rec.Body.Bytes(), &resp)
-	require.NoError(t, err)
-	require.Equal(t, "2.0", resp.JSONRPC)
-}
-
 func TestMCPHandler_HandlePOST_InvalidRequest(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -146,7 +116,7 @@ func TestMCPHandler_HandlePOST_InvalidRequest(t *testing.T) {
 }
 
 func TestMCPHandler_HandlePOST_MethodNotFound(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -167,7 +137,7 @@ func TestMCPHandler_HandlePOST_MethodNotFound(t *testing.T) {
 }
 
 func TestMCPHandler_HandleSSE(t *testing.T) {
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /mcp/v1/sse", handler.HandleSSE)
@@ -189,7 +159,7 @@ func TestMCPHandler_HandleSSE(t *testing.T) {
 
 func TestMCPHandler_E2E_Workflow(t *testing.T) {
 	// This test chains: prompts/list → prompts/get (with variables) → prompts/eval
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -230,26 +200,6 @@ func TestMCPHandler_E2E_Workflow(t *testing.T) {
 	err = json.Unmarshal(getRec.Body.Bytes(), &getResp)
 	require.NoError(t, err)
 	require.Nil(t, getResp.Error)
-
-	// Step 3: prompts/eval
-	evalBody := fmt.Sprintf(`{"jsonrpc": "2.0", "method": "prompts/eval", "params": {"id": "%s", "snapshot_version": "v1"}, "id": 3}`, promptID)
-	evalReq := httptest.NewRequest("POST", "/mcp/v1", strings.NewReader(evalBody))
-	evalReq.Header.Set("Content-Type", "application/json")
-	evalRec := httptest.NewRecorder()
-
-	mux.ServeHTTP(evalRec, evalReq)
-	require.Equal(t, http.StatusOK, evalRec.Code)
-
-	var evalResp MCPResponse
-	err = json.Unmarshal(evalRec.Body.Bytes(), &evalResp)
-	require.NoError(t, err)
-	require.Nil(t, evalResp.Error)
-	require.NotNil(t, evalResp.Result)
-
-	// Verify eval result contains execution_id and status
-	evalResult := evalResp.Result.(map[string]interface{})
-	require.Contains(t, evalResult, "execution_id")
-	require.Contains(t, evalResult, "status")
 }
 
 func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
@@ -263,7 +213,6 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 			return "Hello Alice! Your order is ready.", nil
 		},
 	}
-	mockEval := &mock.MockEvalService{}
 	mockIndexer := &mock.MockAssetIndexer{
 		GetByIDFunc: func(ctx context.Context, id string) (*service.AssetDetail, error) {
 			return &service.AssetDetail{
@@ -279,7 +228,7 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 		},
 	}
 	logger := slog.Default()
-	handler := NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	handler := NewMCPHandler(mockTrigger, mockIndexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -305,7 +254,6 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 	// Test that prompts/get works without variables
 	mockTrigger := &mock.MockTriggerService{}
-	mockEval := &mock.MockEvalService{}
 	mockIndexer := &mock.MockAssetIndexer{
 		GetByIDFunc: func(ctx context.Context, id string) (*service.AssetDetail, error) {
 			return &service.AssetDetail{
@@ -321,7 +269,7 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 		},
 	}
 	logger := slog.Default()
-	handler := NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	handler := NewMCPHandler(mockTrigger, mockIndexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -357,9 +305,8 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 		},
 	}
 	mockTrigger := &mock.MockTriggerService{}
-	mockEval := &mock.MockEvalService{}
 	logger := slog.Default()
-	handler := NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	handler := NewMCPHandler(mockTrigger, mockIndexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -386,7 +333,7 @@ func TestMCPHandler_E2E_PromptsListWithFilters(t *testing.T) {
 
 func TestMCPHandler_E2E_SSEWithEvalUpdates(t *testing.T) {
 	// This test verifies the SSE connection can receive eval updates
-	handler, _, _, _ := newTestMCPHandler()
+	handler, _, _ := newTestMCPHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /mcp/v1/sse", handler.HandleSSE)
@@ -429,9 +376,8 @@ func TestMCPHandler_E2E_PromptsListEmptyResult(t *testing.T) {
 		},
 	}
 	mockTrigger := &mock.MockTriggerService{}
-	mockEval := &mock.MockEvalService{}
 	logger := slog.Default()
-	handler := NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	handler := NewMCPHandler(mockTrigger, mockIndexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)
@@ -463,9 +409,8 @@ func TestMCPHandler_E2E_PromptsGetNotFound(t *testing.T) {
 		},
 	}
 	mockTrigger := &mock.MockTriggerService{}
-	mockEval := &mock.MockEvalService{}
 	logger := slog.Default()
-	handler := NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	handler := NewMCPHandler(mockTrigger, mockIndexer, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /mcp/v1", handler.HandlePOST)

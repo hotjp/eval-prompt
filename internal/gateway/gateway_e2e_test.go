@@ -632,7 +632,7 @@ func setupE2ERouter() (*http.ServeMux, *mockEvalServiceer, *e2eMockAssetIndexer,
 	}
 
 	// Create handlers
-	mcpHandler := handlers.NewMCPHandler(mockTrigger, mockEval, mockIndexer, logger)
+	mcpHandler := handlers.NewMCPHandler(mockTrigger, mockIndexer, logger)
 	assetHandler := handlers.NewAssetHandler(mockIndexer, mockIndexer, logger, nil)
 	evalHandler := handlers.NewEvalHandler(mockEval, mockIndexer, logger)
 
