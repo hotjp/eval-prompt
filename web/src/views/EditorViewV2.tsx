@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal, Select } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutlined, ClearOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutlined, ClearOutlined, PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
@@ -421,51 +421,16 @@ function EditorViewV2() {
             {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
             {updatedAt && <Tag color="blue" className="editor-time-tag">Saved {formatUpdatedAt(updatedAt)}</Tag>}
           </div>
-          <div className="editor-header-actions">
-            <Space size="small">
-              {showRewriteInput ? (
-                <>
-                  <Input
-                    placeholder="改写指令..."
-                    value={rewriteInstruction}
-                    onChange={(e) => setRewriteInstruction(e.target.value)}
-                    onPressEnter={handleRewrite}
-                    style={{ width: 160 }}
-                    size="small"
-                    disabled={rewriting}
-                  />
-                  <Button size="small" type="primary" onClick={handleRewrite} loading={rewriting}>Apply</Button>
-                  <Button size="small" onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>Cancel</Button>
-                </>
-              ) : (
-                <>
-                  <Button icon={<PlayCircleOutlined />} onClick={handleValidate} loading={validating} size="small">
-                    Validate
-                  </Button>
-                  <Button size="small" icon={<EditOutlined />} onClick={() => setShowRewriteInput(true)}>
-                    Rewrite
-                  </Button>
-                  {hasChanges && (
-                    <Button size="small" onClick={handleRestore}>
-                      Restore
-                    </Button>
-                  )}
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={() => handleSave()}
-                    loading={saving}
-                    disabled={!hasChanges}
-                    size="small"
-                  >
-                    Save
-                  </Button>
-                  <Button icon={<SaveOutlined />} onClick={handleCommit} loading={saving} size="small">
-                    Commit
-                  </Button>
-                </>
-              )}
-            </Space>
+          <div className="editor-header-nav">
+            <Button size="small" onClick={() => navigate(`/assets/${id}/versions`)}>
+              Version Tree
+            </Button>
+            <Button size="small" onClick={() => navigate(`/assets/${id}/eval`)}>
+              Run Eval
+            </Button>
+            <Button size="small" icon={<SwapOutlined />} onClick={() => navigate('/compare')}>
+              Compare
+            </Button>
           </div>
         </div>
 
@@ -481,6 +446,50 @@ function EditorViewV2() {
               { key: 'preview', label: 'Preview' },
             ]}
           />
+          <div className="toolbar-actions">
+            {showRewriteInput ? (
+              <>
+                <Input
+                  placeholder="改写指令..."
+                  value={rewriteInstruction}
+                  onChange={(e) => setRewriteInstruction(e.target.value)}
+                  onPressEnter={handleRewrite}
+                  style={{ width: 160 }}
+                  size="small"
+                  disabled={rewriting}
+                />
+                <Button size="small" type="primary" onClick={handleRewrite} loading={rewriting}>Apply</Button>
+                <Button size="small" onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>Cancel</Button>
+              </>
+            ) : (
+              <>
+                <Button icon={<PlayCircleOutlined />} onClick={handleValidate} loading={validating} size="small">
+                  Validate
+                </Button>
+                <Button size="small" icon={<EditOutlined />} onClick={() => setShowRewriteInput(true)}>
+                  Rewrite
+                </Button>
+                {hasChanges && (
+                  <Button size="small" onClick={handleRestore}>
+                    Restore
+                  </Button>
+                )}
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={() => handleSave()}
+                  loading={saving}
+                  disabled={!hasChanges}
+                  size="small"
+                >
+                  Save
+                </Button>
+                <Button icon={<SaveOutlined />} onClick={handleCommit} loading={saving} size="small">
+                  Commit
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Monaco Editor */}
