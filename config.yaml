@@ -51,12 +51,12 @@ plugins:
         type: basic
         url: ""
         apikey: ""
-promptassets:
-    repopath: /Users/kingj/repo
-    assetsdir: prompts
-    evalsdir: .evals
-    tracesdir: .traces
-    evalthreshold: 80
+prompt_assets:
+    repo_path: /Users/kingj/repo
+    assets_dir: prompts
+    evals_dir: .evals
+    traces_dir: .traces
+    eval_threshold: 80
     concurrency: 4
 taxonomy:
     assettypes:

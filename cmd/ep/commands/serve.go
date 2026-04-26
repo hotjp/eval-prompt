@@ -128,14 +128,23 @@ var serveCmd = &cobra.Command{
 
 		// Create plugin instances
 		indexer := search.Default()
-		// Use current working directory as persist dir (user should run from project root)
 		cwd, _ := os.Getwd()
+		// Determine repo path: use config's RepoPath if set, otherwise fall back to cwd
+		repoPath := cwd
+		if cfg.PromptAssets.RepoPath != "" {
+			if absPath, err := filepath.Abs(cfg.PromptAssets.RepoPath); err == nil {
+				if _, statErr := os.Stat(absPath); statErr == nil {
+					repoPath = absPath
+					logger.Info("using repo path from config", "path", repoPath)
+				}
+			}
+		}
 		indexer.SetPersistDir(filepath.Join(cwd, ".eval-prompt"))
 		if err := indexer.Load(); err != nil {
 			logger.Warn("failed to load persisted index", "error", err)
 		}
 		gitBridge := gitbridge.NewBridge()
-		if err := gitBridge.Open(cwd); err != nil {
+		if err := gitBridge.Open(repoPath); err != nil {
 			logger.Warn("failed to open git repo", "error", err)
 		}
 		indexer.SetGitBridge(gitBridge)

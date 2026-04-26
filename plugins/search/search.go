@@ -230,6 +230,13 @@ func (i *Indexer) Reconcile(ctx context.Context) (service.ReconcileReport, error
 		}
 	}
 
+	// If no changes detected, do a full scan of the prompts directory to ensure committed files are indexed
+	if len(added) == 0 && len(modified) == 0 && i.gitBridge != nil && i.gitBridge.RepoPath() != "" {
+		if err := i.scanPromptsDir(ctx, &report); err != nil {
+			report.Errors = append(report.Errors, err.Error())
+		}
+	}
+
 	// Persist index to disk for cross-process sharing
 	if err := i.persist(); err != nil {
 		report.Errors = append(report.Errors, fmt.Sprintf("persist index: %v", err))
@@ -334,6 +341,37 @@ func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *se
 		report.Updated++
 	} else {
 		report.Added++
+	}
+	return nil
+}
+
+// scanPromptsDir scans the prompts directory and indexes all .md files.
+// This ensures that committed files are indexed even when git status shows no uncommitted changes.
+func (i *Indexer) scanPromptsDir(ctx context.Context, report *service.ReconcileReport) error {
+	repoPath := i.gitBridge.RepoPath()
+	promptsDir := filepath.Join(repoPath, "prompts")
+
+	entries, err := os.ReadDir(promptsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // prompts dir doesn't exist, nothing to index
+		}
+		return fmt.Errorf("read prompts directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		filePath := filepath.Join("prompts", entry.Name())
+		// Only index if not already in assets (avoid re-processing)
+		id := extractIDFromPath(filePath)
+		if id != "" && i.assets[id] == nil {
+			if err := i.reconcileFile(ctx, filePath, report); err != nil {
+				// Log but don't fail the whole scan
+				report.Errors = append(report.Errors, err.Error())
+			}
+		}
 	}
 	return nil
 }
