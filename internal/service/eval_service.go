@@ -574,7 +574,7 @@ func (s *EvalService) ListEvalCases(ctx context.Context, assetID string) ([]*dom
 
 	entries, err := os.ReadDir(s.evalsDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read evals directory: %w", err)
+		return nil, fmt.Errorf("evals directory not found: %w", err)
 	}
 
 	var cases []*domain.EvalCase
@@ -763,7 +763,7 @@ func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalRe
 
 	entries, err := os.ReadDir(s.evalsDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read evals directory: %w", err)
+		return nil, fmt.Errorf("evals directory not found: %w", err)
 	}
 
 	for _, entry := range entries {
