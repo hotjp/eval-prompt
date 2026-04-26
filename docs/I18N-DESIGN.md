@@ -31,7 +31,7 @@ Eval 运行已启动、Eval 已取消
 
 ### 2.1 共用语言包
 - 语言包统一存放在 `i18n/locales/` 目录
-- Go 和 Web 各自用自己的加载器读取同一套语言定义文件（YAML 格式）
+- Go 和 Web 各自用自己的加载器读取同一套语言定义文件（JSON 格式）
 
 ### 2.2 消息 Key 命名规范
 ```
@@ -49,10 +49,10 @@ common_loading          # 加载中
 ```
 
 ### 2.3 消息参数
-```yaml
-# 使用 {{.Name}} Go 模板语法
-asset_delete_success: "资产已删除: {{.ID}}"
-eval_run_progress: "正在运行 Eval ({{.Current}}/{{.Total}})"
+```go
+// 使用 pongo2 模板语法 {{var}}
+asset_delete_success: "资产已删除: {{id}}"
+eval_run_progress: "正在运行 Eval ({{current}}/{{total}})"
 ```
 
 ---
@@ -64,48 +64,115 @@ eval_run_progress: "正在运行 Eval ({{.Current}}/{{.Total}})"
 ```
 eval-prompt/
 ├── i18n/
-│   ├── locales/
-│   │   ├── zh-CN.yaml      # 中文语言包
-│   │   └── en-US.yaml       # 英文语言包
-│   └── README.md            # 语言包编辑指南
+│   └── locales/
+│       ├── zh-CN.json       # 中文语言包（Go embed + Web import 共用）
+│       └── en-US.json       # 英文语言包（Go embed + Web import 共用）
 │
 ├── internal/
 │   └── i18n/
-│       ├── i18n.go          # 核心: T() 函数、语言切换
-│       ├── loader.go         # YAML 文件加载
-│       └── messages.go      # 消息 key 常量定义
+│       └── i18n.go          # 核心: T() 函数、语言切换，纯标准库无第三方依赖
 │
 └── web/
     └── src/
         ├── i18n/
-        │   ├── index.ts     # i18next 配置
-        │   ├── zh-CN.json   # Web 中文翻译
-        │   └── en-US.json   # Web 英文翻译
+        │   └── index.ts     # i18next 配置，直接 import 同目录 JSON
         └── hooks/
             └── useTranslation.ts
 ```
 
-### 3.2 Go CLI i18n 实现
+### 3.2 依赖策略
+
+| 端 | 加载方式 | 第三方依赖 |
+|----|---------|-----------|
+| Go CLI | `//go:embed` + `encoding/json` + `pongo2` | 项目已有 pongo2（模板引擎） |
+| Web | i18next import 同个 JSON 文件 | i18next + react-i18next |
+
+- **统一使用 JSON 格式**：避免引入 YAML 解析器（如 go-yaml）增加二进制体积
+- **复用项目已有依赖**：Go 端使用项目现有的 pongo2 做模板渲染，无需引入新依赖
+- **语言文件一份，多端共用**：避免维护两份不同格式的翻译
+
+### 3.3 Go i18n 实现
+
+使用项目已有的 **pongo2** 模板库，保持技术栈统一。
 
 ```go
 // internal/i18n/i18n.go
 
-var currentLang = "zh-CN"  // 默认中文
+package i18n
 
-// T returns the localized string for the given key
-func T(key string, args ...any) string {
-    return getMessage(key, args...)
+import (
+    "embed"
+    "encoding/json"
+    "sync"
+
+    "github.com/flosch/pongo2/v6"
+)
+
+//go:embed locales/*.json
+var fs embed.FS
+
+var (
+    locales  map[string]map[string]string  // lang -> key -> message
+    current  string = "zh-CN"
+    initOnce sync.Once
+)
+
+// Init 线程安全，只执行一次。语言包缺失不报错，运行时 SetLang 会验证有效性。
+func Init() error {
+    var err error
+    initOnce.Do(func() {
+        locales = make(map[string]map[string]string)
+        for _, lang := range []string{"zh-CN", "en-US"} {
+            data, e := fs.ReadFile("locales/" + lang + ".json")
+            if e != nil {
+                continue
+            }
+            json.Unmarshal(data, &locales[lang])
+        }
+        if _, ok := locales[current]; !ok {
+            current = "en-US"
+        }
+    })
+    return err
 }
 
-// SetLang sets the current language
+// SetLang 切换当前语言，lang 无效时静默忽略
 func SetLang(lang string) {
-    currentLang = lang
+    if _, ok := locales[lang]; ok {
+        current = lang
+    }
 }
 
-// getMessage retrieves message from loaded locales
-func getMessage(key string, args ...any) string {
-    // 从已加载的语言包中查找
-    // 支持参数替换
+// T 返回本地化字符串，支持 pongo2 模板语法 {{var}}。
+// 翻译文件中可调整占位符顺序以适应不同语种的语法。
+//
+// 使用方式：
+//
+//	i18n.T("asset_create_success", pongo2.Context{"id": id})
+//	i18n.T("eval_compare_title", pongo2.Context{"asset_id": id, "v1": v1, "v2": v2})
+//
+// 无对应 key 时返回 key 本身；模板解析失败时返回原文。
+func T(key string, args pongo2.Context) string {
+    msg, ok := locales[current][key]
+    if !ok {
+        return key
+    }
+    if len(args) == 0 {
+        return msg
+    }
+    tpl, err := pongo2.FromString(msg)
+    if err != nil {
+        return msg
+    }
+    return tpl.Execute(args)
+}
+```
+
+**语言文件示例：**
+```json
+{
+  "asset_create_success": "资产已创建: {{id}}",
+  "eval_compare_title": "{{asset_id}}: {{v1}} vs {{v2}}"
 }
 ```
 
@@ -115,26 +182,27 @@ func getMessage(key string, args ...any) string {
 fmt.Printf("资产已创建: %s\n", id)
 
 // After
-fmt.Printf("%s: %s\n", i18n.T("asset_create_success"), id)
-fmt.Println(i18n.T("asset_create_success", "id", id))  // 另一种方式
+fmt.Println(i18n.T("asset_create_success", pongo2.Context{"id": id}))
 ```
 
-### 3.3 Web i18n 实现
+### 3.4 Web i18n 实现
 
-使用 `i18next` + `react-i18next`：
+使用 `i18next` + `react-i18next`，直接 import 同目录的语言 JSON 文件：
 
 ```typescript
 // web/src/i18n/index.ts
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import zhCN from '../../../i18n/locales/zh-CN.json';
+import enUS from '../../../i18n/locales/en-US.json';
 
 i18n
   .use(initReactI18next)
   .init({
     lng: localStorage.getItem('lang') || 'zh-CN',
     resources: {
-      'zh-CN': { translation: require('./zh-CN.json') },
-      'en-US': { translation: require('./en-US.json') },
+      'zh-CN': { translation: zhCN },
+      'en-US': { translation: enUS },
     },
   });
 
@@ -150,127 +218,126 @@ export default i18n;
 <span>{t('common_loading')}</span>
 ```
 
-### 3.4 语言检测顺序
+### 3.5 语言检测顺序
 
-1. CLI: 环境变量 `EP_LANG`
-2. CLI: `LANG` 环境变量（如 `en_US.UTF-8`）
-3. Web: `localStorage.lang`
-4. Web: 浏览器 `navigator.language`
-5. 默认: `zh-CN`
+| 优先级 | CLI | Web |
+|--------|-----|-----|
+| 1 | 环境变量 `EP_LANG` | `localStorage.lang` |
+| 2 | `LANG` 环境变量 | 浏览器 `navigator.language` |
+| 3 | 默认 `zh-CN` | 默认 `zh-CN` |
 
 ---
 
 ## 4. 语言包设计
 
-### 4.1 zh-CN.yaml 结构
+统一使用 JSON 格式，Go 和 Web 共用同一份文件，通过 `//go:embed` 和 `import` 各自加载。
 
-```yaml
-# 资产操作
-asset_create_success: "资产已创建: {{.ID}}"
-asset_archive_success: "资产已归档: {{.ID}}"
-asset_restore_success: "资产已恢复: {{.ID}}"
-asset_delete_success: "资产已删除: {{.ID}}"
-asset_not_found: "资产不存在: {{.ID}}"
-asset_state_conflict: "请先 archive"
+### 4.1 zh-CN.json 结构
 
-# Eval 操作
-eval_run_started: "Eval 运行已启动: {{.ID}}"
-eval_run_status: "状态: {{.Status}}"
-eval_cancel_success: "Eval 已取消: {{.ID}}"
-eval_compare_title: "{{.AssetID}}: {{.V1}} vs {{.V2}}"
-eval_score_delta: "得分差: {{.Delta}}"
+```json
+{
+  "asset_create_success": "资产已创建: {{id}}",
+  "asset_archive_success": "资产已归档: {{id}}",
+  "asset_restore_success": "资产已恢复: {{id}}",
+  "asset_delete_success": "资产已删除: {{id}}",
+  "asset_not_found": "资产不存在: {{id}}",
+  "asset_state_conflict": "请先 archive",
 
-# 服务启动
-serve_starting: "启动服务: http://{{.Addr}}"
-serve_started: "服务已启动"
-serve_api_endpoint: "API 端点: http://{{.Addr}}/mcp/v1"
-serve_sse_endpoint: "SSE 端点: http://{{.Addr}}/mcp/v1/sse"
-serve_opening_browser: "正在打开浏览器..."
+  "eval_run_started": "Eval 运行已启动: {{id}}",
+  "eval_run_status": "状态: {{status}}",
+  "eval_cancel_success": "Eval 已取消: {{id}}",
+  "eval_compare_title": "{{asset_id}}: {{v1}} vs {{v2}}",
+  "eval_score_delta": "得分差: {{delta}}",
 
-# 初始化
-init_title: "初始化 prompt assets 仓库: {{.Path}}"
-init_git_complete: "Git 仓库初始化完成"
-init_lock_added: "仓库已添加到锁文件"
-init_complete: "初始化完成"
-init_serve_hint: "运行 'ep serve' 启动服务"
+  "serve_starting": "启动服务: http://{{addr}}",
+  "serve_started": "服务已启动",
+  "serve_api_endpoint": "API 端点: http://{{addr}}/mcp/v1",
+  "serve_sse_endpoint": "SSE 端点: http://{{addr}}/mcp/v1/sse",
+  "serve_opening_browser": "正在打开浏览器...",
 
-# 对账
-sync_reconcile_done: "对账完成"
-sync_added: "新增: {{.Count}}"
-sync_updated: "更新: {{.Count}}"
-sync_deleted: "删除: {{.Count}}"
-sync_error: "错误: {{.Error}}"
+  "init_title": "初始化 prompt assets 仓库: {{path}}",
+  "init_git_complete": "Git 仓库初始化完成",
+  "init_lock_added": "仓库已添加到锁文件",
+  "init_complete": "初始化完成",
+  "init_serve_hint": "运行 'ep serve' 启动服务",
 
-# 通用
-common_cancel: "取消"
-common_confirm: "确认"
-common_error: "错误"
-common_loading: "加载中"
-common_success: "成功"
-common_warning: "警告"
-common_retry: "重试"
+  "sync_reconcile_done": "对账完成",
+  "sync_added": "新增: {{count}}",
+  "sync_updated": "更新: {{count}}",
+  "sync_deleted": "删除: {{count}}",
+  "sync_error": "错误: {{error}}",
 
-# 错误消息
-err_asset_not_found: "资产不存在"
-err_invalid_id: "无效的 ID"
-err_git_not_initialized: "尚未初始化任何仓库，请先运行 'ep init <path>'"
-err_storage_not_configured: "存储未配置"
+  "common_cancel": "取消",
+  "common_confirm": "确认",
+  "common_error": "错误",
+  "common_loading": "加载中",
+  "common_success": "成功",
+  "common_warning": "警告",
+  "common_retry": "重试",
+
+  "err_asset_not_found": "资产不存在",
+  "err_invalid_id": "无效的 ID",
+  "err_git_not_initialized": "尚未初始化任何仓库，请先运行 'ep init <path>'",
+  "err_storage_not_configured": "存储未配置"
+}
 ```
 
-### 4.2 en-US.yaml 结构
+### 4.2 en-US.json 结构
 
-```yaml
-# Asset Operations
-asset_create_success: "Asset created: {{.ID}}"
-asset_archive_success: "Asset archived: {{.ID}}"
-asset_restore_success: "Asset restored: {{.ID}}"
-asset_delete_success: "Asset deleted: {{.ID}}"
-asset_not_found: "Asset not found: {{.ID}}"
-asset_state_conflict: "Please archive first"
+```json
+{
+  "asset_create_success": "Asset created: {{id}}",
+  "asset_archive_success": "Asset archived: {{id}}",
+  "asset_restore_success": "Asset restored: {{id}}",
+  "asset_delete_success": "Asset deleted: {{id}}",
+  "asset_not_found": "Asset not found: {{id}}",
+  "asset_state_conflict": "Please archive first",
 
-# Eval Operations
-eval_run_started: "Eval run started: {{.ID}}"
-eval_run_status: "Status: {{.Status}}"
-eval_cancel_success: "Eval cancelled: {{.ID}}"
-eval_compare_title: "{{.AssetID}}: {{.V1}} vs {{.V2}}"
-eval_score_delta: "Score delta: {{.Delta}}"
+  "eval_run_started": "Eval run started: {{id}}",
+  "eval_run_status": "Status: {{status}}",
+  "eval_cancel_success": "Eval cancelled: {{id}}",
+  "eval_compare_title": "{{asset_id}}: {{v1}} vs {{v2}}",
+  "eval_score_delta": "Score delta: {{delta}}",
 
-# Server
-serve_starting: "Starting server: http://{{.Addr}}"
-serve_started: "Server started"
-serve_api_endpoint: "API endpoint: http://{{.Addr}}/mcp/v1"
-serve_sse_endpoint: "SSE endpoint: http://{{.Addr}}/mcp/v1/sse"
-serve_opening_browser: "Opening browser..."
+  "serve_starting": "Starting server: http://{{addr}}",
+  "serve_started": "Server started",
+  "serve_api_endpoint": "API endpoint: http://{{addr}}/mcp/v1",
+  "serve_sse_endpoint": "SSE endpoint: http://{{addr}}/mcp/v1/sse",
+  "serve_opening_browser": "Opening browser...",
 
-# Initialization
-init_title: "Initializing prompt assets repository: {{.Path}}"
-init_git_complete: "Git repository initialized"
-init_lock_added: "Repository added to lock file"
-init_complete: "Initialization complete"
-init_serve_hint: "Run 'ep serve' to start the server"
+  "init_title": "Initializing prompt assets repository: {{path}}",
+  "init_git_complete": "Git repository initialized",
+  "init_lock_added": "Repository added to lock file",
+  "init_complete": "Initialization complete",
+  "init_serve_hint": "Run 'ep serve' to start the server",
 
-# Sync
-sync_reconcile_done: "Reconcile complete"
-sync_added: "Added: {{.Count}}"
-sync_updated: "Updated: {{.Count}}"
-sync_deleted: "Deleted: {{.Count}}"
-sync_error: "Error: {{.Error}}"
+  "sync_reconcile_done": "Reconcile complete",
+  "sync_added": "Added: {{count}}",
+  "sync_updated": "Updated: {{count}}",
+  "sync_deleted": "Deleted: {{count}}",
+  "sync_error": "Error: {{error}}",
 
-# Common
-common_cancel: "Cancel"
-common_confirm: "Confirm"
-common_error: "Error"
-common_loading: "Loading..."
-common_success: "Success"
-common_warning: "Warning"
-common_retry: "Retry"
+  "common_cancel": "Cancel",
+  "common_confirm": "Confirm",
+  "common_error": "Error",
+  "common_loading": "Loading...",
+  "common_success": "Success",
+  "common_warning": "Warning",
+  "common_retry": "Retry",
 
-# Error Messages
-err_asset_not_found: "Asset not found"
-err_invalid_id: "Invalid ID"
-err_git_not_initialized: "No repository initialized. Run 'ep init <path>' first"
-err_storage_not_configured: "Storage not configured"
+  "err_asset_not_found": "Asset not found",
+  "err_invalid_id": "Invalid ID",
+  "err_git_not_initialized": "No repository initialized. Run 'ep init <path>' first",
+  "err_storage_not_configured": "Storage not configured"
+}
 ```
+
+### 4.3 消息参数格式
+
+- **Go 端**：使用 pongo2 模板语法 `{{var}}`，与项目现有模板风格统一
+- **Web 端**：i18next 默认使用 `{{name}}` 占位符
+
+两种格式语法一致（都是 `{{var}}`），可以保持语言文件同一份 JSON 被两方使用。
 
 ---
 
@@ -287,69 +354,37 @@ err_storage_not_configured: "Storage not configured"
 | 设置页 | `settings_` | settings_language, settings_theme |
 | 通用按钮 | `btn_` | btn_create, btn_delete, btn_cancel |
 
-### 5.2 Web 中文翻译 (zh-CN.json)
-
-```json
-{
-  "sidebar_assets": "资产",
-  "sidebar_settings": "设置",
-  "asset_list_title": "Prompt 资产列表",
-  "asset_list_empty": "暂无资产",
-  "asset_list_create": "创建资产",
-  "asset_edit_title": "编辑资产",
-  "asset_edit_save": "保存",
-  "asset_edit_cancel": "取消",
-  "eval_run": "运行 Eval",
-  "eval_compare": "对比",
-  "eval_report": "报告",
-  "settings_language": "语言",
-  "settings_theme": "主题",
-  "btn_create": "创建",
-  "btn_delete": "删除",
-  "btn_cancel": "取消",
-  "btn_save": "保存",
-  "common_loading": "加载中...",
-  "common_error": "出错了",
-  "common_retry": "重试"
-}
-```
+> **注意**：Web UI 翻译已合并到 `i18n/locales/` 下的统一语言文件中，与 CLI 共用同一份 JSON。
 
 ---
 
 ## 6. 实现计划
 
-### Phase 1: 基础设施 (基础框架)
+### Phase 1: 基础设施
 
-1. 创建 `i18n/locales/` 目录
-2. 创建 `internal/i18n/` 包
-   - `i18n.go` - 核心 T() 函数
-   - `loader.go` - YAML 加载器
-   - `messages.go` - Key 常量
-3. 创建基础语言包 zh-CN.yaml, en-US.yaml
+1. 创建 `i18n/locales/` 目录，放入 `zh-CN.json` 和 `en-US.json`
+2. 创建 `internal/i18n/i18n.go`（纯标准库，`embed` + `encoding/json`）
+3. 在 `serve.go` 启动时调用 `i18n.Init()`
 
 ### Phase 2: CLI 迁移
 
-1. 选择一个命令作为试点（如 asset.go）
-2. 将硬编码字符串替换为 `i18n.T("key")`
-3. 添加参数支持
-4. 验证编译和运行
-5. 逐步迁移其他命令
+1. 选择一个命令作为试点（如 `asset.go`）
+2. 将硬编码字符串替换为 `i18n.T("key", args...)`
+3. 验证编译和运行
+4. 逐步迁移其他命令
 
 ### Phase 3: Web UI 集成
 
-1. 安装 i18next 依赖
-2. 创建 `web/src/i18n/` 配置
-3. 创建语言 JSON 文件
-4. 创建 `useTranslation` hook
-5. 迁移一个组件作为试点
-6. 逐步迁移其他组件
+1. 安装 i18next + react-i18next
+2. 创建 `web/src/i18n/index.ts` 配置
+3. 迁移一个组件作为试点
+4. 逐步迁移其他组件
 
 ### Phase 4: 完善
 
-1. 添加语言切换命令
+1. 添加语言切换命令（`ep serve --lang=en-US`）
 2. Web 添加语言切换 UI
 3. 补充遗漏的消息
-4. 添加单元测试
 
 ---
 
@@ -361,27 +396,33 @@ err_storage_not_configured: "Storage not configured"
 // 不推荐：拼接
 fmt.Printf("资产 " + name + " 已创建")
 
-// 推荐：模板参数
-fmt.Printf(i18n.T("asset_created_with_name", "name", name))
+// 推荐：参数替换
+fmt.Printf(i18n.T("asset_created_with_name", name))
 ```
 
 ### 7.2 复数支持（未来扩展）
 
-```yaml
-# 可定义复数形式
-file_selected: "{{.Count}} file selected"
-file_selected_plural: "{{.Count}} files selected"
+```json
+{
+  "file_selected": "{{count}} file selected",
+  "file_selected_plural": "{{count}} files selected"
+}
 ```
 
-### 7.3 占位符规范
+i18next 支持 `plural` 特性，Go 端如需复数可维护两份 key 或自行处理。
 
-Go 使用 Go 模板语法 `{{.FieldName}}`
-Web JSON 使用 `{{fieldName}}` 或 `{fieldName}`
+### 7.3 体积控制
+
+- Go 端**严禁引入** `go-yaml`、`go-i18n` 等额外第三方库
+- 使用项目已有的 `pongo2` 模板库（已在 go.mod 中）
+- 语言文件使用 JSON 格式，Go 用标准库 `encoding/json` 解析
+- 两种语言全部 embed，总增量预计 < 30KB（gzip）
 
 ---
 
 ## 8. 相关资源
 
 - [i18next](https://www.i18next.com/) - Web 国际化框架
-- [go-i18n](https://github.com/nicksnyder/go-i18n) - Go 国际化（参考，未采用，自实现更轻量）
+- [react-i18next](https://react.i18next.com/) - React 绑定
+- [pongo2](https://github.com/flosch/pongo2) - Go 模板引擎（项目已有）
 - Ant Design 国际化: [文档](https://ant.design/docs/react/i18n)
