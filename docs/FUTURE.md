@@ -148,3 +148,39 @@ Dataset {
 ### 当前决策
 
 **先不加，长期再评估。**
+
+---
+
+## MCP prompts/list Cursor Pagination Bug
+
+### 问题
+
+`handlePromptsList` 中 cursor 分页逻辑有 bug：
+
+```go
+// 第 180 行
+if offset+limit < len(results) {
+    nextCursor = results[offset+limit-1].ID
+}
+```
+
+**Bug**: 当 `offset + limit >= len(results)` 时，nextCursor 不会被设置，但实际上可能还有更多数据（因为 slice 已经从 offset 开始截取了）。
+
+### 正确逻辑
+
+nextCursor 应该基于**原始结果集**判断，而不是截取后的 slice：
+
+```go
+if offset+limit < len(allResults) {
+    nextCursor = allResults[offset+limit-1].ID
+}
+```
+
+### 影响
+
+目前 `prompts/list` 实际没有真正被调用分页，暂不影响使用。
+
+### 修复方案
+
+1. Search 返回时保留原始长度
+2. 或者用 `hasMore := offset+limit < totalCount` 判断
