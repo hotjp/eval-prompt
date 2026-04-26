@@ -5,9 +5,10 @@ REPO="hotjp/eval-prompt"
 BINARY_NAME="ep"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 TMPDIR="${TMPDIR:-/tmp}"
+SUDO=""
 
 usage() {
-    echo "Usage: curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | sh [-s -- --help]"
+    echo "Usage: curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | sudo sh [-s -- --help]"
     echo ""
     echo "Options:"
     echo "  -b DIR   Install binary to DIR (default: /usr/local/bin)"
@@ -25,6 +26,50 @@ while [ $# -gt 0 ]; do
         *) shift ;;
     esac
 done
+
+# Check if install dir is writable, use sudo if needed
+if [ ! -w "$INSTALL_DIR" ]; then
+    echo "Note: $INSTALL_DIR is not writable, using sudo..."
+    SUDO="sudo"
+fi
+
+# Check git dependency (required)
+install_git() {
+    echo "git is required but not installed. Attempting to install..."
+
+    if [ "$(uname)" = "Darwin" ]; then
+        # Try Homebrew first
+        if command -v brew >/dev/null 2>&1; then
+            echo "Installing git via Homebrew..."
+            brew install git && return 0
+        fi
+        # Homebrew not available or failed, show manual instructions
+        echo "Could not auto-install git. Please install manually:"
+        echo "  1. Download: https://git-scm.com/download/mac"
+        echo "  2. Double-click the .pkg file"
+        echo "  3. Follow the installer"
+        exit 1
+    elif [ -f /etc/debian_version ]; then
+        echo "Installing git via apt..."
+        $SUDO apt-get update && $SUDO apt-get install -y git
+    elif [ -f /etc/redhat-release ] || [ -f /etc/yum.conf ]; then
+        echo "Installing git via yum..."
+        $SUDO yum install -y git
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "Installing git via dnf..."
+        $SUDO dnf install -y git
+    elif command -v pacman >/dev/null 2>&1; then
+        echo "Installing git via pacman..."
+        $SUDO pacman -S --noconfirm git
+    else
+        echo "Could not auto-install git. Please install from: https://git-scm.com"
+        exit 1
+    fi
+}
+
+if ! command -v git >/dev/null 2>&1; then
+    install_git
+fi
 
 # Detect OS
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -66,7 +111,7 @@ echo "  Install to: ${INSTALL_DIR}"
 echo ""
 
 # Create install dir if needed
-mkdir -p "${INSTALL_DIR}"
+$SUDO mkdir -p "${INSTALL_DIR}"
 
 # Download binary
 cd "${TMPDIR}"
@@ -85,9 +130,9 @@ fi
 
 # Install
 echo "Installing to ${INSTALL_DIR}/${BINARY_NAME}..."
-rm -f "${INSTALL_DIR}/${BINARY_NAME}"
-mv "${FILENAME}" "${INSTALL_DIR}/${BINARY_NAME}"
-chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+$SUDO rm -f "${INSTALL_DIR}/${BINARY_NAME}"
+$SUDO mv "${FILENAME}" "${INSTALL_DIR}/${BINARY_NAME}"
+$SUDO chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 
 # Cleanup
 rm -f "${TMPDIR}/${FILENAME}"

@@ -63,7 +63,7 @@ SQLite 索引   ←  快速搜索：id, name, tags, content_hash
 
 ```bash
 # 1. 安装
-curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sudo sh
 
 # 2. 初始化项目
 ep init ./my-prompts
@@ -149,7 +149,7 @@ export APP_PLUGINS_LLM_ENDPOINT=https://api.groq.com
 
 ```bash
 # macOS / Linux / Git Bash
-curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hotjp/eval-prompt/main/install.sh | sudo sh
 
 # Windows
 # 开发中，预计一个月内发布 ⏳
