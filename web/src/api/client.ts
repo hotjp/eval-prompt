@@ -440,8 +440,8 @@ export const llmConfigApi = {
 }
 
 export const llmApi = {
-  rewrite: async (content: string, instruction: string) => {
-    const { data } = await llmAxios.post('/rewrite', { content, instruction })
+  rewrite: async (content: string, instruction: string, modelName?: string) => {
+    const { data } = await llmAxios.post('/rewrite', { content, instruction, model_name: modelName })
     return data
   },
   diff: async (oldContent: string, newContent: string, oldVersion: string, newVersion: string) => {

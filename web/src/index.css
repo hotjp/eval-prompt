@@ -11,10 +11,14 @@
   box-sizing: border-box;
 }
 
+html,
 body {
-  min-height: 100vh;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100%;
 }

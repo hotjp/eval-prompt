@@ -4,6 +4,7 @@ import { Layout } from 'antd'
 import Sidebar from './components/Sidebar'
 import AssetListView from './views/AssetListView'
 import EditorView from './views/EditorView'
+import EditorViewV2 from './views/EditorViewV2'
 import CreateAssetView from './views/CreateAssetView'
 import VersionTreeView from './views/VersionTreeView'
 import EvalPanelView from './views/EvalPanelView'
@@ -28,16 +29,17 @@ function App() {
   }, [])
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh' }}>
       <Sidebar />
-      <Layout style={{ padding: '0' }}>
-        <Content style={{ padding: '24px' }}>
+      <Layout style={{ padding: '0', height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <Content style={{ height: '100%', overflow: 'auto' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/assets" replace />} />
             <Route path="/assets" element={<AssetListView />} />
             <Route path="/assets/new" element={<CreateAssetView />} />
             <Route path="/assets/:id" element={<AssetDetailRouter />} />
             <Route path="/assets/:id/edit" element={<EditorView />} />
+            <Route path="/assets/:id/edit-v2" element={<EditorViewV2 />} />
             <Route path="/assets/:id/versions" element={<VersionTreeView />} />
             <Route path="/assets/:id/eval" element={<EvalPanelView />} />
             <Route path="/executions" element={<ExecutionListView />} />
