@@ -55,6 +55,24 @@ function getDraftKey(id: string) {
   return `draft:${id}`
 }
 
+function getVariablesKey(id: string) {
+  return `variables:${id}`
+}
+
+function loadVariables(id: string): Array<{ key: string; value: string }> | null {
+  try {
+    const raw = localStorage.getItem(getVariablesKey(id))
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function saveVariables(id: string, vars: Array<{ key: string; value: string }>) {
+  localStorage.setItem(getVariablesKey(id), JSON.stringify(vars))
+}
+
 function loadDraft(id: string): Draft | null {
   try {
     const raw = localStorage.getItem(getDraftKey(id))
@@ -114,9 +132,20 @@ function EditorViewV2() {
   const [selectedModel, setSelectedModel] = useState<string>(llmConfigs.find(c => c.default_model)?.name || llmConfigs[0]?.name || '')
 
   // Variables state
-  const [variables, setVariables] = useState<Array<{ key: string; value: string }>>([
-    { key: '', value: '' }
-  ])
+  const [variables, setVariables] = useState<Array<{ key: string; value: string }>>(() => {
+    if (id && id !== 'new') {
+      const saved = loadVariables(id)
+      if (saved && saved.length > 0) return saved
+    }
+    return [{ key: '', value: '' }]
+  })
+
+  // Save variables to localStorage when they change
+  useEffect(() => {
+    if (id && id !== 'new') {
+      saveVariables(id, variables)
+    }
+  }, [variables, id])
 
   useEffect(() => {
     chatMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -299,6 +328,7 @@ function EditorViewV2() {
       })
       const result = await triggerApi.inject(promptValue, vars)
       setInjectedResult(result.result)
+      setActiveTab('preview')
     } catch {
       message.error('Failed to inject variables')
     }
@@ -422,13 +452,32 @@ function EditorViewV2() {
             {updatedAt && <Tag color="blue" className="editor-time-tag">Saved {formatUpdatedAt(updatedAt)}</Tag>}
           </div>
           <div className="editor-header-nav">
-            <Button size="small" onClick={() => navigate(`/assets/${id}/versions`)}>
+            <Button
+              size="small"
+              onClick={() => {
+                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                navigate(`/assets/${id}/versions`)
+              }}
+            >
               Version Tree
             </Button>
-            <Button size="small" onClick={() => navigate(`/assets/${id}/eval`)}>
+            <Button
+              size="small"
+              onClick={() => {
+                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                navigate(`/assets/${id}/eval`)
+              }}
+            >
               Run Eval
             </Button>
-            <Button size="small" icon={<SwapOutlined />} onClick={() => navigate('/compare')}>
+            <Button
+              size="small"
+              icon={<SwapOutlined />}
+              onClick={() => {
+                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                navigate('/compare')
+              }}
+            >
               Compare
             </Button>
           </div>
@@ -526,7 +575,11 @@ function EditorViewV2() {
           )}
           {activeTab === 'preview' && (
             <div className="preview-container markdown-body">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{promptValue}</ReactMarkdown>
+              {injectedResult ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{injectedResult}</ReactMarkdown>
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{promptValue}</ReactMarkdown>
+              )}
             </div>
           )}
         </div>
@@ -630,12 +683,6 @@ function EditorViewV2() {
           <Button type="primary" onClick={handleInject} block>
             Inject
           </Button>
-          {injectedResult && (
-            <div className="inject-result">
-              <div className="inject-result-header">Result:</div>
-              <pre>{injectedResult}</pre>
-            </div>
-          )}
         </div>
       </div>
 
