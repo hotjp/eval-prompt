@@ -128,8 +128,16 @@ var serveCmd = &cobra.Command{
 		// Create trigger service
 		triggerService := service.NewTriggerService(indexer, gitBridge)
 
-		// Create eval service (TODO: with real implementation)
-		evalService := service.NewEvalService()
+		// Create eval execution and call stores (filesystem-based, not SQLite)
+		evalsBaseDir := filepath.Join(cwd, ".evals")
+		executionStore := service.NewExecutionFileStore(filepath.Join(evalsBaseDir, "executions"))
+		callStore := service.NewLLMCallFileStore(filepath.Join(evalsBaseDir, "calls"))
+
+		// Create eval service with stores
+		evalService := service.NewEvalService().
+			WithExecutionStore(executionStore).
+			WithCallStore(callStore).
+			WithEvalsDir(filepath.Join(cwd, "evals"))
 
 		// Create semantic service only if LLM is properly configured with a model
 		var semanticService *service.SemanticService

@@ -15,6 +15,7 @@ import (
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/yamlutil"
+	"github.com/eval-prompt/plugins/llm"
 )
 
 // EvalRun represents an evaluation run (service-level view).
@@ -139,6 +140,10 @@ type EvalService struct {
 	evalsDir        string   // Path to the evals directory (e.g., "evals" or ".evals")
 	concurrency     int      // Default concurrency for worker pool
 	coordinators    sync.Map // Map of executionID -> *Coordinator for cancellation
+
+	// File-based stores for eval execution
+	executionStore *ExecutionFileStore
+	callStore     *LLMCallFileStore
 }
 
 // NewEvalService creates a new EvalService.
@@ -185,6 +190,18 @@ func (s *EvalService) WithConcurrency(concurrency int) *EvalService {
 // WithSemanticAnalyzer sets the semantic analyzer for the EvalService.
 func (s *EvalService) WithSemanticAnalyzer(sa SemanticAnalyzer) *EvalService {
 	s.semanticAnalyzer = sa
+	return s
+}
+
+// WithExecutionStore sets the execution file store.
+func (s *EvalService) WithExecutionStore(store *ExecutionFileStore) *EvalService {
+	s.executionStore = store
+	return s
+}
+
+// WithCallStore sets the LLM call file store.
+func (s *EvalService) WithCallStore(store *LLMCallFileStore) *EvalService {
+	s.callStore = store
 	return s
 }
 
@@ -243,10 +260,235 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 	if s.llmInvoker == nil {
 		return nil, fmt.Errorf("LLM invoker not configured")
 	}
-	if s.evalRunner == nil {
-		return nil, fmt.Errorf("eval runner not configured")
+	if s.executionStore == nil {
+		return nil, fmt.Errorf("execution store not configured")
 	}
-	return nil, fmt.Errorf("eval run not yet implemented: requires eval runner integration")
+	if s.callStore == nil {
+		return nil, fmt.Errorf("call store not configured")
+	}
+
+	// Create execution
+	exec := &domain.EvalExecution{
+		ID:          domain.NewULID(),
+		AssetID:     req.AssetID,
+		SnapshotID:  req.SnapshotVersion,
+		Mode:        req.Mode,
+		RunsPerCase: req.RunsPerCase,
+		CaseIDs:     req.EvalCaseIDs,
+		TotalRuns:   len(req.EvalCaseIDs) * req.RunsPerCase,
+		Status:      domain.ExecutionStatusRunning,
+		Concurrency: req.Concurrency,
+		Model:       req.Model,
+		Temperature: req.Temperature,
+		CreatedAt:   time.Now(),
+	}
+
+	// Save execution to file store
+	if err := s.executionStore.Save(ctx, exec); err != nil {
+		return nil, fmt.Errorf("failed to save execution: %w", err)
+	}
+
+	// Calculate concurrency
+	concurrency := req.Concurrency
+	if concurrency <= 0 {
+		concurrency = s.concurrency
+		if concurrency <= 0 {
+			concurrency = 1
+		}
+	}
+
+	// Create work items
+	type workItem struct {
+		caseID    string
+		runNumber int
+	}
+	items := make([]workItem, 0, exec.TotalRuns)
+	for _, caseID := range req.EvalCaseIDs {
+		for run := 1; run <= req.RunsPerCase; run++ {
+			items = append(items, workItem{caseID: caseID, runNumber: run})
+		}
+	}
+
+	// Run evaluations with concurrency control
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	mu := sync.Mutex{}
+	completed := 0
+	failed := 0
+
+	for i, item := range items {
+		wg.Add(1)
+		go func(idx int, it workItem) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			runID := fmt.Sprintf("%s-run-%d", exec.ID, idx+1)
+
+			// Read asset prompt
+			promptContent, err := s.readAssetPrompt(ctx, req.AssetID)
+			if err != nil {
+				slog.Warn("failed to read asset prompt", "asset_id", req.AssetID, "error", err)
+				mu.Lock()
+				failed++
+				mu.Unlock()
+				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
+				return
+			}
+
+			// Read eval case
+			caseContent, err := s.readEvalCase(ctx, it.caseID)
+			if err != nil {
+				slog.Warn("failed to read eval case", "case_id", it.caseID, "error", err)
+				mu.Lock()
+				failed++
+				mu.Unlock()
+				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
+				return
+			}
+
+			// Build prompt
+			fullPrompt := fmt.Sprintf("%s\n\n%s", promptContent, caseContent)
+
+			// Invoke LLM
+			start := time.Now()
+			resp, err := s.llmInvoker.Invoke(ctx, fullPrompt, req.Model, req.Temperature)
+			latencyMs := time.Since(start).Milliseconds()
+			if err != nil {
+				slog.Warn("LLM invoke failed", "run_id", runID, "error", err)
+				mu.Lock()
+				failed++
+				mu.Unlock()
+				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
+				return
+			}
+
+			// Append successful call
+			s.appendSuccessfulCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, resp, latencyMs)
+
+			mu.Lock()
+			completed++
+			mu.Unlock()
+		}(i, item)
+	}
+
+	wg.Wait()
+
+	// Update execution status
+	var finalStatus domain.ExecutionStatus
+	if failed == 0 {
+		finalStatus = domain.ExecutionStatusCompleted
+	} else if completed == 0 {
+		finalStatus = domain.ExecutionStatusFailed
+	} else {
+		finalStatus = domain.ExecutionStatusPartialFailure
+	}
+
+	exec.Status = finalStatus
+	exec.CompletedRuns = completed
+	exec.FailedRuns = failed
+
+	now := time.Now()
+	exec.CompletedAt = &now
+
+	if err := s.executionStore.UpdateStatus(ctx, exec.ID, finalStatus); err != nil {
+		slog.Warn("failed to update execution status", "error", err)
+	}
+	if err := s.executionStore.UpdateProgress(ctx, exec.ID, completed, failed, 0); err != nil {
+		slog.Warn("failed to update execution progress", "error", err)
+	}
+
+	return exec, nil
+}
+
+// readAssetPrompt reads the prompt content from an asset file.
+func (s *EvalService) readAssetPrompt(ctx context.Context, assetID string) (string, error) {
+	// Validate ID to prevent path traversal
+	if err := pathutil.ValidateID(assetID); err != nil {
+		return "", err
+	}
+
+	filePath := filepath.Join("prompts", assetID+".md")
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse frontmatter and return body
+	_, body, err := yamlutil.ParseFrontMatter(string(content))
+	if err != nil {
+		return "", err
+	}
+	return body, nil
+}
+
+// readEvalCase reads an eval case from the evals directory.
+func (s *EvalService) readEvalCase(ctx context.Context, caseID string) (string, error) {
+	// Validate ID to prevent path traversal
+	if err := pathutil.ValidateID(caseID); err != nil {
+		return "", err
+	}
+
+	evalsDir := s.evalsDir
+	if evalsDir == "" {
+		evalsDir = ".evals"
+	}
+
+	filePath := filepath.Join(evalsDir, caseID+".md")
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse frontmatter and return body
+	_, body, err := yamlutil.ParseEvalPromptFrontMatter(string(content))
+	if err != nil {
+		return "", err
+	}
+	return body, nil
+}
+
+// appendSuccessfulCall appends a successful LLM call record.
+func (s *EvalService) appendSuccessfulCall(ctx context.Context, execID, runID, assetID, snapshotID, caseID string, runNumber int, model string, temp float64, resp *llm.LLMResponse, latencyMs int64) {
+	call := &LLMCall{
+		RunID:           runID,
+		ExecutionID:     execID,
+		AssetID:        assetID,
+		SnapshotID:     snapshotID,
+		CaseID:         caseID,
+		RunNumber:      runNumber,
+		Status:          "completed",
+		Model:          model,
+		Temperature:    temp,
+		TokensIn:       resp.TokensIn,
+		TokensOut:      resp.TokensOut,
+		LatencyMs:      latencyMs,
+		ResponseContent: resp.Content,
+		Timestamp:      time.Now(),
+	}
+	if err := s.callStore.Append(ctx, execID, call); err != nil {
+		slog.Warn("failed to append call", "error", err)
+	}
+}
+
+// appendFailedCall appends a failed LLM call record.
+func (s *EvalService) appendFailedCall(ctx context.Context, execID, runID, assetID, snapshotID, caseID string, runNumber int, model string, temp float64, errMsg string) {
+	call := &LLMCall{
+		RunID:       runID,
+		ExecutionID: execID,
+		AssetID:    assetID,
+		SnapshotID:  snapshotID,
+		CaseID:      caseID,
+		RunNumber:   runNumber,
+		Status:      "failed",
+		Model:      model,
+		Temperature: temp,
+		Error:       errMsg,
+		Timestamp:   time.Now(),
+	}
+	if err := s.callStore.Append(ctx, execID, call); err != nil {
+		slog.Warn("failed to append failed call", "error", err)
+	}
 }
 
 // GetExecution retrieves an eval execution by ID.
