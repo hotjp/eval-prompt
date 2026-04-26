@@ -356,7 +356,7 @@ function Sidebar() {
         </div>
       )}
 
-      {healthData?.checks?.llm?.status !== 'ok' && (
+      {healthData && healthData?.checks?.llm?.status !== 'ok' && (
         <div style={{ marginBottom: 12 }}>
           <Button
             type="link"
