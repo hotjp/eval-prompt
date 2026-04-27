@@ -7,7 +7,11 @@ import EditorView from './views/EditorView'
 import EditorViewV2 from './views/EditorViewV2'
 import CreateAssetView from './views/CreateAssetView'
 import VersionTreeView from './views/VersionTreeView'
-import EvalPanelView from './views/EvalPanelView'
+import EvalLayout from './views/eval/EvalLayout'
+import EvalDesignView from './views/eval/EvalDesignView'
+import EvalRunView from './views/eval/EvalRunView'
+import EvalReportView from './views/eval/EvalReportView'
+import EvalHistoryView from './views/eval/EvalHistoryView'
 import CompareView from './views/CompareView'
 import SettingsView from './views/SettingsView'
 import AssetDetailRouter from './views/AssetDetailRouter'
@@ -15,11 +19,15 @@ import ExecutionListView from './views/ExecutionListView'
 import CallLogView from './views/CallLogView'
 import { loadAssetTypesFromAPI } from './config/assetTypes'
 import { loadTagsFromAPI } from './config/tags'
+import { useExecutionPolling } from './views/eval/hooks/useExecutionPolling'
 
 const { Content } = Layout
 
 function App() {
   const initRef = useRef(false)
+
+  // Global polling for all running eval executions
+  useExecutionPolling()
 
   useEffect(() => {
     if (initRef.current) return
@@ -41,7 +49,13 @@ function App() {
             <Route path="/assets/:id/edit" element={<EditorView />} />
             <Route path="/assets/:id/edit-v2" element={<EditorViewV2 />} />
             <Route path="/assets/:id/versions" element={<VersionTreeView />} />
-            <Route path="/assets/:id/eval" element={<EvalPanelView />} />
+            <Route path="/assets/:id/eval" element={<EvalLayout />}>
+              <Route index element={<EvalRunView />} />
+              <Route path="design" element={<EvalDesignView />} />
+              <Route path="run" element={<EvalRunView />} />
+              <Route path="report/:runId" element={<EvalReportView />} />
+              <Route path="history" element={<EvalHistoryView />} />
+            </Route>
             <Route path="/executions" element={<ExecutionListView />} />
             <Route path="/executions/:id/calls" element={<CallLogView />} />
             <Route path="/compare" element={<CompareView />} />

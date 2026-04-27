@@ -155,6 +155,64 @@ func (p *OpenAIProvider) doChat(ctx context.Context, body openaiChatRequest, mod
 	}, nil
 }
 
+// Embed implements Provider by calling the OpenAI embeddings API.
+func (p *OpenAIProvider) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+	reqBody := map[string]any{
+		"input": texts,
+		"model": p.DefaultModel,
+	}
+	if reqBody["model"] == "" {
+		reqBody["model"] = "text-embedding-3-small"
+	}
+
+	payload, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("openai embed: marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.Endpoint+"/embeddings", bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("openai embed: create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("openai embed: do request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("openai embed: read body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp openaiErrorResponse
+		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error.Message != "" {
+			return nil, fmt.Errorf("openai embed: %s: %s", errResp.Error.Type, errResp.Error.Message)
+		}
+		return nil, fmt.Errorf("openai embed: status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var embedResp struct {
+		Data []struct {
+			Embedding []float64 `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &embedResp); err != nil {
+		return nil, fmt.Errorf("openai embed: unmarshal response: %w", err)
+	}
+
+	result := make([][]float64, len(embedResp.Data))
+	for i, item := range embedResp.Data {
+		result[i] = item.Embedding
+	}
+	return result, nil
+}
+
 func (p *OpenAIProvider) doRequest(ctx context.Context, body any) (json.RawMessage, error) {
 	payload, err := json.Marshal(body)
 	if err != nil {

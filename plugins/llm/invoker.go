@@ -86,6 +86,11 @@ func (n *NoopInvoker) Ping(_ context.Context) error {
 	return errNoop
 }
 
+// Embed implements Interface. Noop always returns error.
+func (n *NoopInvoker) Embed(_ context.Context, _ []string) ([][]float64, error) {
+	return nil, errNoop
+}
+
 // Ensure NoopInvoker implements the service.LLMInvoker interface.
 var _ Interface = (*NoopInvoker)(nil)
 
@@ -103,6 +108,9 @@ type Interface interface {
 	// Ping performs a lightweight health check. Returns nil if healthy, error otherwise.
 	// If PingPath is empty, returns nil (skip check).
 	Ping(ctx context.Context) error
+	// Embed generates embeddings for the given texts.
+	// Returns a 2D slice where result[i] is the embedding for texts[i].
+	Embed(ctx context.Context, texts []string) ([][]float64, error)
 }
 
 // pingTCP checks TCP connectivity to the host of the given URL.

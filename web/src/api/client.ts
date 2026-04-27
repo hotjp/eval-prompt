@@ -132,6 +132,60 @@ export interface CompareResult {
   diff_output?: string
 }
 
+// Orchestrate API types
+export interface ConfidenceInterval {
+  low: number
+  high: number
+}
+
+export interface WorkItemResult {
+  work_item_id: string
+  score: number
+  details?: Record<string, unknown>
+  duration_ms: number
+}
+
+export interface PluginResult {
+  plugin_name: string
+  score: number
+  confidence_interval?: ConfidenceInterval
+  work_item_results: WorkItemResult[]
+}
+
+export interface BaselineResult {
+  baseline_id: string
+  score_delta: number
+  effect_size: number
+  effect_interpretation: string
+  t_stat: number
+  p_value: number
+  is_significant: boolean
+}
+
+export interface ELORatingResult {
+  new_rating: number
+  previous_rating: number
+  outcome: number
+}
+
+export interface OrchestrateRequest {
+  asset_id: string
+  plugins: string[]
+  injection_strategy: string
+  parallelism: number
+  confidence_level?: number
+  baseline_id?: string
+}
+
+export interface OrchestrateResponse {
+  overall_score: number
+  plugin_results: Record<string, PluginResult>
+  confidence_interval?: ConfidenceInterval
+  baseline_comparison?: BaselineResult
+  elo_result?: ELORatingResult
+  summary: string
+}
+
 export interface HealthStatus {
   status: string
   checks?: Record<string, { status: string; message?: string; providers?: Record<string, { status: string; latency_ms?: number; message?: string }> }>
@@ -384,6 +438,11 @@ export const evalApi = {
   list: async (assetId: string): Promise<EvalRun[]> => {
     const { data } = await api.get(`/evals?asset_id=${assetId}`)
     return data.runs || []
+  },
+
+  orchestrate: async (request: OrchestrateRequest): Promise<OrchestrateResponse> => {
+    const { data } = await api.post('/evals/orchestrate', request)
+    return data
   },
 }
 

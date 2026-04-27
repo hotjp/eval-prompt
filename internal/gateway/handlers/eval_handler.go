@@ -1,7 +1,12 @@
 // Package handlers contains HTTP handlers for the gateway layer.
+//
+// This file implements the /api/v1/evals/orchestrate endpoint which coordinates
+// evaluation plugins across multiple test cases with parallelism, confidence intervals,
+// baseline comparisons, and ELO rating updates.
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -10,6 +15,13 @@ import (
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
+	"github.com/eval-prompt/internal/service/eval"
+	"github.com/eval-prompt/internal/service/eval/plugins/bertscore"
+	"github.com/eval-prompt/internal/service/eval/plugins/beliefrevision"
+	"github.com/eval-prompt/internal/service/eval/plugins/constraint"
+	"github.com/eval-prompt/internal/service/eval/plugins/factscore"
+	"github.com/eval-prompt/internal/service/eval/plugins/geval"
+	"github.com/eval-prompt/internal/service/eval/plugins/selfcheck"
 	"github.com/eval-prompt/plugins/llm"
 )
 
@@ -21,6 +33,9 @@ type EvalHandler struct {
 	semanticAnalyzer  service.SemanticAnalyzer
 	llmInvoker       llm.Interface
 	defaultModel     string
+	orchestrator      *eval.Orchestrator
+	embedder         eval.Embedder
+	pluginsRegistered bool
 }
 
 // NewEvalHandler creates a new EvalHandler.
@@ -41,6 +56,100 @@ func (h *EvalHandler) SetSemanticAnalyzer(sa service.SemanticAnalyzer) {
 func (h *EvalHandler) SetLLMInvoker(invoker llm.Interface, defaultModel string) {
 	h.llmInvoker = invoker
 	h.defaultModel = defaultModel
+}
+
+// SetEmbedder sets the embedder for BERTScore and other embedding-based evaluations.
+func (h *EvalHandler) SetEmbedder(embedder eval.Embedder) {
+	h.embedder = embedder
+}
+
+// llmAdapter adapts llm.Interface to eval.LLMInvoker and LLMInvokerForEmbed.
+type llmAdapter struct {
+	invoker llm.Interface
+	model   string
+}
+
+func (a *llmAdapter) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*eval.LLMResponse, error) {
+	resp, err := a.invoker.Invoke(ctx, prompt, model, temperature)
+	if err != nil {
+		return nil, err
+	}
+	return &eval.LLMResponse{
+		Content:    resp.Content,
+		Model:     resp.Model,
+		TokensIn:  resp.TokensIn,
+		TokensOut: resp.TokensOut,
+		StopReason: resp.StopReason,
+	}, nil
+}
+
+func (a *llmAdapter) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+	return a.invoker.Embed(ctx, texts)
+}
+
+// RegisterPlugins registers all eval plugins with the global registry.
+// This must be called after SetLLMInvoker.
+func (h *EvalHandler) RegisterPlugins() {
+	if h.pluginsRegistered {
+		return
+	}
+	if h.llmInvoker == nil {
+		h.logger.Warn("cannot register plugins: LLM invoker not set")
+		return
+	}
+
+	// Create adapter to adapt llm.Interface to eval.LLMInvoker
+	adapter := &llmAdapter{invoker: h.llmInvoker, model: h.defaultModel}
+	judge := eval.NewLLMJudge(adapter, h.defaultModel)
+
+	// Create embedder from LLM invoker if it supports embeddings
+	if h.embedder == nil {
+		// Try to create embedder from LLM invoker
+		if emb, ok := h.llmInvoker.(interface{ Embed(ctx context.Context, texts []string) ([][]float64, error) }); ok {
+			h.embedder = eval.NewLLMEmbedder(emb, "openai", "text-embedding-3-small", 1536)
+			h.logger.Info("created embedder from LLM invoker")
+		}
+	}
+
+	// Register BERTScore plugin if embedder is available
+	if h.embedder != nil {
+		bertscorePlugin := bertscore.NewPlugin(h.embedder)
+		eval.Register(bertscorePlugin)
+		h.logger.Info("registered bertscore plugin")
+	}
+
+	// Register G-Eval plugin with temperature for sampling
+	gevalJudge := eval.NewLLMJudgeWithTemp(adapter, h.defaultModel, 0.7)
+	gevalPlugin := geval.NewPlugin(gevalJudge)
+	eval.Register(gevalPlugin)
+	h.logger.Info("registered geval plugin")
+
+	// Register BeliefRevision plugin
+	beliefPlugin := beliefrevision.NewPlugin(judge)
+	eval.Register(beliefPlugin)
+	h.logger.Info("registered beliefrevision plugin")
+
+	// Register Constraint plugin
+	constraintPlugin := constraint.NewPlugin(judge)
+	eval.Register(constraintPlugin)
+	h.logger.Info("registered constraint plugin")
+
+	// Register FACTScore plugin
+	factscorePlugin := factscore.NewPlugin(judge)
+	eval.Register(factscorePlugin)
+	h.logger.Info("registered factscore plugin")
+
+	// Register SelfCheckGPT plugin
+	selfcheckPlugin := selfcheck.NewPlugin(judge)
+	eval.Register(selfcheckPlugin)
+	h.logger.Info("registered selfcheck plugin")
+
+	h.pluginsRegistered = true
+}
+
+// SetOrchestrator sets the evaluation orchestrator for multi-plugin orchestration.
+func (h *EvalHandler) SetOrchestrator(orchestrator *eval.Orchestrator) {
+	h.orchestrator = orchestrator
 }
 
 // RunEvalRequest represents the request body for running an eval.
@@ -180,6 +289,244 @@ func (h *EvalHandler) ExecuteEval(w http.ResponseWriter, r *http.Request) {
 		ExecutionID: execution.ID,
 		Status:      string(execution.Status),
 	})
+}
+
+// OrchestrateRequest represents the request body for orchestrating evals.
+type OrchestrateRequest struct {
+	AssetID          string   `json:"asset_id"`
+	Plugins          []string `json:"plugins"`
+	InjectionStrategy string   `json:"injection_strategy"`
+	Parallelism      int      `json:"parallelism"`
+	ConfidenceLevel  float64  `json:"confidence_level,omitempty"`
+	BaselineID       string   `json:"baseline_id,omitempty"`
+}
+
+// OrchestrateResponse represents the response for orchestrating evals.
+type OrchestrateResponse struct {
+	OverallScore       float64                `json:"overall_score"`
+	PluginResults      map[string]PluginResult `json:"plugin_results"`
+	ConfidenceInterval *ConfidenceInterval    `json:"confidence_interval"`
+	BaselineComparison *BaselineResult        `json:"baseline_comparison,omitempty"`
+	ELOResult          *ELORatingResult       `json:"elo_result,omitempty"`
+	Summary            string                 `json:"summary"`
+}
+
+// PluginResult represents a single plugin's execution result.
+type PluginResult struct {
+	PluginName        string           `json:"plugin_name"`
+	Score             float64          `json:"score"`
+	ConfidenceInterval *ConfidenceInterval `json:"confidence_interval,omitempty"`
+	WorkItemResults   []WorkItemResult `json:"work_item_results"`
+}
+
+// WorkItemResult represents the result of a single work item.
+type WorkItemResult struct {
+	WorkItemID  string         `json:"work_item_id"`
+	Score       float64        `json:"score"`
+	Details     map[string]any `json:"details,omitempty"`
+	DurationMs  int64          `json:"duration_ms"`
+}
+
+// ConfidenceInterval represents a statistical confidence interval.
+type ConfidenceInterval struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// BaselineResult contains the comparison against baseline.
+type BaselineResult struct {
+	BaselineID           string  `json:"baseline_id"`
+	ScoreDelta           float64 `json:"score_delta"`
+	EffectSize           float64 `json:"effect_size"`
+	EffectInterpretation string  `json:"effect_interpretation"`
+	TStat                float64 `json:"t_stat"`
+	PValue               float64 `json:"p_value"`
+	IsSignificant        bool    `json:"is_significant"`
+}
+
+// ELORatingResult contains ELO rating update result.
+type ELORatingResult struct {
+	NewRating       float64 `json:"new_rating"`
+	PreviousRating  float64 `json:"previous_rating"`
+	Outcome         float64 `json:"outcome"`
+}
+
+// Orchestrate handles POST /api/v1/evals/orchestrate.
+//
+//	@Summary Orchestrate multi-plugin evaluation
+//	@Description Run multiple evaluation plugins with parallelism, confidence intervals, and ELO ratings
+//	@Tags evals
+//	@Accept json
+//	@Produce json
+//	@Param request body OrchestrateRequest true "Orchestration request"
+//	@Success 200 {object} OrchestrateResponse
+//	@Failure 400 {object} map[string]interface{}
+//	@Failure 503 {object} map[string]interface{}
+//	@Router /api/v1/evals/orchestrate [post]
+func (h *EvalHandler) Orchestrate(w http.ResponseWriter, r *http.Request) {
+	if h.orchestrator == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "orchestrator not configured")
+		return
+	}
+
+	// Register plugins before orchestrator runs
+	h.RegisterPlugins()
+
+	ctx := r.Context()
+
+	var req OrchestrateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if req.AssetID == "" {
+		h.writeError(w, http.StatusBadRequest, "asset_id is required")
+		return
+	}
+
+	if len(req.Plugins) == 0 {
+		h.writeError(w, http.StatusBadRequest, "at least one plugin is required")
+		return
+	}
+
+	// Get asset and test cases from indexer
+	asset, err := h.indexer.GetByID(ctx, req.AssetID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", req.AssetID)
+		return
+	}
+
+	// Convert domain test cases to eval.TestCase
+	testCases := make([]*eval.TestCase, 0, len(asset.TestCases))
+	for _, tc := range asset.TestCases {
+		var inputStr string
+		if tc.Input != nil {
+			inputStr = fmt.Sprintf("%v", tc.Input)
+		}
+		var expectedStr string
+		if tc.Expected != nil {
+			expectedStr = tc.Expected.Content
+		}
+		testCases = append(testCases, &eval.TestCase{
+			ID:       tc.ID,
+			Prompt:   tc.Name, // Name is used as the prompt text
+			Input:    inputStr,
+			Expected: expectedStr,
+		})
+	}
+
+	// Build eval config
+	parallelism := req.Parallelism
+	if parallelism <= 0 {
+		parallelism = 4
+	}
+	confidenceLevel := req.ConfidenceLevel
+	if confidenceLevel <= 0 {
+		confidenceLevel = 0.95
+	}
+
+	config := eval.EvalConfig{
+		Plugins:           req.Plugins,
+		InjectionStrategy: req.InjectionStrategy,
+		Parallelism:       parallelism,
+		StatsConfig: eval.StatsConfig{
+			ConfidenceLevel:    confidenceLevel,
+			BootstrapIterations: 1000,
+			BaselineID:         req.BaselineID,
+		},
+	}
+
+	// Create orchestrator with config
+	orchestrator := eval.NewOrchestrator(nil, config, h.logger)
+
+	// Run orchestration
+	result, err := orchestrator.Run(ctx, req.AssetID, "", testCases, nil)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "orchestration failed: %v", err)
+		return
+	}
+
+	// Convert to response format
+	response := h.convertOrchestratorResult(result)
+
+	h.logger.Info("orchestration completed", "asset_id", req.AssetID, "overall_score", result.OverallScore, "layer", "L5")
+
+	h.writeJSON(w, http.StatusOK, response)
+}
+
+// convertOrchestratorResult converts eval.OrchestratorResult to OrchestrateResponse.
+func (h *EvalHandler) convertOrchestratorResult(result *eval.OrchestratorResult) *OrchestrateResponse {
+	if result == nil {
+		return nil
+	}
+
+	pluginResults := make(map[string]PluginResult)
+	for name, pr := range result.PluginResults {
+		workItems := make([]WorkItemResult, 0, len(pr.WorkItemResults))
+		for _, wi := range pr.WorkItemResults {
+			workItems = append(workItems, WorkItemResult{
+				WorkItemID: wi.WorkItemID,
+				Score:      wi.Score,
+				Details:    wi.Details,
+				DurationMs: wi.DurationMs,
+			})
+		}
+
+		var ci *ConfidenceInterval
+		if pr.ConfidenceInterval != nil {
+			ci = &ConfidenceInterval{
+				Low:  pr.ConfidenceInterval.Low,
+				High: pr.ConfidenceInterval.High,
+			}
+		}
+
+		pluginResults[name] = PluginResult{
+			PluginName:        pr.PluginName,
+			Score:             pr.Score,
+			ConfidenceInterval: ci,
+			WorkItemResults:   workItems,
+		}
+	}
+
+	var ci *ConfidenceInterval
+	if result.ConfidenceInterval != nil {
+		ci = &ConfidenceInterval{
+			Low:  result.ConfidenceInterval.Low,
+			High: result.ConfidenceInterval.High,
+		}
+	}
+
+	var baseline *BaselineResult
+	if result.BaselineComparison != nil {
+		baseline = &BaselineResult{
+			BaselineID:           result.BaselineComparison.BaselineID,
+			ScoreDelta:           result.BaselineComparison.ScoreDelta,
+			EffectSize:           result.BaselineComparison.EffectSize,
+			EffectInterpretation: result.BaselineComparison.EffectInterpretation,
+			TStat:                result.BaselineComparison.TStat,
+			PValue:               result.BaselineComparison.PValue,
+			IsSignificant:        result.BaselineComparison.IsSignificant,
+		}
+	}
+
+	var elo *ELORatingResult
+	if result.ELOResult != nil {
+		elo = &ELORatingResult{
+			NewRating:      result.ELOResult.NewRating,
+			PreviousRating: result.ELOResult.PreviousRating,
+			Outcome:        result.ELOResult.Outcome,
+		}
+	}
+
+	return &OrchestrateResponse{
+		OverallScore:       result.OverallScore,
+		PluginResults:      pluginResults,
+		ConfidenceInterval: ci,
+		BaselineComparison: baseline,
+		ELOResult:          elo,
+		Summary:            result.Summary,
+	}
 }
 
 // GetEvalRun handles GET /api/v1/evals/{id}.

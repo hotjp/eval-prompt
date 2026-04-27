@@ -288,6 +288,11 @@ func (p *ClaudeProvider) InvokeWithSchema(ctx context.Context, prompt string, sc
 	return json.RawMessage(content), nil
 }
 
+// Embed implements Provider. Claude does not support embeddings API.
+func (p *ClaudeProvider) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+	return nil, errors.New("claude: embedding API is not supported")
+}
+
 // Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
 // If PingPath is empty, checks TCP connectivity to the endpoint host.
 func (p *ClaudeProvider) Ping(ctx context.Context) error {

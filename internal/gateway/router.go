@@ -128,6 +128,7 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/evals", evalHandler.ListEvalRuns)
 	mux.HandleFunc("POST /api/v1/evals/run", evalHandler.RunEval)
 	mux.HandleFunc("POST /api/v1/evals/execute", evalHandler.ExecuteEval)
+	mux.HandleFunc("POST /api/v1/evals/orchestrate", evalHandler.Orchestrate)
 	mux.HandleFunc("GET /api/v1/evals/{id}", evalHandler.GetEvalRun)
 	mux.HandleFunc("GET /api/v1/evals/{id}/diagnose", evalHandler.DiagnoseEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}/report", evalHandler.GetEvalReport)

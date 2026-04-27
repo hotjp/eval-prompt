@@ -174,6 +174,67 @@ func (p *OllamaProvider) InvokeWithSchema(ctx context.Context, prompt string, sc
 	return json.RawMessage(ollamaResp.Response), nil
 }
 
+// Embed implements Provider by calling the Ollama embeddings API.
+// Ollama /api/embeddings accepts a single prompt per request, so we make parallel requests.
+func (p *OllamaProvider) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+	if len(texts) == 0 {
+		return [][]float64{}, nil
+	}
+
+	results := make([][]float64, len(texts))
+	for i, text := range texts {
+		reqBody := map[string]any{
+			"model":  "nomic-embed-text", // default model for embeddings
+			"prompt": text,
+		}
+
+		payload, err := json.Marshal(reqBody)
+		if err != nil {
+			return nil, fmt.Errorf("ollama embed: marshal request: %w", err)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.Endpoint+"/api/embeddings", bytes.NewReader(payload))
+		if err != nil {
+			return nil, fmt.Errorf("ollama embed: create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("ollama embed: do request: %w", err)
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("ollama embed: read body: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("ollama embed: status %d: %s", resp.StatusCode, string(respBody))
+		}
+
+		var embedResp struct {
+			Embedding  []float64   `json:"embedding"`
+			Embeddings [][]float64 `json:"embeddings,omitempty"`
+		}
+		if err := json.Unmarshal(respBody, &embedResp); err != nil {
+			return nil, fmt.Errorf("ollama embed: unmarshal response: %w", err)
+		}
+
+		if len(embedResp.Embeddings) > 0 {
+			results[i] = embedResp.Embeddings[0]
+		} else if len(embedResp.Embedding) > 0 {
+			results[i] = embedResp.Embedding
+		} else {
+			return nil, fmt.Errorf("ollama embed: empty embedding for text %d", i)
+		}
+	}
+
+	return results, nil
+}
+
 // Ping implements Provider. If PingPath is set, sends GET to verify HTTP connectivity.
 // If PingPath is empty, checks TCP connectivity to the endpoint host.
 func (p *OllamaProvider) Ping(ctx context.Context) error {

@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
 import { assetApi, triggerApi, llmApi } from '../api/client'
+import QuickEvalModal from './eval/components/QuickEvalModal'
 import type { AssetDetail } from '../api/client'
 import { getLLMConfigs } from '../config/llmConfig'
 import './EditorViewV2.css'
@@ -130,6 +131,7 @@ function EditorViewV2() {
   const [rewriting, setRewriting] = useState(false)
   const [rewritePreview, setRewritePreview] = useState('')
   const [showRewritePreview, setShowRewritePreview] = useState(false)
+  const [showQuickEval, setShowQuickEval] = useState(false)
   const [activeTab, setActiveTab] = useState('editor')
   const loadedRef = useRef(false)
   const autoSaveTimer = useRef<number | undefined>(undefined)
@@ -777,6 +779,14 @@ function EditorViewV2() {
           </Space>
         </Space>
       </Modal>
+
+      {/* Quick Eval Modal */}
+      <QuickEvalModal
+        assetId={id || ''}
+        assetName={asset?.name || id || ''}
+        open={showQuickEval}
+        onClose={() => setShowQuickEval(false)}
+      />
 
       {/* Rewrite Preview Modal */}
       <Modal

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Card, Select, Row, Col, Statistic, Tag, Table, message, Button, Space, Modal } from 'antd'
 import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined, DiffOutlined } from '@ant-design/icons'
 import { assetApi, evalApi, llmApi } from '../api/client'
@@ -7,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 
 function CompareView() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string>('')
   const [assetDetail, setAssetDetail] = useState<AssetDetail | null>(null)
@@ -33,6 +35,33 @@ function CompareView() {
 
   useEffect(() => {
     loadAssets()
+  }, [])
+
+  // Initialize from URL query params
+  useEffect(() => {
+    const assetId = searchParams.get('asset')
+    const v1 = searchParams.get('v1')
+    const v2 = searchParams.get('v2')
+    if (assetId) {
+      setSelectedAsset(assetId)
+      // Clear search params after reading to avoid re-triggering
+      if (v1 || v2) {
+        setSearchParams({})
+      }
+      // Defer version setting until asset detail loads
+      const setVersions = async () => {
+        try {
+          const detail = await assetApi.get(assetId)
+          setAssetDetail(detail)
+          const versions = detail.snapshots?.map((s: Snapshot) => s.version) || []
+          if (v1 && versions.includes(v1)) setVersion1(v1)
+          if (v2 && versions.includes(v2)) setVersion2(v2)
+        } catch {
+          message.error('Failed to load asset for comparison')
+        }
+      }
+      setVersions()
+    }
   }, [])
 
   // Load asset detail when asset is selected to get snapshots

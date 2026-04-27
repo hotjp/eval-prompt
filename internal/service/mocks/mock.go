@@ -407,6 +407,7 @@ type MockLLMInvoker struct {
 	InvokeFunc         func(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error)
 	InvokeWithSchemaFunc func(ctx context.Context, prompt string, schema []byte) ([]byte, error)
 	PingFunc           func(ctx context.Context) error
+	EmbedFunc          func(ctx context.Context, texts []string) ([][]float64, error)
 }
 
 func (m *MockLLMInvoker) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
@@ -434,6 +435,13 @@ func (m *MockLLMInvoker) Ping(ctx context.Context) error {
 		return m.PingFunc(ctx)
 	}
 	return nil
+}
+
+func (m *MockLLMInvoker) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+	if m.EmbedFunc != nil {
+		return m.EmbedFunc(ctx, texts)
+	}
+	return nil, nil
 }
 
 // MockTraceCollector is a mock implementation of service.TraceCollector.

@@ -33,6 +33,15 @@ export interface MatchedPrompt {
   relevance: number
 }
 
+export interface RunningEval {
+  id: string
+  assetId: string
+  assetName: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelling'
+  progress?: { completed: number; total: number }
+  startedAt: number
+}
+
 interface AppState {
   assets: Asset[]
   currentAsset: Asset | null
@@ -40,7 +49,7 @@ interface AppState {
   evalRuns: EvalRun[]
   matchedPrompts: MatchedPrompt[]
   loading: boolean
-  runningEval: { id: string; assetId: string; assetName: string } | null
+  runningEvals: RunningEval[]
   evalConcurrency: number
   showInitRepoModal: boolean
   initRepoModalReason: 'create' | 'api_error' | 'manual' | null
@@ -51,7 +60,9 @@ interface AppState {
   setEvalRuns: (runs: EvalRun[]) => void
   setMatchedPrompts: (prompts: MatchedPrompt[]) => void
   setLoading: (loading: boolean) => void
-  setRunningEval: (data: { id: string; assetId: string; assetName: string } | null) => void
+  addRunningEval: (evalItem: RunningEval) => void
+  updateRunningEval: (id: string, patch: Partial<RunningEval>) => void
+  removeRunningEval: (id: string) => void
   setEvalConcurrency: (concurrency: number) => void
   setShowInitRepoModal: (show: boolean, reason?: 'create' | 'api_error' | 'manual') => void
 }
@@ -63,7 +74,7 @@ export const useStore = create<AppState>((set) => ({
   evalRuns: [],
   matchedPrompts: [],
   loading: false,
-  runningEval: null,
+  runningEvals: [],
   evalConcurrency: 1,
   showInitRepoModal: false,
   initRepoModalReason: null,
@@ -74,7 +85,14 @@ export const useStore = create<AppState>((set) => ({
   setEvalRuns: (evalRuns) => set({ evalRuns }),
   setMatchedPrompts: (matchedPrompts) => set({ matchedPrompts }),
   setLoading: (loading) => set({ loading }),
-  setRunningEval: (runningEval) => set({ runningEval }),
+  addRunningEval: (evalItem) =>
+    set((state) => ({ runningEvals: [...state.runningEvals, evalItem] })),
+  updateRunningEval: (id, patch) =>
+    set((state) => ({
+      runningEvals: state.runningEvals.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    })),
+  removeRunningEval: (id) =>
+    set((state) => ({ runningEvals: state.runningEvals.filter((e) => e.id !== id) })),
   setEvalConcurrency: (evalConcurrency) => set({ evalConcurrency }),
   setShowInitRepoModal: (show, reason) => set({ showInitRepoModal: show, initRepoModalReason: reason ?? null }),
 }))

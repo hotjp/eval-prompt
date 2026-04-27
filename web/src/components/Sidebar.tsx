@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal, Select } from 'antd'
+import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal, Select, Badge, Progress, Tag } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,7 @@ import {
   FieldTimeOutlined,
   FolderOutlined,
   WarningOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons'
 import { healthApi, adminApi, assetApi, type HealthStatus } from '../api/client'
 import { useStore } from '../store'
@@ -53,7 +54,7 @@ function Sidebar() {
   const [initPath, setInitPath] = useState('')
   const [initLoading, setInitLoading] = useState(false)
   const [gitSyncing, setGitSyncing] = useState(false)
-  const runningEval = useStore(s => s.runningEval)
+  const runningEvals = useStore(s => s.runningEvals)
   const showInitRepoModal = useStore(s => s.showInitRepoModal)
   const initRepoModalReason = useStore(s => s.initRepoModalReason)
   const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
@@ -141,7 +142,7 @@ function Sidebar() {
   }, [])
 
   const handleRestart = async () => {
-    if (runningEval) {
+    if (runningEvals.length > 0) {
       message.warning(t('sidebar_eval_running_warning'))
       return
     }
@@ -347,7 +348,7 @@ function Sidebar() {
         </div>
       </div>
 
-      {runningEval && (
+      {runningEvals.length > 0 && (
         <div
           style={{
             marginBottom: 12,
@@ -360,9 +361,20 @@ function Sidebar() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <FieldTimeOutlined style={{ color: '#1890ff' }} />
-            <span style={{ fontWeight: 500 }}>{t('sidebar_eval_in_progress')}</span>
+            <span style={{ fontWeight: 500 }}>
+              {runningEvals.length === 1
+                ? t('sidebar_eval_in_progress')
+                : t('sidebar_evals_in_progress', { count: runningEvals.length })}
+            </span>
           </div>
-          <div style={{ color: '#8c8c8c' }}>{t('sidebar_eval_warning')}</div>
+          {runningEvals.map((re) => (
+            <div key={re.id} style={{ color: '#8c8c8c', marginTop: 2 }}>
+              {re.assetName}
+              {re.progress
+                ? ` (${re.progress.completed}/${re.progress.total})`
+                : ''}
+            </div>
+          ))}
         </div>
       )}
 
@@ -470,7 +482,7 @@ function Sidebar() {
               size="small"
               block
               loading={loading}
-              disabled={serverStatus === 'error' || !!runningEval}
+              disabled={serverStatus === 'error' || runningEvals.length > 0}
               onClick={handleReloadConfig}
             >
               {t('sidebar_reload_config')}
@@ -488,7 +500,7 @@ function Sidebar() {
                 size="small"
                 block
                 danger
-                disabled={serverStatus === 'error' || !!runningEval}
+                disabled={serverStatus === 'error' || runningEvals.length > 0}
               >
                 {t('sidebar_restart_server')}
               </Button>
@@ -557,6 +569,61 @@ function Sidebar() {
       />
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Running Evals Indicator */}
+        {runningEvals.length > 0 && (
+          <Popover
+            content={
+              <Space direction="vertical" size="small" style={{ width: 240 }}>
+                {runningEvals.map((re) => (
+                  <div key={re.id} style={{ fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 500 }}>{re.assetName}</span>
+                      <Tag
+                        color={
+                          re.status === 'running'
+                            ? 'blue'
+                            : re.status === 'completed'
+                            ? 'green'
+                            : re.status === 'failed'
+                            ? 'red'
+                            : 'orange'
+                        }
+                      >
+                        {re.status}
+                      </Tag>
+                    </div>
+                    {re.progress && re.progress.total > 0 && (
+                      <Progress
+                        percent={Math.round((re.progress.completed / re.progress.total) * 100)}
+                        size="small"
+                        status={re.status === 'running' ? 'active' : 'normal'}
+                        showInfo={false}
+                      />
+                    )}
+                  </div>
+                ))}
+                <Button
+                  size="small"
+                  block
+                  onClick={() => navigate('/executions')}
+                >
+                  View All Executions
+                </Button>
+              </Space>
+            }
+            placement="bottomRight"
+            trigger="click"
+          >
+            <Badge count={runningEvals.filter((e) => e.status === 'running' || e.status === 'pending').length} size="small" color="#1890ff">
+              <Button size="small" icon={<PlayCircleOutlined />} style={{ fontSize: 12 }}>
+                {runningEvals.length === 1
+                  ? '1 eval'
+                  : `${runningEvals.length} evals`}
+              </Button>
+            </Badge>
+          </Popover>
+        )}
+
         {repoStatus?.current?.valid && (
           <Button
             size="small"
