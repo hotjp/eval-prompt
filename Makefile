@@ -25,6 +25,7 @@ build:
 	@mkdir -p ./bin
 	cd web && npm run build 2>/dev/null || true
 	rm -rf internal/gateway/web/dist && cp -r web/dist internal/gateway/web/
+	rm -rf internal/i18n/locales && cp -r i18n/locales internal/i18n/locales
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_PATH) ./cmd/ep/
 
 ## build-server: Build the server binary
@@ -82,6 +83,7 @@ release:
 	@mkdir -p ./dist
 	@cd web && npm run build
 	@rm -rf internal/gateway/web/dist && cp -r web/dist internal/gateway/web/
+	@rm -rf internal/i18n/locales && cp -r i18n/locales internal/i18n/locales
 	@echo "  Building all platforms in parallel..."
 	$(GOBUILD) -o ./dist/ep-darwin-arm64 ./cmd/ep/ &
 	$(GOBUILD) -o ./dist/ep-darwin-amd64 ./cmd/ep/ &
