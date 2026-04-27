@@ -7,7 +7,7 @@ import { evalApi, executionApi } from '../../api/client'
 import type { EvalReport, LLMCall, OrchestrateResponse, PluginResult } from '../../api/client'
 
 function EvalReportView() {
-  useTranslation()
+  const { t } = useTranslation()
   const { id, runId } = useParams<{ id: string; runId: string }>()
   const navigate = useNavigate()
   const [report, setReport] = useState<EvalReport | null>(null)
@@ -44,7 +44,7 @@ function EvalReportView() {
   }
 
   if (!report && !orchestrateResult) {
-    return <div>Report not found</div>
+    return <div>{t('eval_orchestrate_report_not_found')}</div>
   }
 
   const passRate = report && report.rubric_details.length > 0
@@ -58,13 +58,13 @@ function EvalReportView() {
         {/* Header */}
         <Card
           size="small"
-          title={`Orchestrate Result: ${runId?.slice(-8)}`}
+          title={`${t('eval_orchestrate_result')}: ${runId?.slice(-8)}`}
           extra={
-            <Tag color="purple">Orchestrated</Tag>
+            <Tag color="purple">{t('eval_orchestrate_multi_plugin')}</Tag>
           }
         >
           <Button size="small" onClick={() => navigate(`/assets/${id}/eval/history`)}>
-            ← Back to History
+            {t('eval_orchestrate_back_to_history')}
           </Button>
         </Card>
 
@@ -72,12 +72,12 @@ function EvalReportView() {
         <Card>
           <Row gutter={16}>
             <Col span={6}>
-              <Statistic title="Overall Score" value={orchestrateResult.overall_score} precision={2} suffix="/ 1.0" />
+              <Statistic title={t('eval_orchestrate_overall_score')} value={orchestrateResult.overall_score} precision={2} suffix="/ 1.0" />
             </Col>
             {orchestrateResult.confidence_interval && (
               <Col span={6}>
                 <Statistic
-                  title="Confidence Interval"
+                  title={t('eval_orchestrate_confidence_interval')}
                   value={`[${orchestrateResult.confidence_interval.low.toFixed(2)}, ${orchestrateResult.confidence_interval.high.toFixed(2)}]`}
                 />
               </Col>
@@ -86,7 +86,7 @@ function EvalReportView() {
               <>
                 <Col span={6}>
                   <Statistic
-                    title="Score Delta"
+                    title={t('eval_orchestrate_score_delta')}
                     value={orchestrateResult.baseline_comparison.score_delta}
                     precision={2}
                     valueStyle={{ color: orchestrateResult.baseline_comparison.score_delta >= 0 ? '#52c41a' : '#ff4d4f' }}
@@ -94,7 +94,7 @@ function EvalReportView() {
                 </Col>
                 <Col span={6}>
                   <Statistic
-                    title="Effect Size"
+                    title={t('eval_orchestrate_effect_size')}
                     value={orchestrateResult.baseline_comparison.effect_size}
                     precision={3}
                   />
@@ -103,7 +103,7 @@ function EvalReportView() {
             )}
             {orchestrateResult.elo_result && (
               <Col span={6}>
-                <Statistic title="ELO Rating" value={orchestrateResult.elo_result.new_rating} suffix={orchestrateResult.elo_result.previous_rating ? `(${orchestrateResult.elo_result.previous_rating})` : ''} />
+                <Statistic title={t('eval_orchestrate_elo_rating')} value={orchestrateResult.elo_result.new_rating} suffix={orchestrateResult.elo_result.previous_rating ? `(${orchestrateResult.elo_result.previous_rating})` : ''} />
               </Col>
             )}
           </Row>
@@ -111,7 +111,7 @@ function EvalReportView() {
 
         {/* Plugin Results */}
         {Object.keys(orchestrateResult.plugin_results).length > 0 && (
-          <Card title="Plugin Results">
+          <Card title={t('eval_orchestrate_plugin_results')}>
             <Row gutter={16}>
               {Object.entries(orchestrateResult.plugin_results).map(([pluginName, result]: [string, PluginResult]) => (
                 <Col span={8} key={pluginName}>
@@ -139,24 +139,24 @@ function EvalReportView() {
 
         {/* Baseline Comparison Details */}
         {orchestrateResult.baseline_comparison && (
-          <Card title="Baseline Comparison">
+          <Card title={t('eval_orchestrate_baseline_comparison')}>
             <Row gutter={16}>
               <Col span={6}>
-                <Statistic title="Score Delta" value={orchestrateResult.baseline_comparison.score_delta} precision={3} />
+                <Statistic title={t('eval_orchestrate_score_delta')} value={orchestrateResult.baseline_comparison.score_delta} precision={3} />
               </Col>
               <Col span={6}>
-                <Statistic title="Effect Size" value={orchestrateResult.baseline_comparison.effect_size} precision={3} />
+                <Statistic title={t('eval_orchestrate_effect_size')} value={orchestrateResult.baseline_comparison.effect_size} precision={3} />
               </Col>
               <Col span={6}>
                 <Statistic title="T-Statistic" value={orchestrateResult.baseline_comparison.t_stat} precision={3} />
               </Col>
               <Col span={6}>
-                <Statistic title="P-Value" value={orchestrateResult.baseline_comparison.p_value} precision={4} />
+                <Statistic title={t('eval_orchestrate_p_value')} value={orchestrateResult.baseline_comparison.p_value} precision={4} />
               </Col>
             </Row>
             <div style={{ marginTop: 16 }}>
               <Tag color={orchestrateResult.baseline_comparison.is_significant ? 'green' : 'orange'} style={{ fontSize: 14, padding: '4px 12px' }}>
-                {orchestrateResult.baseline_comparison.is_significant ? 'Statistically Significant' : 'Not Statistically Significant'}
+                {t(orchestrateResult.baseline_comparison.is_significant ? 'eval_orchestrate_significant' : 'eval_orchestrate_not_significant')}
               </Tag>
               <span style={{ marginLeft: 12, color: '#888' }}>
                 Interpretation: {orchestrateResult.baseline_comparison.effect_interpretation}
