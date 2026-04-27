@@ -40,6 +40,7 @@ type RouterConfig struct {
 	AdminHandler      *handlers.AdminHandler
 	LLMConfigHandler  *handlers.LLMConfigHandler
 	TaxonomyHandler   *handlers.TaxonomyHandler
+	ImportHandler     *handlers.ImportHandler
 }
 
 // NewRouter creates a new HTTP router with all middleware and handlers registered.
@@ -84,6 +85,10 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	}
 	executionHandler := handlers.NewExecutionHandler(cfg.ExecutionStore, logger)
 	callHandler := handlers.NewCallHandler(cfg.CallStore, logger)
+	importHandler := cfg.ImportHandler
+	if importHandler == nil {
+		importHandler = handlers.NewImportHandler(nil, logger)
+	}
 
 	// Build middleware chain
 	chain := func(h http.Handler) http.Handler {
@@ -134,6 +139,9 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 
 	// Chat API
 	mux.HandleFunc("POST /api/v1/chat", evalHandler.Chat)
+
+	// Import SSE route
+	mux.HandleFunc("GET /api/v1/import/events", importHandler.HandleSSE)
 
 	// Trigger API routes
 	mux.HandleFunc("POST /api/v1/trigger/match", triggerHandler.MatchTrigger)
