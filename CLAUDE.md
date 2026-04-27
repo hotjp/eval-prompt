@@ -81,6 +81,38 @@
 - **实现**：`plugins/search/search.go` 的 `Indexer` 类型
 - **原则**：所有文件操作必须通过 AssetFileManager，确保 Git 操作原子性
 
+### i18n 国际化架构
+
+**唯一真源**：`i18n/locales/` — 根目录存放语言包 JSON 文件
+
+**三端分布**：
+| 位置 | 用途 | 管理方式 |
+|------|------|----------|
+| `i18n/locales/` | 唯一真源，编辑器直接修改 | 手动编辑 |
+| `internal/i18n/locales/` | Go `//go:embed` 嵌入二进制 | `make build` 时同步 |
+| `web/src/i18n/locales/` | Web import 源 | `make build` 时同步 |
+
+**同步机制**：`make build` 和 `make release` 自动将 `i18n/locales/` 复制到 embed 目录
+
+**Go 端使用**：
+- `i18n.T(key, pongo2.Context{"var": val})` — 模板语法 `{{var}}`
+- `i18n.MsgXXX` 常量避免硬编码 key 字符串
+- 语言优先级：`EP_LANG` > `--lang` > `config.lang` > 系统 `LANG` > `en-US`
+
+**Web 端使用**：
+- `const { t } = useTranslation()` — react-i18next
+- 语言优先级：`localStorage.lang` > 浏览器 `navigator.language` > `zh-CN`
+
+**消息 Key 规范**：`{模块}_{动作}_{描述}`，如 `asset_create_success`、`common_cancel`
+
+**Message constants**：`internal/i18n/messages.go` 定义所有 key 常量，CLI 命令通过 `i18n.MsgXXX` 引用
+
+**新增翻译 key**：
+1. 编辑 `i18n/locales/zh-CN.json` 和 `en-US.json`
+2. 运行 `make build` 同步到 embed 目录
+3. Go 端：`messages.go` 添加常量，CLI 命令使用 `i18n.T(i18n.MsgKey, ...)`
+4. Web 端：组件中直接使用 `t('key_name')`
+
 ### Frontmatter 与 API 分离
 - **Frontmatter 是 Git/filesystem 内部实现，API 从不直接操作**
 - GET `/assets/{id}/content` 返回剥离 frontmatter 后的纯 body
