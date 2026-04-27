@@ -391,7 +391,7 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 
 	var results []service.AssetSummary
 	for _, entry := range i.assets {
-		if matchAsset(entry.asset, query, filters) {
+		if matchAsset(entry.detail, query, filters) {
 			// Get latest score from snapshots
 			var latestScore *float64
 			if len(entry.detail.Snapshots) > 0 {
@@ -406,6 +406,7 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 				Tags:        entry.asset.Tags,
 				State:       entry.asset.State,
 				LatestScore: latestScore,
+				Keywords:    entry.detail.Keywords,
 			})
 		}
 	}
@@ -788,16 +789,31 @@ func (i *Indexer) GetBody(ctx context.Context, id string) (string, error) {
 }
 
 // matchAsset returns true if the asset matches the query and filters.
-func matchAsset(asset service.Asset, query string, filters service.SearchFilters) bool {
-	// Query match (case-insensitive substring in name or description)
+// It searches in name, description, tags, and keywords (if available).
+func matchAsset(detail *service.AssetDetail, query string, filters service.SearchFilters) bool {
+	// Query match (case-insensitive substring in name, description, tags, or keywords)
 	if query != "" {
 		q := query
 		match := false
-		if containsIgnoreCase(asset.Name, q) {
+		if containsIgnoreCase(detail.Name, q) {
 			match = true
 		}
-		if containsIgnoreCase(asset.Description, q) {
+		if containsIgnoreCase(detail.Description, q) {
 			match = true
+		}
+		// Search in tags
+		for _, tag := range detail.Tags {
+			if containsIgnoreCase(tag, q) {
+				match = true
+				break
+			}
+		}
+		// Search in keywords (LLM-generated)
+		for _, kw := range detail.Keywords {
+			if containsIgnoreCase(kw, q) {
+				match = true
+				break
+			}
 		}
 		if !match {
 			return false
@@ -805,17 +821,17 @@ func matchAsset(asset service.Asset, query string, filters service.SearchFilters
 	}
 
 	// AssetType filter
-	if filters.AssetType != "" && filters.AssetType != asset.AssetType {
+	if filters.AssetType != "" && filters.AssetType != detail.AssetType {
 		return false
 	}
 
 	// State filter
-	if filters.State != "" && filters.State != asset.State {
+	if filters.State != "" && filters.State != detail.State {
 		return false
 	}
 
 	// Category filter
-	if filters.Category != "" && filters.Category != asset.Category {
+	if filters.Category != "" && filters.Category != detail.Category {
 		return false
 	}
 
@@ -828,7 +844,7 @@ func matchAsset(asset service.Asset, query string, filters service.SearchFilters
 	if len(filters.Tags) > 0 {
 		hasTag := false
 		for _, filterTag := range filters.Tags {
-			for _, assetTag := range asset.Tags {
+			for _, assetTag := range detail.Tags {
 				if filterTag == assetTag {
 					hasTag = true
 					break

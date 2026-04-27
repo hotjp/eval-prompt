@@ -116,6 +116,7 @@ type AssetSummary struct {
 	Tags        []string
 	State       string
 	LatestScore *float64
+	Keywords    []string `json:"keywords,omitempty"` // LLM-generated keywords for enhanced search
 }
 
 // AssetDetail is a full asset representation.
@@ -134,6 +135,8 @@ type AssetDetail struct {
 	Triggers             []domain.TriggerEntry    `json:"triggers,omitempty"`
 	TestCases            []domain.TestCase         `json:"test_cases,omitempty"`
 	RecommendedSnapshotID string                   `json:"recommended_snapshot_id,omitempty"`
+	// Keywords are LLM-generated keywords for enhanced search
+	Keywords     []string `json:"keywords,omitempty"`
 
 	// AssetPath is the path to the asset.yaml registry file (e.g., "assets/skills/calculator.yaml")
 	AssetPath string `json:"asset_path,omitempty"`
