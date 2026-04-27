@@ -767,6 +767,38 @@ func (m *e2eMockAssetIndexer) UpdateFrontmatterFileOnly(ctx context.Context, id 
 	return nil
 }
 
+func (m *e2eMockAssetIndexer) GetMainFileContent(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error) {
+	return "# Test Content", "test/main.md", false, nil
+}
+
+func (m *e2eMockAssetIndexer) WriteMainFileContent(ctx context.Context, assetPath string, content string) (newContentHash string, err error) {
+	return "abc12345", nil
+}
+
+func (m *e2eMockAssetIndexer) GetAssetFiles(ctx context.Context, assetPath string) (files []svc.FileInfo, external []svc.FileInfo, err error) {
+	return []svc.FileInfo{}, []svc.FileInfo{}, nil
+}
+
+func (m *e2eMockAssetIndexer) Scan(ctx context.Context, source string) (*svc.ScanResult, error) {
+	return &svc.ScanResult{}, nil
+}
+
+func (m *e2eMockAssetIndexer) GetAssetYAML(ctx context.Context, assetPath string) (*domain.AssetYAML, error) {
+	return domain.NewAssetYAML("prompt", "Test Asset", "test/main.md"), nil
+}
+
+func (m *e2eMockAssetIndexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error) {
+	return "mock-commit-hash", nil
+}
+
+func (m *e2eMockAssetIndexer) MoveAssetFiles(ctx context.Context, sourceDir, destDir string) error {
+	return nil
+}
+
+func (m *e2eMockAssetIndexer) GetRepoPath() string {
+	return ""
+}
+
 // e2eMockTriggerService is a mock implementation of TriggerServicer for E2E testing.
 type e2eMockTriggerService struct {
 	MatchTriggerFunc         func(ctx context.Context, input string, top int) ([]*svc.MatchedPrompt, error)

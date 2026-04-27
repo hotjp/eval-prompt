@@ -76,4 +76,27 @@ type AssetFileManager interface {
 
 	// GetRepoPath returns the repository path used by this manager.
 	GetRepoPath() string
+
+	// GetMainFileContent reads the main file content from an asset.yaml.
+	// assetPath is the path to asset.yaml (e.g., "assets/skills/calculator.yaml").
+	// Returns the main file content, resolved main path, and error.
+	GetMainFileContent(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error)
+
+	// WriteMainFileContent writes content to the main file specified in asset.yaml.
+	// assetPath is the path to asset.yaml.
+	// mainPath is the resolved main file path (for external assets, this is the absolute path).
+	// isExternal indicates whether the asset is external (read-only, returns error).
+	// Returns the new content hash and error.
+	WriteMainFileContent(ctx context.Context, assetPath string, content string) (newContentHash string, err error)
+
+	// GetAssetFiles returns the files and external file lists from an asset.yaml.
+	// assetPath is the path to asset.yaml.
+	// Returns the files list, external list, and error.
+	GetAssetFiles(ctx context.Context, assetPath string) (files []FileInfo, external []FileInfo, err error)
+}
+
+// FileInfo represents information about a file in an asset.
+type FileInfo struct {
+	Path string
+	Role string
 }

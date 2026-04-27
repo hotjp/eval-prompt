@@ -134,6 +134,15 @@ type AssetDetail struct {
 	Triggers             []domain.TriggerEntry    `json:"triggers,omitempty"`
 	TestCases            []domain.TestCase         `json:"test_cases,omitempty"`
 	RecommendedSnapshotID string                   `json:"recommended_snapshot_id,omitempty"`
+
+	// AssetPath is the path to the asset.yaml registry file (e.g., "assets/skills/calculator.yaml")
+	AssetPath string `json:"asset_path,omitempty"`
+	// Main is the main file path from asset.yaml (e.g., "skills/calculator/handler.py")
+	Main string `json:"main,omitempty"`
+	// ContentHash is the SHA256 hash of the main file content (first 8 bytes, hex encoded)
+	ContentHash string `json:"content_hash,omitempty"`
+	// IsExternal indicates whether the main file is outside the repo
+	IsExternal bool `json:"is_external,omitempty"`
 }
 
 // SnapshotSummary is a condensed snapshot representation.

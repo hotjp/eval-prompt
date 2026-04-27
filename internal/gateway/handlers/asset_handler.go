@@ -575,7 +575,7 @@ type SaveContentRequest struct {
 }
 
 // GetAssetContent handles GET /api/v1/assets/{id}/content.
-// Returns only the markdown body (after frontmatter), with frontmatter stripped.
+// Returns the main file content for folder-based assets, or stripped body for legacy .md assets.
 func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -585,6 +585,42 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get asset detail to check if it's using new folder structure
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
+		return
+	}
+
+	// Check if using new folder structure (asset.yaml)
+	if detail.AssetPath != "" {
+		// New folder structure: read main file from asset.yaml
+		content, mainPath, isExternal, err := h.fileManager.GetMainFileContent(ctx, detail.AssetPath)
+		if err != nil {
+			h.writeError(w, http.StatusNotFound, "content not found: %s", err)
+			return
+		}
+
+		// Compute content hash
+		hashed := sha256.Sum256([]byte(content))
+		contentHash := hex.EncodeToString(hashed[:8])
+
+		// Set response headers
+		w.Header().Set("X-Content-Hash", contentHash)
+		w.Header().Set("X-Main-Path", mainPath)
+		w.Header().Set("X-Is-External", fmt.Sprintf("%v", isExternal))
+
+		h.writeJSON(w, http.StatusOK, map[string]any{
+			"id":           id,
+			"content":      content,
+			"content_hash": contentHash,
+			"main_path":    mainPath,
+			"is_external":  isExternal,
+		})
+		return
+	}
+
+	// Legacy .md file structure: read and strip frontmatter
 	fullContent, err := h.indexer.GetFileContent(ctx, id)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "content not found: %s", err)
@@ -636,8 +672,8 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 }
 
 // SaveAssetContent handles PUT /api/v1/assets/{id}/content.
-// Reads existing frontmatter, replaces the body, writes back full file WITHOUT committing.
-// Triggers are generated asynchronously after the file is saved.
+// For folder-based assets: writes to main file and updates asset.yaml (no git commit).
+// For legacy .md assets: replaces body, updates frontmatter, writes back (no git commit).
 // Use CommitAsset to manually commit changes.
 func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -659,8 +695,58 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Get asset detail to check if it's using new folder structure
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
+		return
+	}
+
+	var newHash string
+	var updatedAt time.Time
+
+	// Check if using new folder structure (asset.yaml)
+	if detail.AssetPath != "" {
+		// New folder structure: write to main file via asset.yaml
+		// Conflict detection using content hash
+		if req.ContentHash != "" {
+			currentContent, _, _, err := h.fileManager.GetMainFileContent(ctx, detail.AssetPath)
+			if err == nil {
+				currentHash := sha256.Sum256([]byte(currentContent))
+				currentHashStr := hex.EncodeToString(currentHash[:8])
+				if currentHashStr != req.ContentHash {
+					h.writeError(w, http.StatusConflict, "content has been modified by another session")
+					return
+				}
+			}
+		}
+
+		// Write to main file
+		newHash, err = h.fileManager.WriteMainFileContent(ctx, detail.AssetPath, req.Content)
+		if err != nil {
+			h.writeError(w, http.StatusInternalServerError, "failed to save content: %v", err)
+			return
+		}
+		updatedAt = time.Now()
+
+		h.logger.Info("asset content saved (folder structure)", "asset_id", id, "asset_path", detail.AssetPath, "layer", "L5")
+
+		// Preference-Applied: return=representation
+		w.Header().Set("Preference-Applied", "return=representation")
+		w.Header().Set("Last-Modified", updatedAt.Format(time.RFC3339))
+
+		h.writeJSON(w, http.StatusOK, map[string]any{
+			"id":           id,
+			"content":      req.Content,
+			"content_hash": newHash,
+			"updated_at":   updatedAt.Format(time.RFC3339),
+			"message":      "content saved successfully (use /commit to save to git)",
+		})
+		return
+	}
+
+	// Legacy .md file structure
 	// Conflict detection: compute hash from current file's body and compare with client's hash
-	// This ensures conflict detection is based purely on body content, not frontmatter fields
 	if req.ContentHash != "" {
 		currentBody, err := h.fileManager.GetBody(ctx, id)
 		if err == nil {
@@ -678,13 +764,13 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 
 	// Compute new hash
 	hashed := sha256.Sum256([]byte(normalizedContent))
-	newHash := hex.EncodeToString(hashed[:8])
-	now := time.Now()
+	newHash = hex.EncodeToString(hashed[:8])
+	updatedAt = time.Now()
 
 	// WriteFileOnly saves the file without git commit
-	err := h.fileManager.WriteFileOnly(ctx, id, func(fm *domain.FrontMatter) error {
+	err = h.fileManager.WriteFileOnly(ctx, id, func(fm *domain.FrontMatter) error {
 		fm.ContentHash = newHash
-		fm.UpdatedAt = now
+		fm.UpdatedAt = updatedAt
 		return nil
 	}, normalizedContent)
 	if err != nil {
@@ -707,13 +793,13 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 
 	// Preference-Applied: return=representation
 	w.Header().Set("Preference-Applied", "return=representation")
-	w.Header().Set("Last-Modified", now.Format(time.RFC3339))
+	w.Header().Set("Last-Modified", updatedAt.Format(time.RFC3339))
 
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"id":           id,
 		"content":      normalizedContent,
 		"content_hash": newHash,
-		"updated_at":   now.Format(time.RFC3339),
+		"updated_at":   updatedAt.Format(time.RFC3339),
 		"message":      "content saved successfully (use /commit to save to git)",
 	})
 }
@@ -788,6 +874,44 @@ func (h *AssetHandler) CommitBatchAssets(w http.ResponseWriter, r *http.Request)
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"commits": commits,
 		"message": fmt.Sprintf("committed %d assets", len(commits)),
+	})
+}
+
+// GetAssetFiles handles GET /api/v1/assets/{id}/files.
+// Returns the list of files associated with an asset (from asset.yaml files and external lists).
+func (h *AssetHandler) GetAssetFiles(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	// Get asset detail to find the asset.yaml path
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
+		return
+	}
+
+	// Check if using new folder structure (asset.yaml)
+	if detail.AssetPath == "" {
+		h.writeError(w, http.StatusNotFound, "asset does not use folder structure")
+		return
+	}
+
+	// Get files and external lists from asset.yaml
+	files, external, err := h.fileManager.GetAssetFiles(ctx, detail.AssetPath)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to get asset files: %v", err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"id":      id,
+		"files":   files,
+		"external": external,
 	})
 }
 

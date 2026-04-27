@@ -3,6 +3,8 @@ package search
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -897,4 +899,146 @@ func (i *Indexer) ReInit(ctx context.Context, path string) error {
 	}
 
 	return nil
+}
+
+// GetMainFileContent reads the main file content from an asset.yaml.
+// It resolves the main path from asset.yaml and reads the actual file.
+func (i *Indexer) GetMainFileContent(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error) {
+	repoPath := i.gitBridge.RepoPath()
+	if repoPath == "" {
+		return "", "", false, fmt.Errorf("repository not initialized")
+	}
+
+	// Read asset.yaml
+	fullAssetPath := filepath.Join(repoPath, assetPath)
+	yamlContent, err := os.ReadFile(fullAssetPath)
+	if err != nil {
+		return "", "", false, fmt.Errorf("read asset.yaml %s: %w", assetPath, err)
+	}
+
+	// Parse asset.yaml
+	ay, err := domain.ParseAssetYAML(string(yamlContent))
+	if err != nil {
+		return "", "", false, fmt.Errorf("parse asset.yaml: %w", err)
+	}
+
+	// Resolve main path
+	resolvedMain, isExt, err := ay.ResolveMain(repoPath)
+	if err != nil {
+		return "", "", false, fmt.Errorf("resolve main path: %w", err)
+	}
+
+	// Read main file content
+	if isExt {
+		// External asset - read from absolute path
+		data, err := os.ReadFile(resolvedMain)
+		if err != nil {
+			return "", resolvedMain, true, fmt.Errorf("read external file %s: %w", resolvedMain, err)
+		}
+		content = string(data)
+	} else {
+		// Local asset - read from repo relative path
+		mainFullPath := filepath.Join(repoPath, resolvedMain)
+		data, err := os.ReadFile(mainFullPath)
+		if err != nil {
+			return "", resolvedMain, false, fmt.Errorf("read main file %s: %w", resolvedMain, err)
+		}
+		content = string(data)
+	}
+
+	return string(content), resolvedMain, isExt, nil
+}
+
+// WriteMainFileContent writes content to the main file specified in asset.yaml.
+// It updates the content_hash in asset.yaml after writing.
+func (i *Indexer) WriteMainFileContent(ctx context.Context, assetPath string, content string) (newContentHash string, err error) {
+	repoPath := i.gitBridge.RepoPath()
+	if repoPath == "" {
+		return "", fmt.Errorf("repository not initialized")
+	}
+
+	// Read asset.yaml
+	fullAssetPath := filepath.Join(repoPath, assetPath)
+	yamlContent, err := os.ReadFile(fullAssetPath)
+	if err != nil {
+		return "", fmt.Errorf("read asset.yaml: %w", err)
+	}
+
+	ay, err := domain.ParseAssetYAML(string(yamlContent))
+	if err != nil {
+		return "", fmt.Errorf("parse asset.yaml: %w", err)
+	}
+
+	// Check if external
+	_, isExt, err := ay.ResolveMain(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve main path: %w", err)
+	}
+	if isExt {
+		return "", fmt.Errorf("external assets are read-only")
+	}
+
+	// Compute content hash
+	hashed := sha256.Sum256([]byte(content))
+	newContentHash = hex.EncodeToString(hashed[:8])
+
+	// Write main file
+	mainFullPath := filepath.Join(repoPath, ay.Main)
+	if err := os.WriteFile(mainFullPath, []byte(content), 0644); err != nil {
+		return "", fmt.Errorf("write main file: %w", err)
+	}
+
+	// Update asset.yaml metadata
+	ay.Metadata.UpdatedAt = time.Now()
+
+	// Write updated asset.yaml
+	updatedYaml, err := domain.SerializeAssetYAML(ay)
+	if err != nil {
+		return "", fmt.Errorf("serialize asset.yaml: %w", err)
+	}
+	if err := os.WriteFile(fullAssetPath, []byte(updatedYaml), 0644); err != nil {
+		return "", fmt.Errorf("write asset.yaml: %w", err)
+	}
+
+	return newContentHash, nil
+}
+
+// GetAssetFiles returns the files and external file lists from an asset.yaml.
+func (i *Indexer) GetAssetFiles(ctx context.Context, assetPath string) (files []service.FileInfo, external []service.FileInfo, err error) {
+	repoPath := i.gitBridge.RepoPath()
+	if repoPath == "" {
+		return nil, nil, fmt.Errorf("repository not initialized")
+	}
+
+	// Read asset.yaml
+	fullAssetPath := filepath.Join(repoPath, assetPath)
+	yamlContent, err := os.ReadFile(fullAssetPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read asset.yaml: %w", err)
+	}
+
+	ay, err := domain.ParseAssetYAML(string(yamlContent))
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse asset.yaml: %w", err)
+	}
+
+	// Convert files
+	files = make([]service.FileInfo, len(ay.Files))
+	for idx, f := range ay.Files {
+		files[idx] = service.FileInfo{
+			Path: f.Path,
+			Role: f.Role,
+		}
+	}
+
+	// Convert external
+	external = make([]service.FileInfo, len(ay.External))
+	for idx, e := range ay.External {
+		external[idx] = service.FileInfo{
+			Path: e.Path,
+			Role: e.Role,
+		}
+	}
+
+	return files, external, nil
 }

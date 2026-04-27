@@ -62,6 +62,10 @@ func (m *mockSyncIndexer) GetFileContent(ctx context.Context, id string) (string
 	return "", nil
 }
 
+func (m *mockSyncIndexer) GetBody(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
 func (m *mockSyncIndexer) ReInit(ctx context.Context, path string) error {
 	return nil
 }

@@ -53,6 +53,10 @@ func (m *mockAssetIndexer) GetFileContent(ctx context.Context, id string) (strin
 	return "", nil
 }
 
+func (m *mockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
+	return "", nil
+}
+
 func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
 	return "", nil
 }
