@@ -94,6 +94,16 @@ var (
 	ErrAssetFilePathInvalid = ErrorCode{Layer: Layer2, Sequence: 212}
 	// ErrAssetStateTransition indicates an invalid asset state transition.
 	ErrAssetStateTransition = ErrorCode{Layer: Layer2, Sequence: 213}
+	// ErrAssetTypeRequired indicates the asset type field is required.
+	ErrAssetTypeRequired = ErrorCode{Layer: Layer2, Sequence: 214}
+	// ErrAssetTypeInvalid indicates the asset type is invalid.
+	ErrAssetTypeInvalid = ErrorCode{Layer: Layer2, Sequence: 215}
+	// ErrAssetMainRequired indicates the main field is required.
+	ErrAssetMainRequired = ErrorCode{Layer: Layer2, Sequence: 216}
+	// ErrAssetStateInvalid indicates the asset state is invalid.
+	ErrAssetStateInvalid = ErrorCode{Layer: Layer2, Sequence: 217}
+	// ErrAssetCategoryInvalid indicates the asset category is invalid.
+	ErrAssetCategoryInvalid = ErrorCode{Layer: Layer2, Sequence: 218}
 
 	// L2 220-239: Snapshot-related errors
 	// ErrSnapshotVersionInvalid indicates an invalid version format.
