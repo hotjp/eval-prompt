@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/service/eval"
 	"github.com/eval-prompt/internal/service/eval/plugins/bertscore"
@@ -230,7 +231,7 @@ func (h *EvalHandler) RunEval(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusAccepted, RunEvalResponse{
 		ExecutionID: execution.ID,
 		Status:     string(execution.Status),
-		Message:    "eval execution started",
+		Message:    i18n.T(i18n.MsgEvalExecutionStarted, nil),
 	})
 }
 
@@ -364,11 +365,6 @@ type ELORatingResult struct {
 //	@Failure 503 {object} map[string]interface{}
 //	@Router /api/v1/evals/orchestrate [post]
 func (h *EvalHandler) Orchestrate(w http.ResponseWriter, r *http.Request) {
-	if h.orchestrator == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "orchestrator not configured")
-		return
-	}
-
 	// Register plugins before orchestrator runs
 	h.RegisterPlugins()
 
@@ -753,7 +749,7 @@ func (h *EvalHandler) CancelExecution(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"execution_id": id,
 		"status":       "cancelled",
-		"message":       "eval execution cancelled",
+		"message":       i18n.T(i18n.MsgEvalExecutionCancelled, nil),
 	})
 }
 

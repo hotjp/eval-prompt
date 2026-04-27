@@ -299,14 +299,44 @@ func (o *Orchestrator) executePlugin(ctx context.Context, pluginName string, wor
 		WorkItemResults: make([]WorkItemResult, 0, len(workItems)),
 	}
 
-	// Execute with timeout per work item
+	// Execute work items in parallel with limited concurrency
+	workItemChan := make(chan workItem, len(workItems))
+	resultChan := make(chan WorkItemResult, len(workItems))
+
+	// Start worker pool
+	var wg sync.WaitGroup
+	workerCount := o.config.Parallelism
+	if workerCount <= 0 {
+		workerCount = 4
+	}
+	if workerCount > len(workItems) {
+		workerCount = len(workItems)
+	}
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range workItemChan {
+				itemResult, _ := o.executeWorkItem(ctx, plugin, item)
+				resultChan <- itemResult
+			}
+		}()
+	}
+
+	// Feed work items to workers
 	for _, item := range workItems {
-		itemResult, err := o.executeWorkItem(ctx, plugin, item)
+		workItemChan <- item
+	}
+	close(workItemChan)
+
+	// Wait for all workers to finish
+	wg.Wait()
+	close(resultChan)
+
+	// Collect results
+	for itemResult := range resultChan {
 		result.WorkItemResults = append(result.WorkItemResults, itemResult)
-		if err != nil {
-			result.Error = err
-			// Continue executing other work items
-		}
 	}
 
 	// Calculate aggregate score

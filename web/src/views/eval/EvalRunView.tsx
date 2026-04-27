@@ -52,7 +52,7 @@ function EvalRunView() {
   const [savePresetName, setSavePresetName] = useState('')
   // Orchestrate-specific state
   const [evalType, setEvalType] = useState<'single' | 'orchestrate'>('single')
-  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([])
+  const [selectedPlugins, setSelectedPlugins] = useState<string[]>(['bertscore'])
   const [injectionStrategy, setInjectionStrategy] = useState<string>('default')
   const [parallelism, setParallelism] = useState<number>(1)
   const [confidenceLevel, setConfidenceLevel] = useState<number>(0.95)
@@ -148,6 +148,11 @@ function EvalRunView() {
     setOrchestrateResult(null)
     try {
       if (evalType === 'orchestrate') {
+        if (selectedPlugins.length === 0) {
+          message.warning(t('eval_orchestrate_select_plugin_warning'))
+          setExecuting(false)
+          return
+        }
         // Multi-plugin orchestration
         const result = await evalApi.orchestrate({
           asset_id: id,
@@ -158,7 +163,7 @@ function EvalRunView() {
           baseline_id: baselineId || undefined,
         })
         setOrchestrateResult(result)
-        message.success('Orchestrated eval completed')
+        message.success(t('eval_orchestrate_completed'))
       } else {
         // Single plugin evaluation (existing flow)
         const result = await evalApi.execute({
@@ -215,8 +220,8 @@ function EvalRunView() {
             optionType="button"
             buttonStyle="solid"
           >
-            <Radio.Button value="single">Single Plugin</Radio.Button>
-            <Radio.Button value="orchestrate">Multi-Plugin Orchestration</Radio.Button>
+            <Radio.Button value="single">{t('eval_orchestrate_single_plugin')}</Radio.Button>
+            <Radio.Button value="orchestrate">{t('eval_orchestrate_multi_plugin')}</Radio.Button>
           </Radio.Group>
 
           {/* Orchestrate-specific fields */}
@@ -224,7 +229,7 @@ function EvalRunView() {
             <div style={{ padding: '12px 16px', background: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
               <Row gutter={16}>
                 <Col span={12}>
-                  <div style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>Plugins</div>
+                  <div style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>{t('eval_orchestrate_plugins')}</div>
                   <Checkbox.Group
                     value={selectedPlugins}
                     onChange={(vals) => setSelectedPlugins(vals as string[])}
@@ -240,7 +245,7 @@ function EvalRunView() {
                   />
                 </Col>
                 <Col span={12}>
-                  <div style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>Injection Strategy</div>
+                  <div style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>{t('eval_orchestrate_injection_strategy')}</div>
                   <Select
                     value={injectionStrategy}
                     onChange={setInjectionStrategy}
@@ -256,7 +261,7 @@ function EvalRunView() {
               </Row>
               <Row gutter={16} style={{ marginTop: 12 }}>
                 <Col span={8}>
-                  <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Parallelism</div>
+                  <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>{t('eval_orchestrate_parallelism')}</div>
                   <InputNumber
                     value={parallelism}
                     onChange={(v) => setParallelism(v ?? 1)}
@@ -266,7 +271,7 @@ function EvalRunView() {
                   />
                 </Col>
                 <Col span={8}>
-                  <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Confidence Level</div>
+                  <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>{t('eval_orchestrate_confidence_level')}</div>
                   <InputNumber
                     value={confidenceLevel}
                     onChange={(v) => setConfidenceLevel(v ?? 0.95)}
@@ -279,7 +284,7 @@ function EvalRunView() {
                 <Col span={8}>
                   <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>
                     <Tooltip title="Optional: Compare against a baseline snapshot">
-                      Baseline ID
+                      {t('eval_orchestrate_baseline_id')}
                     </Tooltip>
                   </div>
                   <Input
@@ -479,15 +484,15 @@ function EvalRunView() {
 
       {/* Orchestrate Result */}
       {orchestrateResult && (
-        <Card title="Orchestrate Result">
+        <Card title={t('eval_orchestrate_result')}>
           <Row gutter={16}>
             <Col span={6}>
-              <Statistic title="Overall Score" value={orchestrateResult.overall_score} precision={2} suffix="/ 1.0" />
+              <Statistic title={t('eval_orchestrate_overall_score')} value={orchestrateResult.overall_score} precision={2} suffix="/ 1.0" />
             </Col>
             {orchestrateResult.confidence_interval && (
               <Col span={6}>
                 <Statistic
-                  title="Confidence Interval"
+                  title={t('eval_orchestrate_confidence_interval')}
                   value={`[${orchestrateResult.confidence_interval.low.toFixed(2)}, ${orchestrateResult.confidence_interval.high.toFixed(2)}]`}
                 />
               </Col>
@@ -495,7 +500,7 @@ function EvalRunView() {
             {orchestrateResult.baseline_comparison && (
               <Col span={6}>
                 <Statistic
-                  title="Score Delta"
+                  title={t('eval_orchestrate_score_delta')}
                   value={orchestrateResult.baseline_comparison.score_delta}
                   precision={2}
                   valueStyle={{ color: orchestrateResult.baseline_comparison.score_delta >= 0 ? '#52c41a' : '#ff4d4f' }}
@@ -504,7 +509,7 @@ function EvalRunView() {
             )}
             {orchestrateResult.elo_result && (
               <Col span={6}>
-                <Statistic title="ELO Rating" value={orchestrateResult.elo_result.new_rating} />
+                <Statistic title={t('eval_orchestrate_elo_rating')} value={orchestrateResult.elo_result.new_rating} />
               </Col>
             )}
           </Row>
@@ -512,7 +517,7 @@ function EvalRunView() {
           {/* Plugin Results */}
           {Object.keys(orchestrateResult.plugin_results).length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Plugin Results</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>{t('eval_orchestrate_plugin_results')}</div>
               <Row gutter={16}>
                 {Object.entries(orchestrateResult.plugin_results).map(([pluginName, result]) => (
                   <Col span={6} key={pluginName}>
@@ -541,7 +546,7 @@ function EvalRunView() {
           {/* Summary */}
           {orchestrateResult.summary && (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Summary</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('eval_orchestrate_summary')}</div>
               <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
                 {orchestrateResult.summary}
               </div>
@@ -551,17 +556,17 @@ function EvalRunView() {
           {/* Baseline Comparison Details */}
           {orchestrateResult.baseline_comparison && (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Baseline Comparison</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>{t('eval_orchestrate_baseline_comparison')}</div>
               <Row gutter={16}>
                 <Col span={6}>
-                  <Statistic title="Effect Size" value={orchestrateResult.baseline_comparison.effect_size} precision={3} />
+                  <Statistic title={t('eval_orchestrate_effect_size')} value={orchestrateResult.baseline_comparison.effect_size} precision={3} />
                 </Col>
                 <Col span={6}>
-                  <Statistic title="P-Value" value={orchestrateResult.baseline_comparison.p_value} precision={4} />
+                  <Statistic title={t('eval_orchestrate_p_value')} value={orchestrateResult.baseline_comparison.p_value} precision={4} />
                 </Col>
                 <Col span={6}>
                   <Tag color={orchestrateResult.baseline_comparison.is_significant ? 'green' : 'orange'}>
-                    {orchestrateResult.baseline_comparison.is_significant ? 'Significant' : 'Not Significant'}
+                    {t(orchestrateResult.baseline_comparison.is_significant ? 'eval_orchestrate_significant' : 'eval_orchestrate_not_significant')}
                   </Tag>
                 </Col>
               </Row>
