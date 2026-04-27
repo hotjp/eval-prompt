@@ -915,6 +915,112 @@ func (h *AssetHandler) GetAssetFiles(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// BatchTagAssetsRequest represents the request body for batch tag operations.
+type BatchTagAssetsRequest struct {
+	IDs    []string `json:"ids"`
+	Action string   `json:"action"` // "add" or "remove"
+	Tag    string   `json:"tag"`
+}
+
+// BatchTagAssets handles POST /api/v1/assets/batch/tag.
+// Batch add or remove tags from multiple assets.
+func (h *AssetHandler) BatchTagAssets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req BatchTagAssetsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		h.writeError(w, http.StatusBadRequest, "ids are required")
+		return
+	}
+
+	if req.Tag == "" {
+		h.writeError(w, http.StatusBadRequest, "tag is required")
+		return
+	}
+
+	if req.Action != "add" && req.Action != "remove" {
+		h.writeError(w, http.StatusBadRequest, "action must be 'add' or 'remove'")
+		return
+	}
+
+	results := make(map[string]string)
+	errors := make(map[string]string)
+
+	for _, id := range req.IDs {
+		// Get the asset
+		detail, err := h.indexer.GetByID(ctx, id)
+		if err != nil || detail == nil {
+			errors[id] = "asset not found"
+			continue
+		}
+
+		// Update tags based on action
+		var newTags []string
+		if req.Action == "add" {
+			// Check if tag already exists
+			hasTag := false
+			for _, t := range detail.Tags {
+				if t == req.Tag {
+					hasTag = true
+					break
+				}
+			}
+			if !hasTag {
+				newTags = append(detail.Tags, req.Tag)
+			} else {
+				newTags = detail.Tags
+			}
+		} else {
+			// Remove tag
+			for _, t := range detail.Tags {
+				if t != req.Tag {
+					newTags = append(newTags, t)
+				}
+			}
+		}
+
+		// Update the asset
+		asset := service.Asset{
+			ID:          detail.ID,
+			Name:        detail.Name,
+			Description: detail.Description,
+			AssetType:     detail.AssetType,
+			Tags:        newTags,
+			State:       detail.State,
+		}
+		if err := h.indexer.Save(ctx, asset); err != nil {
+			errors[id] = fmt.Sprintf("failed to update index: %v", err)
+			continue
+		}
+
+		// For legacy .md structure, update frontmatter
+		if detail.AssetPath == "" {
+			_, err = h.fileManager.UpdateFrontmatter(ctx, id, func(fm *domain.FrontMatter) error {
+				fm.Tags = newTags
+				return nil
+			}, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
+			if err != nil {
+				errors[id] = fmt.Sprintf("failed to update frontmatter: %v", err)
+				continue
+			}
+		}
+
+		results[id] = "success"
+		h.logger.Info("batch tag updated", "asset_id", id, "action", req.Action, "tag", req.Tag, "layer", "L5")
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"updated": results,
+		"errors":  errors,
+		"message": fmt.Sprintf("batch %s tag '%s' completed", req.Action, req.Tag),
+	})
+}
+
 // ArchiveAsset handles POST /api/v1/assets/{id}/archive.
 //
 //	@Summary Archive asset
