@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/plugins/llm"
 	"github.com/spf13/cobra"
 )
 
 var rewriteCmd = &cobra.Command{
-	Use:   "rewrite [content] [instruction]",
-	Short: "Rewrite text using LLM",
+	Use:   i18n.T(i18n.MsgRewriteCmd, nil),
+	Short: i18n.T(i18n.MsgRewriteCmdShort, nil),
 	Args:  cobra.MinimumNArgs(2),
 	RunE:  runRewrite,
 }

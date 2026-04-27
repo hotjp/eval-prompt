@@ -4,8 +4,10 @@ import { Card, List, Tag, Button, Space, Spin, Tabs, message } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { executionApi } from '../api/client'
 import type { Execution, LLMCall } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 function CallLogView() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [execution, setExecution] = useState<Execution | null>(null)
@@ -45,7 +47,7 @@ function CallLogView() {
       case 'failed':
         return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
       case 'running':
-        return <Tag color="blue">Running</Tag>
+        return <Tag color="blue">{t('call_log_running')}</Tag>
       default:
         return <Tag>{status}</Tag>
     }
@@ -72,15 +74,15 @@ function CallLogView() {
       <Card
         title={<Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')} size="small" />
-          Execution: {execution.id}
+          {t('call_log_execution')}: {execution.id}
         </Space>}
         extra={<Tag color={getStatusColor(execution.status)}>{execution.status}</Tag>}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Space split={<span style={{ color: '#888' }}>|</span>}>
-            <span>Model: {execution.model}</span>
-            <span>Temperature: {execution.temperature}</span>
-            <span>Progress: {execution.completed_cases}/{execution.total_cases}</span>
+            <span>{t('call_log_model')}: {execution.model}</span>
+            <span>{t('call_log_temperature')}: {execution.temperature}</span>
+            <span>{t('call_log_progress')}: {execution.completed_cases}/{execution.total_cases}</span>
           </Space>
         </Space>
       </Card>
@@ -88,7 +90,7 @@ function CallLogView() {
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
         {/* Left: Call List */}
         <Card
-          title="Calls"
+          title={t('call_log_calls')}
           style={{ width: 280, flexShrink: 0 }}
           bodyStyle={{ padding: 0, maxHeight: 600, overflow: 'auto' }}
         >
@@ -121,36 +123,36 @@ function CallLogView() {
         </Card>
 
         {/* Right: Call Detail */}
-        <Card style={{ flex: 1 }} title="Call Detail">
+        <Card style={{ flex: 1 }} title={t('call_log_call_detail')}>
           {selectedCall ? (
             <Tabs
               defaultActiveKey="prompt"
               items={[
                 {
                   key: 'prompt',
-                  label: 'Prompt',
+                  label: t('call_log_prompt'),
                   children: (
                     <Card size="small" bodyStyle={{ background: '#f5f5f5' }}>
                       <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                        {selectedCall.prompt_content || 'No prompt content'}
+                        {selectedCall.prompt_content || t('call_log_no_prompt')}
                       </pre>
                     </Card>
                   ),
                 },
                 {
                   key: 'response',
-                  label: 'Response',
+                  label: t('call_log_response'),
                   children: (
                     <Card size="small" bodyStyle={{ background: '#f5f5f5' }}>
                       <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                        {selectedCall.response_content || 'No response content'}
+                        {selectedCall.response_content || t('call_log_no_response')}
                       </pre>
                     </Card>
                   ),
                 },
                 {
                   key: 'raw',
-                  label: 'Raw JSON',
+                  label: t('call_log_raw_json'),
                   children: (
                     <Card size="small" bodyStyle={{ background: '#f5f5f5' }}>
                       <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
@@ -163,7 +165,7 @@ function CallLogView() {
             />
           ) : (
             <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-              Select a call to view details
+              {t('call_log_select_call')}
             </div>
           )}
 
@@ -171,15 +173,15 @@ function CallLogView() {
           {selectedCall && (
             <div style={{ marginTop: 16, padding: '12px 16px', background: '#fafafa', borderRadius: 4 }}>
               <Space split={<span style={{ color: '#888' }}>|</span>}>
-                <span>Model: {selectedCall.model}</span>
-                <span>Temperature: {selectedCall.temperature}</span>
-                {selectedCall.tokens_in !== undefined && <span>Tokens in: {selectedCall.tokens_in}</span>}
-                {selectedCall.tokens_out !== undefined && <span>Tokens out: {selectedCall.tokens_out}</span>}
-                {selectedCall.latency_ms !== undefined && <span>Latency: {selectedCall.latency_ms}ms</span>}
+                <span>{t('call_log_model')}: {selectedCall.model}</span>
+                <span>{t('call_log_temperature')}: {selectedCall.temperature}</span>
+                {selectedCall.tokens_in !== undefined && <span>{t('call_log_tokens_in')}: {selectedCall.tokens_in}</span>}
+                {selectedCall.tokens_out !== undefined && <span>{t('call_log_tokens_out')}: {selectedCall.tokens_out}</span>}
+                {selectedCall.latency_ms !== undefined && <span>{t('call_log_latency')}: {selectedCall.latency_ms}ms</span>}
               </Space>
               {selectedCall.error && (
                 <div style={{ marginTop: 8, color: '#ff4d4f' }}>
-                  Error: {selectedCall.error}
+                  {t('call_log_error')}: {selectedCall.error}
                 </div>
               )}
             </div>

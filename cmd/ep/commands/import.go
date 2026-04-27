@@ -11,31 +11,25 @@ import (
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/yamlutil"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var importCmd = &cobra.Command{
 	Use:   "import <source>...",
-	Short: "批量导入 Prompt 资产",
-	Long: `批量导入 Prompt 资产从文件或目录。
-
-支持导入方式:
-  - 单文件: ep import ./my-prompt.txt
-  - Glob 模式: ep import "./prompts/**/*.md"
-  - 多文件: ep import file1.txt file2.md
-  - 目录: ep import ./prompts/
-
-导入后生成 prompts/<id>.md 文件，包含 YAML front matter。`,
-	Args: cobra.MinimumNArgs(1),
-	RunE: runImport,
+	Short: i18n.T(i18n.MsgImportCmdShort, nil),
+	Long:  i18n.T(i18n.MsgImportCmdLong, nil),
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  runImport,
 }
 
 func init() {
-	importCmd.Flags().String("biz-line", "", "指定业务线")
-	importCmd.Flags().Bool("dry-run", false, "仅预览，不实际导入")
-	importCmd.Flags().Bool("json", false, "JSON 输出")
-	importCmd.Flags().String("prompts-dir", "prompts", "Prompt 文件目录")
+	importCmd.Flags().String("biz-line", "", i18n.T(i18n.MsgFlagBizLine, nil))
+	importCmd.Flags().Bool("dry-run", false, i18n.T(i18n.MsgFlagDryRun, nil))
+	importCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
+	importCmd.Flags().String("prompts-dir", "prompts", i18n.T(i18n.MsgFlagPromptsDir, nil))
 
 	rootCmd.AddCommand(importCmd)
 }
@@ -89,13 +83,13 @@ func runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Println("Import Report:")
-	fmt.Printf("  Total files found: %d\n", report.Total)
-	fmt.Printf("  Imported:         %d\n", len(report.Imported))
-	fmt.Printf("  Skipped (duplicate): %d\n", len(report.Skipped))
+	fmt.Println(i18n.T(i18n.MsgImportReportHeader, nil))
+	fmt.Println(i18n.T(i18n.MsgImportReportTotal, pongo2.Context{"count": report.Total}))
+	fmt.Println(i18n.T(i18n.MsgImportReportImported, pongo2.Context{"count": len(report.Imported)}))
+	fmt.Println(i18n.T(i18n.MsgImportReportSkipped, pongo2.Context{"count": len(report.Skipped)}))
 
 	if len(report.Imported) > 0 || len(report.Skipped) > 0 {
-		fmt.Println("\n  Details:")
+		fmt.Println(i18n.T(i18n.MsgImportReportDetails, nil))
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		for _, item := range report.Imported {
 			relPath, _ := filepath.Rel(".", item.FilePath)
@@ -109,7 +103,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	if dryRun {
-		fmt.Println("\n[DRY-RUN] 未实际执行更改")
+		fmt.Println(i18n.T(i18n.MsgImportDryRun, nil))
 	}
 
 	return nil
@@ -122,10 +116,10 @@ type fileItem struct {
 }
 
 type processResult struct {
-	Status       string
-	ID           string
-	ContentHash  string
-	Reason       string
+	Status      string
+	ID          string
+	ContentHash string
+	Reason      string
 }
 
 const (
@@ -232,10 +226,10 @@ func processFile(item fileItem, promptsDir, bizLine string, dryRun bool) process
 	if dryRun {
 		id := domain.NewULID()
 		return processResult{
-			Status:       StatusNew,
-			ID:           id,
-			ContentHash:  item.hash,
-			Reason:       "dry-run",
+			Status:      StatusNew,
+			ID:          id,
+			ContentHash: item.hash,
+			Reason:      "dry-run",
 		}
 	}
 

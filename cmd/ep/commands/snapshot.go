@@ -7,13 +7,15 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/plugins/gitbridge"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var snapshotCmd = &cobra.Command{
 	Use:   "snapshot",
-	Short: "版本管理",
+	Short: i18n.T(i18n.MsgSnapshotCmdShort, nil),
 }
 
 func init() {
@@ -24,7 +26,7 @@ func init() {
 
 var snapshotListCmd = &cobra.Command{
 	Use:   "list <id>",
-	Short: "列出版本",
+	Short: i18n.T(i18n.MsgSnapshotListShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -35,7 +37,7 @@ var snapshotListCmd = &cobra.Command{
 		repoPath := getRepoPath()
 
 		if err := bridge.Open(repoPath); err != nil {
-			return fmt.Errorf("打开 Git 仓库失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgSnapshotOpenRepoFailed, nil), err)
 		}
 
 		// Build file path pattern for this asset
@@ -43,7 +45,7 @@ var snapshotListCmd = &cobra.Command{
 
 		commits, err := bridge.Log(context.Background(), filePath, limit)
 		if err != nil {
-			return fmt.Errorf("获取版本历史失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgSnapshotHistoryFailed, nil), err)
 		}
 
 		if jsonOutput {
@@ -63,7 +65,7 @@ var snapshotListCmd = &cobra.Command{
 
 var snapshotDiffCmd = &cobra.Command{
 	Use:   "diff <id> <v1> <v2>",
-	Short: "版本对比",
+	Short: i18n.T(i18n.MsgSnapshotDiffShort, nil),
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		_ = args[0] // assetID
@@ -74,7 +76,7 @@ var snapshotDiffCmd = &cobra.Command{
 		repoPath := getRepoPath()
 
 		if err := bridge.Open(repoPath); err != nil {
-			return fmt.Errorf("打开 Git 仓库失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgSnapshotOpenRepoFailed, nil), err)
 		}
 
 		// Build commit references
@@ -83,7 +85,7 @@ var snapshotDiffCmd = &cobra.Command{
 
 		diff, err := bridge.Diff(context.Background(), commit1, commit2)
 		if err != nil {
-			return fmt.Errorf("获取 Diff 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgSnapshotDiffFailed, nil), err)
 		}
 
 		fmt.Print(diff)
@@ -93,21 +95,21 @@ var snapshotDiffCmd = &cobra.Command{
 
 var snapshotCheckoutCmd = &cobra.Command{
 	Use:   "checkout <id> <v>",
-	Short: "切换版本",
+	Short: i18n.T(i18n.MsgSnapshotCheckoutShort, nil),
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
 		version := args[1]
 
-		fmt.Printf("切换 %s 到版本 %s...\n", assetID, version)
+		fmt.Println(i18n.T(i18n.MsgSnapshotCheckoutStarted, pongo2.Context{"assetID": assetID, "version": version}))
 		// TODO: Implement checkout via git worktree or file restore
 		return fmt.Errorf("not implemented: use 'git checkout %s -- prompts/%s/", version, assetID)
 	},
 }
 
 func init() {
-	snapshotListCmd.Flags().Int("limit", 20, "限制返回数量")
-	snapshotListCmd.Flags().Bool("json", false, "JSON 输出")
+	snapshotListCmd.Flags().Int("limit", 20, i18n.T(i18n.MsgFlagSnapshotLimit, nil))
+	snapshotListCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 }
 
 func getRepoPath() string {

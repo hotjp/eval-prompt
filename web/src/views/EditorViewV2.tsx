@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal, Select } from 'antd'
 import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutlined, ClearOutlined, PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
@@ -109,6 +110,7 @@ function extractThinkContent(content: string): { think: string; clean: string } 
 }
 
 function EditorViewV2() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -212,7 +214,7 @@ function EditorViewV2() {
         clearTimeout(timeout)
 
         if (!assetData) {
-          message.error('Asset not found')
+          message.error(t('editor_asset_not_found'))
           navigate('/assets')
           return
         }
@@ -240,7 +242,7 @@ function EditorViewV2() {
         loadedRef.current = true
       } catch (err) {
         if (cancelled) return
-        message.error('Failed to load asset')
+        message.error(t('editor_load_failed'))
         console.error(err)
       } finally {
         if (!cancelled) {
@@ -266,7 +268,7 @@ function EditorViewV2() {
     setSaving(true)
     try {
       const result = await assetApi.saveContent(id, forceContent || promptValue, undefined, contentHash)
-      message.success(result.message || 'Saved')
+      message.success(result.message || t('editor_saved'))
       setPromptValue(result.content)
       setOriginalContent(result.content)
       setContentHash(result.content_hash)
@@ -275,7 +277,7 @@ function EditorViewV2() {
       clearDraft(id)
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        message.warning('Conflict detected. Please choose which version to keep.')
+        message.warning(t('editor_conflict_detected'))
         try {
           const contentData = await assetApi.getContent(id)
           const draft = loadDraft(id)
@@ -284,10 +286,10 @@ function EditorViewV2() {
           setContentHash(contentData.content_hash || '')
           setUpdatedAt(contentData.updated_at || '')
         } catch {
-          message.error('Failed to reload content')
+          message.error(t('editor_reload_failed'))
         }
       } else {
-        message.error('Failed to save')
+        message.error(t('editor_save_failed'))
       }
     } finally {
       setSaving(false)
@@ -310,9 +312,9 @@ function EditorViewV2() {
       }
       // Then commit
       const result = await assetApi.commit(id, `Update prompt ${id}`)
-      message.success('Committed: ' + result.commit.slice(0, 8))
+      message.success(t('editor_commit_success') + result.commit.slice(0, 8))
     } catch {
-      message.error('Failed to commit')
+      message.error(t('editor_commit_failed'))
     } finally {
       setSaving(false)
     }
@@ -340,12 +342,12 @@ function EditorViewV2() {
     try {
       const result = await triggerApi.validate(promptValue)
       if (result.valid) {
-        message.success('Prompt is valid')
+        message.success(t('editor_valid'))
       } else {
-        message.warning(result.message || 'Invalid prompt')
+        message.warning(result.message || t('editor_invalid'))
       }
     } catch {
-      message.error('Validation failed')
+      message.error(t('editor_validation_failed'))
     } finally {
       setValidating(false)
     }
@@ -363,7 +365,7 @@ function EditorViewV2() {
       setInjectedResult(result.result)
       setActiveTab('preview')
     } catch {
-      message.error('Failed to inject variables')
+      message.error(t('editor_inject_failed'))
     }
   }
 
@@ -388,7 +390,7 @@ function EditorViewV2() {
 
   const handleRewrite = async () => {
     if (!rewriteInstruction.trim()) {
-      message.warning('Please enter a rewrite instruction')
+      message.warning(t('editor_rewrite_placeholder'))
       return
     }
     setRewriting(true)
@@ -398,9 +400,9 @@ function EditorViewV2() {
       setShowRewritePreview(true)
     } catch (err: any) {
       if (err?.response?.status === 503) {
-        message.warning('请先在设置中配置 LLM')
+        message.warning(t('editor_rewrite_configure_llm'))
       } else {
-        message.error('Rewrite failed')
+        message.error(t('editor_rewrite_failed'))
       }
     } finally {
       setRewriting(false)
@@ -413,7 +415,7 @@ function EditorViewV2() {
     setShowRewriteInput(false)
     setRewriteInstruction('')
     setRewritePreview('')
-    message.success('Rewrite applied')
+    message.success(t('editor_rewrite_applied'))
   }
 
   const handleCancelRewrite = () => {
@@ -466,7 +468,7 @@ function EditorViewV2() {
   }
 
   if (!asset && id !== 'new') {
-    return <div>Asset not found</div>
+    return <div>{t('editor_asset_not_found')}</div>
   }
 
   const category = asset?.category || 'content'
@@ -475,10 +477,10 @@ function EditorViewV2() {
       <Card title={asset?.name || id}>
         <Space direction="vertical">
           <Tag color="blue">{category}</Tag>
-          <p>This asset type does not use the markdown editor.</p>
-          <p>For <strong>eval</strong> assets, edit test cases in the Cases tab.</p>
-          <p>For <strong>metric</strong> assets, edit rubrics in the Rubric tab.</p>
-          <Button onClick={() => navigate(`/assets/${id}`)}>Go to Detail View</Button>
+          <p>{t('editor_not_markdown_type')}</p>
+          <p>{t('editor_eval_hint')}</p>
+          <p>{t('editor_metric_hint')}</p>
+          <Button onClick={() => navigate(`/assets/${id}`)}>{t('editor_go_to_detail')}</Button>
         </Space>
       </Card>
     )
@@ -494,36 +496,36 @@ function EditorViewV2() {
             <span className="editor-title">{asset?.name || id}</span>
             {asset?.asset_type && <Tag className="editor-tag">{asset.asset_type}</Tag>}
             {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
-            {updatedAt && <Tag color="blue" className="editor-time-tag">Saved {formatUpdatedAt(updatedAt)}</Tag>}
+            {updatedAt && <Tag color="blue" className="editor-time-tag">{t('editor_saved_at')} {formatUpdatedAt(updatedAt)}</Tag>}
           </div>
           <div className="editor-header-nav">
             <Button
               size="small"
               onClick={() => {
-                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                if (hasChanges && !window.confirm(t('editor_unsaved_changes_warning'))) return
                 navigate(`/assets/${id}/versions`)
               }}
             >
-              Version Tree
+              {t('editor_v2_version_tree')}
             </Button>
             <Button
               size="small"
               onClick={() => {
-                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                if (hasChanges && !window.confirm(t('editor_unsaved_changes_warning'))) return
                 navigate(`/assets/${id}/eval`)
               }}
             >
-              Run Eval
+              {t('editor_v2_run_eval')}
             </Button>
             <Button
               size="small"
               icon={<SwapOutlined />}
               onClick={() => {
-                if (hasChanges && !window.confirm('You have unsaved changes. Leave anyway?')) return
+                if (hasChanges && !window.confirm(t('editor_unsaved_changes_warning'))) return
                 navigate('/compare')
               }}
             >
-              Compare
+              {t('editor_v2_compare')}
             </Button>
           </div>
         </div>
@@ -535,16 +537,16 @@ function EditorViewV2() {
             onChange={setActiveTab}
             className="editor-tabs"
             items={[
-              { key: 'editor', label: 'Editor' },
-              { key: 'diff', label: <span><DiffOutlined /> Diff</span> },
-              { key: 'preview', label: 'Preview' },
+              { key: 'editor', label: t('editor_tab_editor') },
+              { key: 'diff', label: <span><DiffOutlined /> {t('editor_tab_diff')}</span> },
+              { key: 'preview', label: t('editor_tab_preview') },
             ]}
           />
           <div className="toolbar-actions">
             {showRewriteInput ? (
               <>
                 <Input
-                  placeholder="改写指令..."
+                  placeholder={t('editor_rewrite_placeholder')}
                   value={rewriteInstruction}
                   onChange={(e) => setRewriteInstruction(e.target.value)}
                   onPressEnter={handleRewrite}
@@ -552,20 +554,20 @@ function EditorViewV2() {
                   size="small"
                   disabled={rewriting}
                 />
-                <Button size="small" type="primary" onClick={handleRewrite} loading={rewriting}>Apply</Button>
-                <Button size="small" onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>Cancel</Button>
+                <Button size="small" type="primary" onClick={handleRewrite} loading={rewriting}>{t('editor_rewrite_apply')}</Button>
+                <Button size="small" onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>{t('common_cancel')}</Button>
               </>
             ) : (
               <>
                 <Button icon={<PlayCircleOutlined />} onClick={handleValidate} loading={validating} size="small">
-                  Validate
+                  {t('editor_validate_button')}
                 </Button>
                 <Button size="small" icon={<EditOutlined />} onClick={() => setShowRewriteInput(true)}>
-                  Rewrite
+                  {t('editor_rewrite_button')}
                 </Button>
                 {hasChanges && (
                   <Button size="small" onClick={handleRestore}>
-                    Restore
+                    {t('editor_restore_button')}
                   </Button>
                 )}
                 <Button
@@ -576,10 +578,10 @@ function EditorViewV2() {
                   disabled={!hasChanges}
                   size="small"
                 >
-                  Save
+                  {t('editor_save')}
                 </Button>
                 <Button icon={<SaveOutlined />} onClick={handleCommit} loading={saving} size="small">
-                  Commit
+                  {t('editor_commit_button')}
                 </Button>
               </>
             )}
@@ -614,7 +616,7 @@ function EditorViewV2() {
                   }}
                 />
               ) : (
-                <div className="no-changes">No changes to show</div>
+                <div className="no-changes">{t('editor_no_changes')}</div>
               )}
             </div>
           )}
@@ -634,7 +636,7 @@ function EditorViewV2() {
       <div className="chat-panel">
         {/* Chat Header */}
         <div className="chat-header">
-          <span className="chat-title">AI Assistant</span>
+          <span className="chat-title">{t('editor_v2_ai_assistant')}</span>
           <div className="chat-header-actions">
             <Select
               value={selectedModel}
@@ -645,7 +647,7 @@ function EditorViewV2() {
                 value: c.name,
                 label: `${c.name} - ${c.default_model}`,
               }))}
-              placeholder="Select provider"
+              placeholder={t('editor_v2_select_provider')}
             />
             <Button icon={<ClearOutlined />} size="small" onClick={handleClearChat} />
           </div>
@@ -655,8 +657,8 @@ function EditorViewV2() {
         <div className="chat-messages">
           {chatMessages.length === 0 && (
             <div className="chat-empty">
-              <p>发送消息开始与 AI 对话</p>
-              <p className="chat-empty-hint">可以要求 AI 改写、优化或解释当前 Prompt</p>
+              <p>{t('editor_v2_chat_empty')}</p>
+              <p className="chat-empty-hint">{t('editor_v2_chat_empty_hint')}</p>
             </div>
           )}
           {chatMessages.map((msg) => {
@@ -667,7 +669,7 @@ function EditorViewV2() {
                   {think && (
                     <div className="think-block">
                       <button className="think-toggle" onClick={() => toggleThink(msg.id)}>
-                        💭 Thinking {expandedThinks.has(msg.id) ? '▲' : '▼'}
+                        💭 {t('editor_v2_thinking')} {expandedThinks.has(msg.id) ? '▲' : '▼'}
                       </button>
                       {expandedThinks.has(msg.id) && (
                         <pre className="think-content">{think}</pre>
@@ -682,7 +684,7 @@ function EditorViewV2() {
           {chatLoading && (
             <div className="chat-message assistant">
               <div className="message-bubble loading">
-                <Spin size="small" /> AI 思考中...
+                <Spin size="small" /> {t('editor_v2_thinking')}
               </div>
             </div>
           )}
@@ -695,7 +697,7 @@ function EditorViewV2() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onPressEnter={handleChatSend}
-            placeholder="输入消息..."
+            placeholder={t('editor_v2_chat_input_placeholder')}
             className="chat-input"
           />
           <Button
@@ -710,21 +712,21 @@ function EditorViewV2() {
         {/* Inject Section */}
         <div className="inject-section">
           <div className="inject-header">
-            <span className="inject-title">Variables</span>
-            <Button size="small" icon={<PlusOutlined />} onClick={addVariable}>Add</Button>
+            <span className="inject-title">{t('editor_v2_variables_title')}</span>
+            <Button size="small" icon={<PlusOutlined />} onClick={addVariable}>{t('editor_v2_add_variable')}</Button>
           </div>
           <div className="inject-variables">
             {variables.map((v, index) => (
               <div key={index} className="variable-row">
                 <Input
-                  placeholder="Key"
+                  placeholder={t('editor_v2_key_placeholder')}
                   value={v.key}
                   onChange={(e) => updateVariable(index, 'key', e.target.value)}
                   className="variable-key"
                 />
                 <span className="variable-separator">:</span>
                 <Input
-                  placeholder="Value"
+                  placeholder={t('editor_v2_value_placeholder')}
                   value={v.value}
                   onChange={(e) => updateVariable(index, 'value', e.target.value)}
                   className="variable-value"
@@ -739,38 +741,38 @@ function EditorViewV2() {
             ))}
           </div>
           <Button type="primary" onClick={handleInject} block>
-            Inject
+            {t('editor_inject_button')}
           </Button>
         </div>
       </div>
 
       {/* Conflict Modal */}
       <Modal
-        title="Conflict Detected"
+        title={t('editor_conflict_title')}
         open={!!conflictDraft}
         width={900}
         footer={null}
         onCancel={() => setConflictDraft(null)}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <p>Your local draft differs from the server version. Choose which to keep:</p>
+          <p>{t('editor_conflict_description')}</p>
           <DiffEditor
             height={300}
             language="markdown"
-            original={conflictServerContent || 'Server version'}
+            original={conflictServerContent || t('editor_server_version')}
             modified={conflictDraft?.content || ''}
             theme="vs-dark"
             options={{ minimap: { enabled: false }, renderSideBySide: true }}
           />
           <Space>
             <Button type="primary" onClick={() => handleSave(conflictDraft?.content)}>
-              Keep Local Draft
+              {t('editor_keep_local')}
             </Button>
             <Button onClick={handleAcceptServer}>
-              Accept Server Version
+              {t('editor_accept_server')}
             </Button>
             <Button onClick={handleKeepLocal}>
-              Review &amp; Merge Later
+              {t('editor_review_later')}
             </Button>
           </Space>
         </Space>
@@ -778,21 +780,21 @@ function EditorViewV2() {
 
       {/* Rewrite Preview Modal */}
       <Modal
-        title="Rewrite Preview"
+        title={t('editor_v2_rewrite_preview_title')}
         open={showRewritePreview}
         width={900}
         onCancel={handleCancelRewrite}
         footer={[
           <Button key="cancel" onClick={handleCancelRewrite}>
-            Cancel
+            {t('common_cancel')}
           </Button>,
           <Button key="apply" type="primary" onClick={handleApplyRewrite}>
-            Apply Rewrite
+            {t('editor_v2_apply_rewrite')}
           </Button>,
         ]}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <p>Review the rewritten content below:</p>
+          <p>{t('editor_v2_review_rewritten')}</p>
           <DiffEditor
             height={400}
             language="markdown"

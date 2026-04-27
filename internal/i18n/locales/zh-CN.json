@@ -634,7 +634,5 @@
   "version_tree_author": "作者",
   "version_tree_unknown": "未知",
   "version_tree_reason": "原因",
-  "version_tree_no_reason": "无原因",
-  "settings_lang_english": "英语",
-  "settings_lang_chinese": "中文"
+  "version_tree_no_reason": "无原因"
 }

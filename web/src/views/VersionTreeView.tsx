@@ -4,8 +4,10 @@ import { Card, Timeline, Tag, Button, Space, Spin, message } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, SyncOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 function VersionTreeView() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -34,7 +36,7 @@ function VersionTreeView() {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('version_tree_asset_not_found')}</div>
   }
 
   const sortedSnapshots = [...(asset.snapshots || [])].sort(
@@ -44,13 +46,13 @@ function VersionTreeView() {
   return (
     <div>
       <Card
-        title={`Version History: ${asset.name}`}
+        title={`${t('version_tree_title')}: ${asset.name}`}
         extra={
           <Space>
             <Button type="primary" onClick={() => navigate(`/assets/${id}/eval`)}>
-              Run Eval
+              {t('version_tree_run_eval')}
             </Button>
-            <Button onClick={() => navigate(`/assets/${id}/edit`)}>Edit</Button>
+            <Button onClick={() => navigate(`/assets/${id}/edit`)}>{t('version_tree_edit')}</Button>
           </Space>
         }
       >
@@ -69,18 +71,18 @@ function VersionTreeView() {
                     <Tag>{(snapshot.commit_hash || '').slice(0, 8)}</Tag>
                     {snapshot.eval_score !== undefined && (
                       <Tag icon={snapshot.eval_score >= 0.8 ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-                        Score: {(snapshot.eval_score * 100).toFixed(1)}%
+                        {t('version_tree_score')}: {(snapshot.eval_score * 100).toFixed(1)}%
                       </Tag>
                     )}
                   </Space>
                   <div>
-                    <strong>Author:</strong> {snapshot.author || 'Unknown'}
+                    <strong>{t('version_tree_author')}:</strong> {snapshot.author || t('version_tree_unknown')}
                   </div>
                   <div>
-                    <strong>Reason:</strong> {snapshot.reason || 'No reason'}
+                    <strong>{t('version_tree_reason')}:</strong> {snapshot.reason || t('version_tree_no_reason')}
                   </div>
                   <div style={{ color: '#888', fontSize: 12 }}>
-                    {snapshot.created_at ? new Date(snapshot.created_at).toLocaleString() : 'Unknown'}
+                    {snapshot.created_at ? new Date(snapshot.created_at).toLocaleString() : t('version_tree_unknown')}
                   </div>
                 </Space>
               </Card>

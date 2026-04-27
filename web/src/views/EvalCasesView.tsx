@@ -4,12 +4,14 @@ import { Card, Tabs, Tag, Button, Space, Spin, message, List, Collapse, Row, Col
 import { HistoryOutlined, LinkOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 interface EvalCasesViewProps {
   asset?: AssetDetail | null
 }
 
 function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -43,7 +45,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('eval_cases_asset_not_found')}</div>
   }
 
   const testCases = asset.test_cases || []
@@ -76,25 +78,25 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
         items={[
           {
             key: 'overview',
-            label: 'Overview',
+            label: t('eval_cases_tab_overview'),
             children: (
               <Row gutter={16}>
                 <Col span={12}>
-                  <Card title="Basic Info">
+                  <Card title={t('eval_cases_basic_info')}>
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <div>
-                        <span style={{ color: '#888' }}>Total Test Cases: </span>
+                        <span style={{ color: '#888' }}>{t('eval_cases_total_test_cases')}: </span>
                         <span>{testCases.length}</span>
                       </div>
                       <div>
-                        <span style={{ color: '#888' }}>Referenced Metrics: </span>
+                        <span style={{ color: '#888' }}>{t('eval_cases_referenced_metrics')}: </span>
                         <span>{metricRefs.length}</span>
                       </div>
                     </Space>
                   </Card>
                 </Col>
                 <Col span={12}>
-                  <Card title="Referenced Metrics">
+                  <Card title={t('eval_cases_referenced_metrics_card')}>
                     {metricRefs.length > 0 ? (
                       <Space direction="vertical" size="small">
                         {metricRefs.map((ref) => (
@@ -110,7 +112,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
                         ))}
                       </Space>
                     ) : (
-                      <span style={{ color: '#888' }}>No referenced metrics</span>
+                      <span style={{ color: '#888' }}>{t('eval_cases_no_referenced_metrics')}</span>
                     )}
                   </Card>
                 </Col>
@@ -119,33 +121,33 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
           },
           {
             key: 'cases_editor',
-            label: 'Cases Editor',
+            label: t('eval_cases_tab_cases_editor'),
             children: (
               <Row gutter={16}>
                 {/* Left: Test Cases List */}
                 <Col span={16}>
-                  <Card title="Test Cases">
+                  <Card title={t('eval_cases_test_cases')}>
                     {testCases.length > 0 ? (
                       <Collapse
                         items={testCases.map((tc, idx) => ({
                           key: tc.id || idx,
                           label: (
                             <Space>
-                              <span>Case {idx + 1}: {tc.name}</span>
+                              <span>{t('eval_cases_case')} {idx + 1}: {tc.name}</span>
                               {tc.description && <Tag>{tc.description}</Tag>}
                             </Space>
                           ),
                           children: (
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                               <div>
-                                <strong style={{ color: '#888' }}>Input:</strong>
+                                <strong style={{ color: '#888' }}>{t('eval_cases_input')}:</strong>
                                 <Card size="small" bodyStyle={{ background: '#f5f5f5', padding: 8 }}>
                                   <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{tc.input}</pre>
                                 </Card>
                               </div>
                               {tc.expected && (
                                 <div>
-                                  <strong style={{ color: '#888' }}>Expected:</strong>
+                                  <strong style={{ color: '#888' }}>{t('eval_cases_expected')}:</strong>
                                   <Card size="small" bodyStyle={{ background: '#f5f5f5', padding: 8 }}>
                                     <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{tc.expected}</pre>
                                   </Card>
@@ -153,7 +155,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
                               )}
                               {tc.rubric && (
                                 <div>
-                                  <strong style={{ color: '#888' }}>Rubric:</strong>
+                                  <strong style={{ color: '#888' }}>{t('eval_cases_rubric')}:</strong>
                                   <Card size="small" bodyStyle={{ background: '#f5f5f5', padding: 8 }}>
                                     <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{tc.rubric}</pre>
                                   </Card>
@@ -165,7 +167,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
                       />
                     ) : (
                       <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-                        No test cases defined
+                        {t('eval_cases_no_test_cases')}
                       </div>
                     )}
                   </Card>
@@ -173,7 +175,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
 
                 {/* Right: Metric References */}
                 <Col span={8}>
-                  <Card title="Referenced Metrics">
+                  <Card title={t('eval_cases_referenced_metrics_card')}>
                     {metricRefs.length > 0 ? (
                       <List
                         dataSource={metricRefs}
@@ -191,7 +193,7 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
                         )}
                       />
                     ) : (
-                      <div style={{ color: '#888' }}>No referenced metrics</div>
+                      <div style={{ color: '#888' }}>{t('eval_cases_no_referenced_metrics')}</div>
                     )}
                   </Card>
                 </Col>
@@ -200,17 +202,17 @@ function EvalCasesView({ asset: propAsset }: EvalCasesViewProps) {
           },
           {
             key: 'versions',
-            label: 'Versions',
+            label: t('eval_cases_tab_versions'),
             children: (
               <Card
                 extra={
                   <Button icon={<HistoryOutlined />} onClick={() => navigate(`/assets/${id}/versions`)}>
-                    View Full History
+                    {t('eval_cases_view_full_history')}
                   </Button>
                 }
               >
                 <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-                  Version history is available in the full history view
+                  {t('eval_cases_version_history_note')}
                 </div>
               </Card>
             ),

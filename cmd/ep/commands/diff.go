@@ -6,13 +6,15 @@ import (
 	"fmt"
 
 	"github.com/eval-prompt/internal/config"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/plugins/llm"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var diffCmd = &cobra.Command{
-	Use:   "diff [old_content] [new_content]",
-	Short: "Explain semantic differences between two texts",
+	Use:   i18n.T(i18n.MsgDiffCmd, nil),
+	Short: i18n.T(i18n.MsgDiffCmdShort, nil),
 	Args:  cobra.MinimumNArgs(2),
 	RunE:  runDiff,
 }
@@ -39,10 +41,10 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Summary: %s\n", result.Summary)
-	fmt.Printf("Impact: %s\n", result.Impact)
+	fmt.Print(i18n.T(i18n.MsgDiffSummary, pongo2.Context{"summary": result.Summary}))
+	fmt.Print(i18n.T(i18n.MsgDiffImpact, pongo2.Context{"impact": result.Impact}))
 	for _, c := range result.Changes {
-		fmt.Printf("  [%s] %s: %s\n", c.Type, c.Location, c.Description)
+		fmt.Print(i18n.T(i18n.MsgDiffChange, pongo2.Context{"type": c.Type, "location": c.Location, "description": c.Description}))
 	}
 	return nil
 }

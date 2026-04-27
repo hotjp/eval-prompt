@@ -4,12 +4,14 @@ import { Card, Tabs, Tag, Button, Space, Spin, message, Timeline, Row, Col, Stat
 import { CheckCircleOutlined, CloseCircleOutlined, EditOutlined, HistoryOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import type { AssetDetail, EvalHistoryEntry } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 interface ContentDetailViewProps {
   asset?: AssetDetail | null
 }
 
 function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -51,7 +53,7 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('content_detail_asset_not_found')}</div>
   }
 
   const sortedHistory = [...(asset.eval_history || [])].sort(
@@ -85,23 +87,23 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
         items={[
           {
             key: 'overview',
-            label: 'Overview',
+            label: t('content_detail_tab_overview'),
             children: (
               <Card>
                 <Row gutter={16}>
                   <Col span={8}>
-                    <Statistic title="Latest Score" value={asset.latest_score ?? 0} precision={2} suffix="/ 1.0" />
+                    <Statistic title={t('content_detail_latest_score')} value={asset.latest_score ?? 0} precision={2} suffix="/ 1.0" />
                   </Col>
                   <Col span={8}>
-                    <Statistic title="Total Evals" value={asset.eval_history?.length ?? 0} />
+                    <Statistic title={t('content_detail_total_evals')} value={asset.eval_history?.length ?? 0} />
                   </Col>
                   <Col span={8}>
-                    <Statistic title="Triggers" value={asset.triggers?.length ?? 0} />
+                    <Statistic title={t('content_detail_triggers')} value={asset.triggers?.length ?? 0} />
                   </Col>
                 </Row>
                 {asset.recommended_snapshot_id && (
                   <div style={{ marginTop: 16 }}>
-                    <Tag color="blue">Recommended Snapshot: {asset.recommended_snapshot_id}</Tag>
+                    <Tag color="blue">{t('content_detail_recommended_snapshot')}: {asset.recommended_snapshot_id}</Tag>
                   </div>
                 )}
               </Card>
@@ -109,29 +111,29 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
           },
           {
             key: 'editor',
-            label: 'Editor',
+            label: t('content_detail_tab_editor'),
             children: (
               <Card
                 extra={
                   <Button icon={<EditOutlined />} onClick={() => navigate(`/assets/${id}/edit`)}>
-                    Edit
+                    {t('content_detail_edit')}
                   </Button>
                 }
               >
                 <div style={{ padding: 16, background: '#f5f5f5', borderRadius: 4, minHeight: 200 }}>
-                  <p style={{ color: '#888' }}>Click Edit to modify content</p>
+                  <p style={{ color: '#888' }}>{t('content_detail_click_edit')}</p>
                 </div>
               </Card>
             ),
           },
           {
             key: 'versions',
-            label: 'Versions',
+            label: t('content_detail_tab_versions'),
             children: (
               <Card
                 extra={
                   <Button icon={<HistoryOutlined />} onClick={() => navigate(`/assets/${id}/versions`)}>
-                    View Full History
+                    {t('content_detail_view_full_history')}
                   </Button>
                 }
               >
@@ -155,7 +157,7 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
                           </Card>
                         ),
                       }))
-                    : [{ color: 'gray', children: <span style={{ color: '#888' }}>No version history</span> }]
+                    : [{ color: 'gray', children: <span style={{ color: '#888' }}>{t('content_detail_no_version_history')}</span> }]
                   }
                 />
               </Card>
@@ -163,11 +165,11 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
           },
           {
             key: 'eval_history',
-            label: 'Eval History',
+            label: t('content_detail_tab_eval_history'),
             children: (
               <div style={{ display: 'flex', gap: 16 }}>
                 {/* Left: Timeline */}
-                <Card title="Timeline" style={{ width: 280, flexShrink: 0 }}>
+                <Card title={t('content_detail_timeline')} style={{ width: 280, flexShrink: 0 }}>
                   <Timeline
                     items={sortedHistory.map((entry) => ({
                       color: entry.status === 'completed' ? 'green' : entry.status === 'failed' ? 'red' : 'blue',
@@ -206,19 +208,19 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
                 </Card>
 
                 {/* Right: Detail Card */}
-                <Card title="Execution Detail" style={{ flex: 1 }}>
+                <Card title={t('content_detail_execution_detail')} style={{ flex: 1 }}>
                   {selectedHistory ? (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <Row gutter={16}>
                         <Col span={8}>
-                          <Statistic title="Status" value={selectedHistory.status} />
+                          <Statistic title={t('content_detail_status')} value={selectedHistory.status} />
                         </Col>
                         <Col span={8}>
-                          <Statistic title="Model" value={selectedHistory.model || 'N/A'} />
+                          <Statistic title={t('content_detail_model')} value={selectedHistory.model || 'N/A'} />
                         </Col>
                         <Col span={8}>
                           <Statistic
-                            title="Deterministic Score"
+                            title={t('content_detail_deterministic_score')}
                             value={selectedHistory.deterministic_score ?? 0}
                             precision={2}
                           />
@@ -227,31 +229,31 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
                       <Row gutter={16}>
                         <Col span={8}>
                           <Statistic
-                            title="Rubric Score"
+                            title={t('content_detail_rubric_score')}
                             value={selectedHistory.rubric_score ?? 0}
                             precision={2}
                           />
                         </Col>
                         <Col span={8}>
-                          <Statistic title="Tokens In" value={selectedHistory.tokens_in ?? 0} />
+                          <Statistic title={t('content_detail_tokens_in')} value={selectedHistory.tokens_in ?? 0} />
                         </Col>
                         <Col span={8}>
-                          <Statistic title="Tokens Out" value={selectedHistory.tokens_out ?? 0} />
+                          <Statistic title={t('content_detail_tokens_out')} value={selectedHistory.tokens_out ?? 0} />
                         </Col>
                       </Row>
                       <div>
-                        <span style={{ color: '#888' }}>Latency: </span>
+                        <span style={{ color: '#888' }}>{t('content_detail_latency')}: </span>
                         <span>{selectedHistory.latency_ms ? `${selectedHistory.latency_ms}ms` : 'N/A'}</span>
                       </div>
                       {selectedHistory.commit_hash && (
                         <div>
-                          <span style={{ color: '#888' }}>Snapshot: </span>
+                          <span style={{ color: '#888' }}>{t('content_detail_snapshot')}: </span>
                           <code>{selectedHistory.commit_hash.slice(0, 8)}</code>
                         </div>
                       )}
                       {selectedHistory.author && (
                         <div>
-                          <span style={{ color: '#888' }}>By: </span>
+                          <span style={{ color: '#888' }}>{t('content_detail_by')}: </span>
                           <span>{selectedHistory.author}</span>
                         </div>
                       )}
@@ -260,12 +262,12 @@ function ContentDetailView({ asset: propAsset }: ContentDetailViewProps) {
                         icon={<PlayCircleOutlined />}
                         onClick={() => navigate(`/assets/${id}/eval`)}
                       >
-                        Run Eval
+                        {t('content_detail_run_eval')}
                       </Button>
                     </Space>
                   ) : (
                     <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-                      Select an execution to view details
+                      {t('content_detail_select_execution')}
                     </div>
                   )}
                 </Card>

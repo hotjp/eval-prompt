@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Tag, Input, Button, Space, message, Spin, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
 import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { assetApi, adminApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
 import { useStore } from '../store'
@@ -22,6 +23,7 @@ const getAllTags = (assets: AssetSummary[]) => {
 type ViewMode = 'active' | 'archived'
 
 function AssetListView() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [assets, setAssets] = useState<AssetSummary[]>([])
@@ -48,7 +50,7 @@ function AssetListView() {
       const data = await assetApi.list({ category: selectedCategory || undefined })
       setAssets(data.assets)
     } catch {
-      message.error('Failed to load assets')
+      message.error(t('asset_list_load_failed'))
     } finally {
       setLoading(false)
     }
@@ -71,40 +73,40 @@ function AssetListView() {
   const handleArchive = async (id: string) => {
     try {
       await assetApi.archive(id)
-      message.success('Asset archived')
+      message.success(t('asset_archive_success'))
       loadAssets()
     } catch {
-      message.error('Failed to archive asset')
+      message.error(t('asset_archive_failed'))
     }
   }
 
   const handleRestore = async (id: string) => {
     try {
       await assetApi.restore(id)
-      message.success('Asset restored')
+      message.success(t('asset_restore_success'))
       loadAssets()
     } catch {
-      message.error('Failed to restore asset')
+      message.error(t('asset_restore_failed'))
     }
   }
 
   const handleMarkDraft = async (id: string) => {
     try {
       await assetApi.update(id, { state: 'draft' })
-      message.success('Asset marked as draft')
+      message.success(t('asset_mark_draft_success'))
       loadAssets()
     } catch {
-      message.error('Failed to mark as draft')
+      message.error(t('asset_mark_draft_failed'))
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await assetApi.delete(id)
-      message.success('Asset deleted')
+      message.success(t('asset_delete_success'))
       loadAssets()
     } catch {
-      message.error('Failed to delete asset')
+      message.error(t('asset_delete_failed'))
     }
   }
 
@@ -113,26 +115,26 @@ function AssetListView() {
       return [
         {
           key: 'restore',
-          label: 'Restore',
+          label: t('asset_menu_restore'),
           icon: <RollbackOutlined />,
           onClick: () => handleRestore(asset.id),
         },
         {
           key: 'markDraft',
-          label: 'Mark as Draft',
+          label: t('asset_menu_mark_draft'),
           icon: <EditOutlined />,
           onClick: () => handleMarkDraft(asset.id),
         },
         {
           key: 'delete',
-          label: 'Delete permanently',
+          label: t('asset_menu_delete'),
           danger: true,
           icon: <DeleteOutlined />,
           onClick: () => {
             Modal.confirm({
-              title: 'Delete asset?',
-              content: 'This action cannot be undone.',
-              okText: 'Delete',
+              title: t('asset_menu_confirm_delete_title'),
+              content: t('asset_menu_confirm_delete_content'),
+              okText: t('asset_menu_confirm_delete_ok'),
               okType: 'danger',
               onOk: () => handleDelete(asset.id),
             })
@@ -188,14 +190,14 @@ function AssetListView() {
       {/* Left Sidebar */}
       <div style={{ width: 200, borderRight: '1px solid #f0f0f0', paddingRight: 16, marginRight: 24 }}>
         <Search
-          placeholder="Search..."
+          placeholder={t('asset_list_search')}
           onSearch={setSearchText}
           style={{ marginBottom: 16 }}
           allowClear
         />
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>STATUS</div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>{t('asset_list_status')}</div>
           <div
             onClick={() => setViewMode('active')}
             style={{
@@ -209,7 +211,7 @@ function AssetListView() {
               justifyContent: 'space-between',
             }}
           >
-            <span>Active</span>
+            <span>{t('asset_list_active')}</span>
             <span style={{ fontSize: 12, color: '#888' }}>{activeAssets.length}</span>
           </div>
           <div
@@ -225,7 +227,7 @@ function AssetListView() {
               justifyContent: 'space-between',
             }}
           >
-            <span><InboxOutlined style={{ marginRight: 6 }} />Archived</span>
+            <span><InboxOutlined style={{ marginRight: 6 }} />{t('asset_list_archived')}</span>
             <span style={{ fontSize: 12, color: '#888' }}>{archivedAssets.length}</span>
           </div>
         </div>
@@ -233,7 +235,7 @@ function AssetListView() {
         {viewMode === 'active' && (
           <>
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>BIZ LINE</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>{t('asset_list_biz_line')}</div>
               {['all', ...getAssetTypes().map((b) => b.name)].map((biz) => (
                 <div
                   key={biz}
@@ -249,14 +251,14 @@ function AssetListView() {
                     justifyContent: 'space-between',
                   }}
                 >
-                  <span>{biz === 'all' ? 'All Assets' : biz}</span>
+                  <span>{biz === 'all' ? t('asset_list_all_assets') : biz}</span>
                   <span style={{ fontSize: 12, color: '#888' }}>{getCountByAssetType(biz)}</span>
                 </div>
               ))}
             </div>
 
             <div>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>TAGS</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>{t('asset_list_tags')}</div>
               {getAllTags(activeAssets).map((tag) => (
                 <div
                   key={tag}
@@ -283,20 +285,20 @@ function AssetListView() {
       {/* Right Content - Card Grid */}
       <div style={{ flex: 1 }}>
         <Space style={{ marginBottom: 16 }}>
-          <Button icon={<ReloadOutlined />} onClick={loadAssets}>Refresh</Button>
+          <Button icon={<ReloadOutlined />} onClick={loadAssets}>{t('asset_list_refresh')}</Button>
           {viewMode === 'active' && (
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-              Create
+              {t('asset_list_create')}
             </Button>
           )}
           <span style={{ color: '#888', fontSize: 12 }}>
-            {filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}
+            {filteredAssets.length} {filteredAssets.length !== 1 ? t('asset_list_assets') : t('asset_list_asset')}
           </span>
         </Space>
 
         {filteredAssets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>
-            {viewMode === 'archived' ? 'No archived assets' : 'No assets found'}
+            {viewMode === 'archived' ? t('asset_list_no_archived') : t('asset_list_no_assets')}
           </div>
         ) : (
           <div style={{ display: 'flow-root', clear: 'both' }}>
@@ -321,17 +323,17 @@ function AssetListView() {
                   actions={[
                     viewMode === 'active' && (
                       <Button key="edit" type="text" size="small" icon={<EditOutlined />} onClick={() => navigate(`/assets/${asset.id}/edit`)}>
-                        Edit
+                        {t('asset_card_edit')}
                       </Button>
                     ),
                     viewMode === 'active' && (
                       <Button key="versions" type="text" size="small" icon={<HistoryOutlined />} onClick={() => navigate(`/assets/${asset.id}/versions`)}>
-                        History
+                        {t('asset_card_history')}
                       </Button>
                     ),
                     viewMode === 'active' && (
                       <Button key="eval" type="text" size="small" icon={<CheckCircleOutlined />} onClick={() => navigate(`/assets/${asset.id}/eval`)}>
-                        Eval
+                        {t('asset_card_eval')}
                       </Button>
                     ),
                   ].filter(Boolean)}
@@ -350,27 +352,27 @@ function AssetListView() {
                     ))}
                   </div>
                   <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
-                    {asset.description?.slice(0, 50) || 'No description'}
+                    {asset.description?.slice(0, 50) || t('asset_card_no_description')}
                     {(asset.description?.length || 0) > 50 ? '...' : ''}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     {asset.category === 'content' && (
                       asset.latest_score !== undefined && asset.latest_score !== null ? (
                         <span style={{ fontSize: 11, color: '#888' }}>
-                          Latest: {(asset.latest_score * 100).toFixed(0)}%
+                          {t('asset_card_latest')}: {(asset.latest_score * 100).toFixed(0)}%
                         </span>
                       ) : (
-                        <span style={{ fontSize: 11, color: '#bbb' }}>No eval yet</span>
+                        <span style={{ fontSize: 11, color: '#bbb' }}>{t('asset_card_no_eval')}</span>
                       )
                     )}
                     {asset.category === 'eval' && (
                       <span style={{ fontSize: 11, color: '#888' }}>
-                        {asset.test_cases?.length || 0} test cases
+                        {asset.test_cases?.length || 0} {t('asset_card_test_cases')}
                       </span>
                     )}
                     {asset.category === 'metric' && (
                       <span style={{ fontSize: 11, color: '#888' }}>
-                        {asset.rubric?.length || 0} rubric checks
+                        {asset.rubric?.length || 0} {t('asset_card_rubric_checks')}
                       </span>
                     )}
                     {(!asset.category || asset.category === 'content') && asset.latest_score !== undefined && asset.latest_score !== null && (

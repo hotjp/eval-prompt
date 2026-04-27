@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -99,6 +100,14 @@ func WriteLock(lock *RepoLock) error {
 		return fmt.Errorf("failed to create lock directory: %w", err)
 	}
 
+	// If directory exists but is not writable (common when root created it),
+	// try to fix ownership to allow the current user to write.
+	if !isWritable(dir) {
+		if err := chownDirToCurrentUser(dir); err != nil {
+			return fmt.Errorf("lock directory %s is not writable and could not be fixed: %w", dir, err)
+		}
+	}
+
 	data, err := json.MarshalIndent(lock, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal lock: %w", err)
@@ -167,6 +176,33 @@ func (l *RepoLock) GetCurrentIfValid() string {
 		}
 	}
 	return ""
+}
+
+// isWritable checks if the current user has write permission on the directory.
+func isWritable(dir string) bool {
+	// Try to write a temporary file
+	tmp, err := os.CreateTemp(dir, ".lock-check")
+	if err != nil {
+		return false
+	}
+	tmp.Close()
+	os.Remove(tmp.Name())
+	return true
+}
+
+// chownDirToCurrentUser changes directory ownership to the current user.
+// It only succeeds if running as root (or with CAP_CHOWN), otherwise it returns an error.
+func chownDirToCurrentUser(dir string) error {
+	stat, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	// Already owned by current user
+	if int(stat.Sys().(*syscall.Stat_t).Uid) == os.Getuid() {
+		return nil
+	}
+	// Try to chown - only works if we have CAP_CHOWN (i.e., running as root)
+	return os.Chown(dir, os.Getuid(), os.Getgid())
 }
 
 // ValidatePath checks if the given path is a valid git repository.

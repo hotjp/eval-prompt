@@ -58,6 +58,10 @@ var serveCmd = &cobra.Command{
 		} else {
 			// Apply config language if no EP_LANG override
 			i18n.SetLangIfNotEnv(cfg.Lang)
+			// Apply --lang flag if set (EP_LANG already takes precedence inside SetLangIfNotEnv)
+			if lang, _ := cmd.Flags().GetString("lang"); lang != "" {
+				i18n.SetLangIfNotEnv(lang)
+			}
 		}
 
 		// Load taxonomy from config/taxonomy.yaml
@@ -343,6 +347,7 @@ func init() {
 	serveCmd.Flags().Int("port", 18880, "服务端口")
 	serveCmd.Flags().String("host", "127.0.0.1", "监听地址")
 	serveCmd.Flags().Bool("no-browser", false, "不自动打开浏览器")
+	serveCmd.Flags().String("lang", "", "语言 (en-US, zh-CN)")
 }
 
 // execSelf replaces the current process with a new instance of the same binary

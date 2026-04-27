@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Layout, Menu, Popover, Button, Space, Typography, Popconfirm, message, Dropdown, Input, Modal, Select } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   AppstoreOutlined,
   SwapOutlined,
@@ -38,6 +39,7 @@ const { Text } = Typography
 type Status = 'ok' | 'error' | 'loading' | 'degraded'
 
 function Sidebar() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [serverStatus, setServerStatus] = useState<Status>('loading')
@@ -140,16 +142,16 @@ function Sidebar() {
 
   const handleRestart = async () => {
     if (runningEval) {
-      message.warning('An eval is running. Please wait for it to finish before restarting.')
+      message.warning(t('sidebar_eval_running_warning'))
       return
     }
     setLoading(true)
     try {
       await new Promise(r => setTimeout(r, 1000))
-      message.success('Restart signal sent — server is restarting')
+      message.success(t('sidebar_restart_sent'))
       setStatusOpen(false)
     } catch {
-      message.error('Failed to send restart signal')
+      message.error(t('sidebar_restart_failed'))
     } finally {
       setLoading(false)
     }
@@ -159,10 +161,10 @@ function Sidebar() {
     setLoading(true)
     try {
       await new Promise(r => setTimeout(r, 800))
-      message.success('Config reloaded — changes will take effect immediately')
+      message.success(t('sidebar_config_reloaded'))
       setStatusOpen(false)
     } catch {
-      message.error('Failed to reload config')
+      message.error(t('sidebar_config_reload_failed'))
     } finally {
       setLoading(false)
     }
@@ -180,13 +182,13 @@ function Sidebar() {
       const res = await assetApi.list()
       const ids = res.assets.map(a => a.id)
       if (ids.length === 0) {
-        message.warning('No assets to commit')
+        message.warning(t('sidebar_no_assets_to_commit'))
         return
       }
       const result = await assetApi.commitBatch(ids, 'Batch commit all assets')
-      message.success(`Committed ${Object.keys(result.commits).length} assets`)
+      message.success(t('sidebar_committed_count', { count: Object.keys(result.commits).length }))
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Commit failed')
+      message.error(e instanceof Error ? e.message : t('sidebar_commit_failed'))
     } finally {
       setGitSyncing(false)
     }
@@ -196,10 +198,10 @@ function Sidebar() {
     setGitSyncing(true)
     try {
       const report = await adminApi.reconcile()
-      message.success(`Sync complete: ${report.added} added, ${report.updated} updated, ${report.deleted} deleted`)
+      message.success(t('sidebar_sync_complete', { added: report.added, updated: report.updated, deleted: report.deleted }))
       fetchRepoStatus()
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Sync failed')
+      message.error(e instanceof Error ? e.message : t('sidebar_sync_failed'))
     } finally {
       setGitSyncing(false)
     }
@@ -209,10 +211,10 @@ function Sidebar() {
     setGitSyncing(true)
     try {
       await adminApi.gitPull()
-      message.success('Git pull successful')
+      message.success(t('sidebar_git_pull_success'))
       fetchRepoStatus()
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Git pull failed')
+      message.error(e instanceof Error ? e.message : t('sidebar_git_pull_failed'))
     } finally {
       setGitSyncing(false)
     }
@@ -222,10 +224,10 @@ function Sidebar() {
     setGitSyncing(true)
     try {
       await adminApi.switchRepo(path)
-      message.success('Repository switched')
+      message.success(t('sidebar_repo_switched'))
       fetchRepoStatus()
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Failed to switch repository')
+      message.error(e instanceof Error ? e.message : t('sidebar_switch_repo_failed'))
     } finally {
       setGitSyncing(false)
     }
@@ -236,12 +238,12 @@ function Sidebar() {
     setInitLoading(true)
     try {
       await adminApi.switchRepo(initPath.trim())
-      message.success('Repository initialized')
+      message.success(t('sidebar_repo_initialized'))
       setShowInitRepoModal(false)
       setInitPath('')
       fetchRepoStatus()
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Failed to initialize repository')
+      message.error(e instanceof Error ? e.message : t('sidebar_init_repo_failed'))
     } finally {
       setInitLoading(false)
     }
@@ -270,12 +272,12 @@ function Sidebar() {
   )
 
   const statusLabel = serverStatus === 'loading'
-    ? 'Checking'
+    ? t('sidebar_status_checking')
     : serverStatus === 'ok'
-    ? 'Online'
+    ? t('sidebar_status_online')
     : serverStatus === 'degraded'
-    ? 'Degraded'
-    : 'Offline'
+    ? t('sidebar_status_degraded')
+    : t('sidebar_status_offline')
 
   const statusMenuItem = {
     key: '__status__',
@@ -308,19 +310,19 @@ function Sidebar() {
         <Select
           value={currentCategory}
           onChange={handleCategoryChange}
-          placeholder="All Assets"
+          placeholder={t('sidebar_all_assets')}
           style={{ minWidth: 140 }}
           options={[
-            { value: '', label: `All Assets (${assetCount})` },
-            { value: 'content', label: `Prompts (${categoryCounts.content})` },
-            { value: 'eval', label: `Eval Cases (${categoryCounts.eval})` },
-            { value: 'metric', label: `Metrics (${categoryCounts.metric})` },
+            { value: '', label: `${t('sidebar_all_assets')} (${assetCount})` },
+            { value: 'content', label: `${t('sidebar_prompts')} (${categoryCounts.content})` },
+            { value: 'eval', label: `${t('sidebar_eval_cases')} (${categoryCounts.eval})` },
+            { value: 'metric', label: `${t('sidebar_metrics')} (${categoryCounts.metric})` },
           ]}
         />
       ),
     },
-    { key: '/compare', icon: <SwapOutlined />, label: 'Compare' },
-    { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
+    { key: '/compare', icon: <SwapOutlined />, label: t('sidebar_nav_compare') },
+    { key: '/settings', icon: <SettingOutlined />, label: t('sidebar_settings') },
   ]
 
   const repoStatusIcon = (entry: RepoEntry) => {
@@ -336,11 +338,11 @@ function Sidebar() {
   const popoverContent = (
     <div style={{ width: 260 }}>
       <div style={{ marginBottom: 12 }}>
-        <Text type="secondary" style={{ fontSize: 12 }}>Server Status</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>{t('sidebar_server_status')}</Text>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           {statusDot}
           <Text strong style={{ fontSize: 13 }}>
-            {serverStatus === 'ok' ? 'Running' : serverStatus === 'error' ? 'Offline' : serverStatus === 'degraded' ? 'Degraded' : 'Checking...'}
+            {serverStatus === 'ok' ? t('sidebar_repo_running') : serverStatus === 'error' ? t('sidebar_status_offline') : serverStatus === 'degraded' ? t('sidebar_status_degraded') : t('sidebar_status_checking')}
           </Text>
         </div>
       </div>
@@ -358,9 +360,9 @@ function Sidebar() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <FieldTimeOutlined style={{ color: '#1890ff' }} />
-            <span style={{ fontWeight: 500 }}>Eval in progress</span>
+            <span style={{ fontWeight: 500 }}>{t('sidebar_eval_in_progress')}</span>
           </div>
-          <div style={{ color: '#8c8c8c' }}>Do not restart server while eval is running</div>
+          <div style={{ color: '#8c8c8c' }}>{t('sidebar_eval_warning')}</div>
         </div>
       )}
 
@@ -377,7 +379,7 @@ function Sidebar() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{ fontSize: 14 }}>⚠️</span>
-            <span style={{ fontWeight: 500 }}>Degraded — some services unavailable</span>
+            <span style={{ fontWeight: 500 }}>{t('sidebar_degraded_services')}</span>
           </div>
           {Object.entries(healthData?.checks || {}).map(([k, v]) => (
             v?.status !== 'ok' && (
@@ -407,8 +409,8 @@ function Sidebar() {
             color: '#595959',
           }}
         >
-          <div style={{ marginBottom: 4, fontWeight: 500 }}>Server is not responding</div>
-          <div>Start the server manually:</div>
+          <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('sidebar_server_not_responding')}</div>
+          <div>{t('sidebar_start_server_manually')}</div>
           <code style={{ display: 'block', marginTop: 4, padding: '4px 6px', background: '#fff', borderRadius: 4, fontSize: 11 }}>
             ep server
           </code>
@@ -423,16 +425,16 @@ function Sidebar() {
             onClick={handleGoToLLMSettings}
             style={{ padding: 0, fontSize: 12 }}
           >
-            Configure LLM →
+            {t('sidebar_configure_llm')} →
           </Button>
         </div>
       )}
 
       {healthData && (
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>Details</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t('sidebar_details')}</Text>
           <div style={{ marginTop: 4, fontSize: 12, color: '#595959' }}>
-            <div>Checked: {lastChecked ? lastChecked.toLocaleTimeString() : 'N/A'}</div>
+            <div>{t('sidebar_checked')}: {lastChecked ? lastChecked.toLocaleTimeString() : 'N/A'}</div>
             {healthData?.checks && Object.entries(healthData.checks || {}).map(([k, v]) => (
               <div key={k}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
@@ -460,7 +462,7 @@ function Sidebar() {
       )}
 
       <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-        <Text type="secondary" style={{ fontSize: 12 }}>Actions</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>{t('sidebar_actions')}</Text>
         <div style={{ marginTop: 8 }}>
           <Space direction="vertical" style={{ width: '100%' }} size={8}>
             <Button
@@ -471,13 +473,13 @@ function Sidebar() {
               disabled={serverStatus === 'error' || !!runningEval}
               onClick={handleReloadConfig}
             >
-              Reload Config
+              {t('sidebar_reload_config')}
             </Button>
             <Popconfirm
-              title="Restart the server?"
-              description="This will terminate all ongoing operations."
-              okText="Restart"
-              cancelText="Cancel"
+              title={t('sidebar_restart_confirm_title')}
+              description={t('sidebar_restart_confirm_desc')}
+              okText={t('sidebar_restart')}
+              cancelText={t('common_cancel')}
               okButtonProps={{ danger: true, loading }}
               onConfirm={handleRestart}
             >
@@ -488,7 +490,7 @@ function Sidebar() {
                 danger
                 disabled={serverStatus === 'error' || !!runningEval}
               >
-                Restart Server
+                {t('sidebar_restart_server')}
               </Button>
             </Popconfirm>
           </Space>
@@ -502,14 +504,14 @@ function Sidebar() {
       return (
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'not-allowed', opacity: 0.6 }}>
           <SyncOutlined spin style={{ fontSize: 11 }} />
-          Syncing...
+          {t('sidebar_syncing')}
         </span>
       )
     }
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8c8c8c', cursor: 'pointer' }}>
         <BranchesOutlined style={{ fontSize: 11 }} />
-        {repoStatus?.current?.branch || 'no branch'}
+        {repoStatus?.current?.branch || t('sidebar_no_branch')}
         {repoStatus?.current?.dirty && (
           <span style={{ fontSize: 8, color: '#fa8c16', lineHeight: 1 }}>●</span>
         )}
@@ -563,7 +565,7 @@ function Sidebar() {
             loading={gitSyncing}
             style={{ fontSize: 12 }}
           >
-            Commit All
+            {t('sidebar_commit_all')}
           </Button>
         )}
         {repoStatus?.current?.valid ? (
@@ -572,7 +574,7 @@ function Sidebar() {
               items: [
                 {
                   key: 'current',
-                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>Current: {repoStatus.current?.path}</span>,
+                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>{t('sidebar_current')}: {repoStatus.current?.path}</span>,
                   disabled: true,
                 },
                 ...(repoStatus.current?.outside_home ? [{
@@ -580,7 +582,7 @@ function Sidebar() {
                   label: (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fa8c16', fontSize: 12 }}>
                       <WarningOutlined />
-                      <span>Path is not under home directory — access may be restricted</span>
+                      <span>{t('sidebar_path_warning')}</span>
                     </div>
                   ),
                   disabled: true,
@@ -589,7 +591,7 @@ function Sidebar() {
                 ...(repoStatus.repos.length > 0 ? [
                   {
                     key: 'switch',
-                    label: 'Switch Repository',
+                    label: t('sidebar_switch_repo'),
                     icon: <SwapOutlined />,
                     children: repoStatus.repos.map(r => ({
                       key: `repo-${r.path}`,
@@ -606,41 +608,41 @@ function Sidebar() {
                 ] : []),
                 {
                   key: 'init',
-                  label: 'Initialize New Repo',
+                  label: t('sidebar_init_repo'),
                   icon: <FolderOutlined />,
                   onClick: () => setShowInitRepoModal(true, 'manual'),
                 },
                 { type: 'divider' as const },
                 {
                   key: 'reconcile',
-                  label: 'Sync Index (Reconcile)',
+                  label: t('sidebar_reconcile'),
                   icon: <SyncOutlined />,
                   onClick: handleReconcile,
                   disabled: gitSyncing,
                 },
                 {
                   key: 'gitpull',
-                  label: 'Git Pull',
+                  label: t('sidebar_git_pull'),
                   icon: <BranchesOutlined />,
                   onClick: handleGitPull,
                   disabled: gitSyncing,
                 },
                 {
                   key: 'openfolder',
-                  label: 'Open in Finder',
+                  label: t('sidebar_open_finder'),
                   icon: <FolderOutlined />,
                   onClick: async () => {
                     try {
                       await adminApi.openFolder()
                     } catch (e) {
-                      message.error(e instanceof Error ? e.message : 'Failed to open folder')
+                      message.error(e instanceof Error ? e.message : t('sidebar_open_folder_failed'))
                     }
                   },
                 },
                 { type: 'divider' as const },
                 {
                   key: 'refresh',
-                  label: 'Refresh',
+                  label: t('sidebar_refresh'),
                   icon: <ReloadOutlined />,
                   onClick: fetchRepoStatus,
                   disabled: gitSyncing,
@@ -660,20 +662,20 @@ function Sidebar() {
                   label: (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ff4d4f' }}>
                       <WarningOutlined />
-                      <span>No Git repository</span>
+                      <span>{t('sidebar_no_git_repo')}</span>
                     </div>
                   ),
                   disabled: true,
                 },
                 {
                   key: 'hint',
-                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>Initialize a repo to start</span>,
+                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>{t('sidebar_init_hint')}</span>,
                   disabled: true,
                 },
                 { type: 'divider' as const },
                 {
                   key: 'init',
-                  label: 'Initialize New Repo',
+                  label: t('sidebar_init_repo'),
                   icon: <FolderOutlined />,
                   onClick: () => setShowInitRepoModal(true, 'manual'),
                 },
@@ -683,7 +685,7 @@ function Sidebar() {
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ff4d4f', cursor: 'pointer' }}>
               <WarningOutlined style={{ fontSize: 11 }} />
-              No Repo
+              {t('sidebar_no_repo')}
             </span>
           </Dropdown>
         )}
@@ -696,21 +698,21 @@ function Sidebar() {
     </Header>
 
     <Modal
-      title={initRepoModalReason === 'api_error' ? '无法创建资产' : '初始化仓库'}
+      title={initRepoModalReason === 'api_error' ? t('modal_init_api_error_title') : t('modal_init_repo_title')}
       open={showInitRepoModal}
       onOk={handleInitRepo}
       onCancel={() => { setShowInitRepoModal(false); setInitPath('') }}
-      okText="初始化"
+      okText={t('modal_init_ok')}
       confirmLoading={initLoading}
     >
       {initRepoModalReason === 'api_error' ? (
         <div style={{ fontSize: 13, color: '#595959' }}>
-          <p style={{ marginBottom: 12 }}>无法连接到服务器，请检查服务状态后再试。</p>
-          <p>如果你是首次使用，需要先初始化一个本地仓库来存储 Prompt 资产。</p>
+          <p style={{ marginBottom: 12 }}>{t('modal_init_api_error_desc1')}</p>
+          <p>{t('modal_init_api_error_desc2')}</p>
         </div>
       ) : (
         <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
-          目录路径 — 建议放在 home 目录下。如果目录不存在，将自动创建为 Git 仓库。
+          {t('modal_init_path_hint')}
         </div>
       )}
       <Input

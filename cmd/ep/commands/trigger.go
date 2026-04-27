@@ -6,15 +6,17 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var triggerCmd = &cobra.Command{
 	Use:   "trigger",
-	Short: "触发匹配",
+	Short: i18n.T(i18n.MsgTriggerCmdShort, nil),
 }
 
 func init() {
@@ -23,7 +25,7 @@ func init() {
 
 var triggerMatchCmd = &cobra.Command{
 	Use:   "match <input>",
-	Short: "匹配 Prompt",
+	Short: i18n.T(i18n.MsgTriggerMatchShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		input := args[0]
@@ -36,7 +38,7 @@ var triggerMatchCmd = &cobra.Command{
 
 		matches, err := triggerService.MatchTrigger(cmd.Context(), input, top)
 		if err != nil {
-			return fmt.Errorf("匹配失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgTriggerMatchFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -59,6 +61,6 @@ var triggerMatchCmd = &cobra.Command{
 }
 
 func init() {
-	triggerMatchCmd.Flags().Int("top", 5, "返回最多 N 个结果")
-	triggerMatchCmd.Flags().Bool("json", false, "JSON 输出")
+	triggerMatchCmd.Flags().Int("top", 5, i18n.T(i18n.MsgFlagTop, nil))
+	triggerMatchCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 }

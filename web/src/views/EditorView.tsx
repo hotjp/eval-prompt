@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal } from 'antd'
 import { SaveOutlined, PlayCircleOutlined, SwapOutlined, DiffOutlined, EditOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
 import { assetApi, triggerApi, llmApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
@@ -73,6 +74,7 @@ function clearDraft(id: string) {
 }
 
 function EditorView() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -138,7 +140,7 @@ function EditorView() {
         clearTimeout(timeout)
 
         if (!assetData) {
-          message.error('Asset not found')
+          message.error(t('editor_asset_not_found'))
           navigate('/assets')
           return
         }
@@ -169,7 +171,7 @@ function EditorView() {
         loadedRef.current = true
       } catch (err) {
         if (cancelled) return
-        message.error('Failed to load asset')
+        message.error(t('editor_load_failed'))
         console.error(err)
       } finally {
         if (!cancelled) {
@@ -195,7 +197,7 @@ function EditorView() {
     setSaving(true)
     try {
       const result = await assetApi.saveContent(id, forceContent || promptValue, undefined, contentHash)
-      message.success(result.message || 'Saved')
+      message.success(result.message || t('editor_saved'))
       // Use content from Preference-Applied response directly
       setPromptValue(result.content)
       setOriginalContent(result.content)
@@ -205,7 +207,7 @@ function EditorView() {
       clearDraft(id)
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        message.warning('Conflict detected. Please choose which version to keep.')
+        message.warning(t('editor_conflict_detected'))
         // Reload server content and show conflict
         try {
           const contentData = await assetApi.getContent(id)
@@ -215,10 +217,10 @@ function EditorView() {
           setContentHash(contentData.content_hash || '')
           setUpdatedAt(contentData.updated_at || '')
         } catch {
-          message.error('Failed to reload content')
+          message.error(t('editor_reload_failed'))
         }
       } else {
-        message.error('Failed to save')
+        message.error(t('editor_save_failed'))
       }
     } finally {
       setSaving(false)
@@ -230,9 +232,9 @@ function EditorView() {
     setSaving(true)
     try {
       const result = await assetApi.commit(id, `Update prompt ${id}`)
-      message.success('Committed: ' + result.commit.slice(0, 8))
+      message.success(t('editor_commit_success') + result.commit.slice(0, 8))
     } catch {
-      message.error('Failed to commit')
+      message.error(t('editor_commit_failed'))
     } finally {
       setSaving(false)
     }
@@ -261,12 +263,12 @@ function EditorView() {
       const result = await triggerApi.validate(promptValue)
       setValidationResult(result)
       if (result.valid) {
-        message.success('Prompt is valid')
+        message.success(t('editor_valid'))
       } else {
-        message.warning(result.message || 'Invalid prompt')
+        message.warning(result.message || t('editor_invalid'))
       }
     } catch {
-      message.error('Validation failed')
+      message.error(t('editor_validation_failed'))
     } finally {
       setValidating(false)
     }
@@ -278,7 +280,7 @@ function EditorView() {
       const result = await triggerApi.inject(promptValue, vars)
       setInjectedResult(result.result)
     } catch {
-      message.error('Failed to inject variables')
+      message.error(t('editor_inject_failed'))
     }
   }
 
@@ -289,7 +291,7 @@ function EditorView() {
 
   const handleRewrite = async () => {
     if (!rewriteInstruction.trim()) {
-      message.warning('Please enter a rewrite instruction')
+      message.warning(t('editor_rewrite_placeholder'))
       return
     }
     setRewriting(true)
@@ -298,12 +300,12 @@ function EditorView() {
       setPromptValue(result.rewritten)
       setShowRewriteInput(false)
       setRewriteInstruction('')
-      message.success('Rewrite applied')
+      message.success(t('editor_rewrite_applied'))
     } catch (err: any) {
       if (err?.response?.status === 503) {
-        message.warning('请先在设置中配置 LLM')
+        message.warning(t('editor_rewrite_configure_llm'))
       } else {
-        message.error('Rewrite failed')
+        message.error(t('editor_rewrite_failed'))
       }
     } finally {
       setRewriting(false)
@@ -315,7 +317,7 @@ function EditorView() {
   }
 
   if (!asset && id !== 'new') {
-    return <div>Asset not found</div>
+    return <div>{t('editor_asset_not_found')}</div>
   }
 
   // For eval/metric assets, show a message that editing is done via dedicated views
@@ -325,10 +327,10 @@ function EditorView() {
       <Card title={asset?.name || id}>
         <Space direction="vertical">
           <Tag color="blue">{category}</Tag>
-          <p>This asset type does not use the markdown editor.</p>
-          <p>For <strong>eval</strong> assets, edit test cases in the Cases tab.</p>
-          <p>For <strong>metric</strong> assets, edit rubrics in the Rubric tab.</p>
-          <Button onClick={() => navigate(`/assets/${id}`)}>Go to Detail View</Button>
+          <p>{t('editor_not_markdown_type')}</p>
+          <p>{t('editor_eval_hint')}</p>
+          <p>{t('editor_metric_hint')}</p>
+          <Button onClick={() => navigate(`/assets/${id}`)}>{t('editor_go_to_detail')}</Button>
         </Space>
       </Card>
     )
@@ -343,14 +345,14 @@ function EditorView() {
             <Space>
               {asset?.asset_type && <Tag>{asset.asset_type}</Tag>}
               {asset?.state && <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>}
-              {updatedAt && <Tag color="blue">Saved {formatUpdatedAt(updatedAt)}</Tag>}
+              {updatedAt && <Tag color="blue">{t('editor_saved_at')} {formatUpdatedAt(updatedAt)}</Tag>}
               <Button icon={<SaveOutlined />} onClick={handleCommit} loading={saving}>
-                Commit
+                {t('editor_commit_button')}
               </Button>
             </Space>
           }
         >
-          <p>{asset?.description || 'New prompt asset'}</p>
+          <p>{asset?.description || t('editor_new_asset')}</p>
         </Card>
 
         <Tabs
@@ -358,7 +360,7 @@ function EditorView() {
           items={[
             {
               key: 'editor',
-              label: 'Editor',
+              label: t('editor_tab_editor'),
               children: (
                 <Card>
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -378,31 +380,31 @@ function EditorView() {
                         loading={saving}
                         disabled={!hasChanges}
                       >
-                        Save
+                        {t('editor_save')}
                       </Button>
                       <Button
                         icon={<PlayCircleOutlined />}
                         onClick={handleValidate}
                         loading={validating}
                       >
-                        Validate
+                        {t('editor_validate_button')}
                       </Button>
                       <Button
                         icon={<EditOutlined />}
                         onClick={() => setShowRewriteInput(!showRewriteInput)}
                       >
-                        Rewrite
+                        {t('editor_rewrite_button')}
                       </Button>
                       {hasChanges && (
                         <Button onClick={handleRestore}>
-                          Restore
+                          {t('editor_restore_button')}
                         </Button>
                       )}
                     </Space>
                     {showRewriteInput && (
                       <Space>
                         <Input
-                          placeholder="Enter rewrite instruction (e.g., 改成更礼貌, 缩短, 扩充)"
+                          placeholder={t('editor_rewrite_placeholder')}
                           value={rewriteInstruction}
                           onChange={(e) => setRewriteInstruction(e.target.value)}
                           onPressEnter={handleRewrite}
@@ -410,16 +412,16 @@ function EditorView() {
                           disabled={rewriting}
                         />
                         <Button type="primary" onClick={handleRewrite} loading={rewriting}>
-                          Apply
+                          {t('editor_rewrite_apply')}
                         </Button>
                         <Button onClick={() => { setShowRewriteInput(false); setRewriteInstruction('') }} disabled={rewriting}>
-                          Cancel
+                          {t('common_cancel')}
                         </Button>
                       </Space>
                     )}
                     {validationResult && (
                       <Tag color={validationResult.valid ? 'green' : 'red'}>
-                        {validationResult.valid ? 'Valid' : validationResult.message}
+                        {validationResult.valid ? t('editor_valid') : validationResult.message}
                       </Tag>
                     )}
                   </Space>
@@ -430,11 +432,11 @@ function EditorView() {
               key: 'diff',
               label: (
                 <span>
-                  <DiffOutlined /> Diff
+                  <DiffOutlined /> {t('editor_tab_diff')}
                 </span>
               ),
               children: (
-                <Card title="Changes">
+                <Card title={t('editor_changes_title')}>
                   {hasChanges ? (
                     <DiffEditor
                       height="400px"
@@ -449,28 +451,28 @@ function EditorView() {
                       }}
                     />
                   ) : (
-                    <div style={{ color: '#888', padding: 16 }}>No changes to show</div>
+                    <div style={{ color: '#888', padding: 16 }}>{t('editor_no_changes')}</div>
                   )}
                 </Card>
               ),
             },
             {
               key: 'preview',
-              label: 'Preview',
+              label: t('editor_tab_preview'),
               children: (
-                <Card title="Variable Injection">
+                <Card title={t('editor_preview_title')}>
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <TextArea
                       rows={4}
                       value={variablesValue}
                       onChange={(e) => setVariablesValue(e.target.value)}
-                      placeholder="Enter variables as JSON"
+                      placeholder={t('editor_variables_placeholder')}
                     />
                     <Button type="primary" onClick={handleInject}>
-                      Inject
+                      {t('editor_inject_button')}
                     </Button>
                     {injectedResult && (
-                      <Card title="Result" style={{ background: '#f5f5f5' }}>
+                      <Card title={t('editor_result_title')} style={{ background: '#f5f5f5' }}>
                         <pre>{injectedResult}</pre>
                       </Card>
                     )}
@@ -481,16 +483,16 @@ function EditorView() {
           ]}
         />
 
-        <Card title="Snapshots">
+        <Card title={t('editor_snapshots_title')}>
           <Space>
             <Button onClick={() => navigate(`/assets/${id}/versions`)}>
-              View Version Tree
+              {t('editor_version_tree')}
             </Button>
             <Button onClick={() => navigate(`/assets/${id}/eval`)}>
-              Run Evaluation
+              {t('editor_run_eval')}
             </Button>
             <Button icon={<SwapOutlined />} onClick={() => navigate('/compare')}>
-              Compare
+              {t('editor_compare')}
             </Button>
           </Space>
         </Card>
@@ -498,31 +500,31 @@ function EditorView() {
 
       {/* Conflict resolution modal */}
       <Modal
-        title="Conflict Detected"
+        title={t('editor_conflict_title')}
         open={!!conflictDraft}
         width={900}
         footer={null}
         onCancel={() => setConflictDraft(null)}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <p>Your local draft differs from the server version. Choose which to keep:</p>
+          <p>{t('editor_conflict_description')}</p>
           <DiffEditor
             height={300}
             language="markdown"
-            original={conflictServerContent || 'Server version'}
+            original={conflictServerContent || t('editor_server_version')}
             modified={conflictDraft?.content || ''}
             theme="vs-dark"
             options={{ minimap: { enabled: false }, renderSideBySide: true }}
           />
           <Space>
             <Button type="primary" onClick={() => handleSave(conflictDraft?.content)}>
-              Keep Local Draft
+              {t('editor_keep_local')}
             </Button>
             <Button onClick={handleAcceptServer}>
-              Accept Server Version
+              {t('editor_accept_server')}
             </Button>
             <Button onClick={handleKeepLocal}>
-              Review &amp; Merge Later
+              {t('editor_review_later')}
             </Button>
           </Space>
         </Space>

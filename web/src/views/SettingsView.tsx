@@ -69,29 +69,29 @@ function SettingsView() {
     {
       key: 'categories',
       icon: <TeamOutlined />,
-      label: 'Categories',
+      label: t('settings_menu_categories'),
       children: [
-        { key: 'assettypes', label: 'Asset Types' },
-        { key: 'tags', label: 'Tags' },
+        { key: 'assettypes', label: t('settings_menu_asset_types') },
+        { key: 'tags', label: t('settings_menu_tags') },
       ],
     },
     {
       key: 'llm',
       icon: <RobotOutlined />,
-      label: 'LLM',
+      label: t('settings_menu_llm'),
       children: [
-        { key: 'llm-configs', label: 'Configurations' },
+        { key: 'llm-configs', label: t('settings_menu_configurations') },
       ],
     },
     {
       key: 'repo',
       icon: <FolderOutlined />,
-      label: 'Repository',
+      label: t('settings_menu_repository'),
     },
     {
       key: 'language',
       icon: <GlobalOutlined />,
-      label: 'Language',
+      label: t('settings_menu_language'),
     },
   ]
 
@@ -121,16 +121,16 @@ function SettingsView() {
   }
 
   const assetTypeColumns: ColumnsType<AssetType> = [
-    { title: 'Name', dataIndex: 'name', key: 'name', render: (name, record) => (
+    { title: t('settings_col_name'), dataIndex: 'name', key: 'name', render: (name, record) => (
       <Space>
         <Tag key={name} color={record.color}>{name}</Tag>
-        {record.built_in && <Tooltip title="Built-in"><LockOutlined style={{ color: '#999' }} /></Tooltip>}
+        {record.built_in && <Tooltip title={t('settings_builtin')}><LockOutlined style={{ color: '#999' }} /></Tooltip>}
       </Space>
     )},
-    { title: 'Description', dataIndex: 'description', key: 'description' },
-    { title: 'Assets', dataIndex: 'assetCount', key: 'assetCount', width: 80 },
+    { title: t('settings_col_description'), dataIndex: 'description', key: 'description' },
+    { title: t('settings_col_assets'), dataIndex: 'assetCount', key: 'assetCount', width: 80 },
     {
-      title: 'Action',
+      title: t('settings_col_action'),
       key: 'action',
       width: 100,
       render: (_, record) => (
@@ -147,12 +147,12 @@ function SettingsView() {
           />
           {!record.built_in && (
             <Popconfirm
-              title="Delete this asset type?"
+              title={t('settings_confirm_delete_asset_type')}
               onConfirm={() => {
                 const updated = assetTypes.filter((b) => b.name !== record.name)
                 setAssetTypes(updated)
                 saveAssetTypesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
-                message.success('Deleted')
+                message.success(t('settings_deleted'))
               }}
             >
               <Button type="text" size="small" danger icon={<DeleteOutlined />} />
@@ -165,19 +165,19 @@ function SettingsView() {
 
   const tagColumns: ColumnsType<TagItem> = [
     {
-      title: 'Tag',
+      title: t('settings_col_tag'),
       dataIndex: 'name',
       key: 'name',
       render: (name, record) => (
         <Space>
           <Tag key={name} color={record.color}>{name}</Tag>
-          {record.built_in && <Tooltip title="Built-in"><LockOutlined style={{ color: '#999' }} /></Tooltip>}
+          {record.built_in && <Tooltip title={t('settings_builtin')}><LockOutlined style={{ color: '#999' }} /></Tooltip>}
         </Space>
       ),
     },
-    { title: 'Usage', dataIndex: 'usageCount', key: 'usageCount', width: 80 },
+    { title: t('settings_col_usage'), dataIndex: 'usageCount', key: 'usageCount', width: 80 },
     {
-      title: 'Action',
+      title: t('settings_col_action'),
       key: 'action',
       width: 100,
       render: (_, record) => (
@@ -194,12 +194,12 @@ function SettingsView() {
           />
           {!record.built_in && (
             <Popconfirm
-              title="Delete this tag?"
+              title={t('settings_confirm_delete_tag')}
               onConfirm={() => {
                 const updated = tags.filter((t) => t.name !== record.name)
                 setTags(updated)
                 saveTagsToAPI(updated.map(({ name, color }) => ({ name, color })))
-                message.success('Deleted')
+                message.success(t('settings_deleted'))
               }}
             >
               <Button type="text" size="small" danger icon={<DeleteOutlined />} />
@@ -211,22 +211,22 @@ function SettingsView() {
   ]
 
   const llmColumns: ColumnsType<LLMConfigItem> = [
-    { title: 'Name', dataIndex: 'name', key: 'name', render: (name, record) => (
+    { title: t('settings_col_name'), dataIndex: 'name', key: 'name', render: (name, record) => (
       <Space>
         {name}
-        {record.default && <Tag color="green">Default</Tag>}
+        {record.default && <Tag color="green">{t('settings_default')}</Tag>}
       </Space>
     )},
-    { title: 'Provider', dataIndex: 'provider', key: 'provider', render: (provider) => <Tag color="blue">{provider}</Tag> },
-    { title: 'Default Model', dataIndex: 'default_model', key: 'default_model' },
-    { title: 'API Key', dataIndex: 'api_key', key: 'api_key', render: (key) => key ? '••••' + key.slice(-4) : '-' },
+    { title: t('settings_col_provider'), dataIndex: 'provider', key: 'provider', render: (provider) => <Tag color="blue">{provider}</Tag> },
+    { title: t('settings_col_default_model'), dataIndex: 'default_model', key: 'default_model' },
+    { title: t('settings_col_api_key'), dataIndex: 'api_key', key: 'api_key', render: (key) => key ? '••••' + key.slice(-4) : '-' },
     {
-      title: 'Action',
+      title: t('settings_col_action'),
       key: 'action',
       width: 150,
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="Test connection">
+          <Tooltip title={t('settings_test_connection')}>
             <Button
               type="text"
               size="small"
@@ -250,12 +250,12 @@ function SettingsView() {
             }}
           />
           <Popconfirm
-            title="Delete this LLM config?"
+            title={t('settings_confirm_delete_llm')}
             onConfirm={() => {
               const updated = llmConfigs.filter((c) => c.name !== record.name)
               setLlmConfigs(updated)
               saveLLMConfigsToAPI(updated.map(({ name, provider, api_key, endpoint, default_model }) => ({ name, provider, api_key, endpoint, default_model })))
-              message.success('Deleted')
+              message.success(t('settings_deleted'))
             }}
           >
             <Button type="text" size="small" danger icon={<DeleteOutlined />} />
@@ -270,10 +270,10 @@ function SettingsView() {
       let updated: AssetType[]
       if (editingAssetType) {
         updated = assetTypes.map((b) => (b.name === editingAssetType.name ? { ...b, ...values } : b))
-        message.success('Updated')
+        message.success(t('settings_updated'))
       } else {
         updated = [...assetTypes, { ...values, key: values.name, color: values.color || 'default', assetCount: 0 }]
-        message.success('Added')
+        message.success(t('settings_added'))
       }
       setAssetTypes(updated)
       saveAssetTypesToAPI(updated.map(({ name, description, color }) => ({ name, description, color })))
@@ -288,10 +288,10 @@ function SettingsView() {
       let updated: TagItem[]
       if (editingTag) {
         updated = tags.map((t) => (t.name === editingTag.name ? { ...t, ...values } : t))
-        message.success('Updated')
+        message.success(t('settings_updated'))
       } else {
         updated = [...tags, { ...values, color: values.color || 'blue', usageCount: 0 }]
-        message.success('Added')
+        message.success(t('settings_added'))
       }
       setTags(updated)
       saveTagsToAPI(updated.map(({ name, color }) => ({ name, color })))
@@ -319,7 +319,7 @@ function SettingsView() {
           }
           return c
         })
-        message.success('Updated')
+        message.success(t('settings_updated'))
       } else {
         // New config
         const newItem = { ...values, key: values.name } as LLMConfigItem
@@ -329,7 +329,7 @@ function SettingsView() {
         } else {
           updated = [...llmConfigs, newItem]
         }
-        message.success('Added')
+        message.success(t('settings_added'))
       }
 
       setLlmConfigs(updated)
@@ -345,7 +345,7 @@ function SettingsView() {
       return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Card
-            title="Asset Types"
+            title={t('settings_asset_types')}
             extra={
               <Button
                 type="primary"
@@ -356,7 +356,7 @@ function SettingsView() {
                   setAssetTypeModalOpen(true)
                 }}
               >
-                Add
+                {t('settings_add')}
               </Button>
             }
           >
@@ -364,7 +364,7 @@ function SettingsView() {
           </Card>
 
           <Card
-            title="Tags"
+            title={t('settings_tags')}
             extra={
               <Button
                 type="primary"
@@ -375,7 +375,7 @@ function SettingsView() {
                   setTagModalOpen(true)
                 }}
               >
-                Add
+                {t('settings_add')}
               </Button>
             }
           >
@@ -388,7 +388,7 @@ function SettingsView() {
     if (selectedSection === 'llm') {
       return (
         <Card
-          title="LLM Configurations"
+          title={t('settings_llm_configurations')}
           extra={
             <Button
               type="primary"
@@ -399,7 +399,7 @@ function SettingsView() {
                 setLlmModalOpen(true)
               }}
             >
-              Add LLM
+              {t('settings_add_llm')}
             </Button>
           }
         >
@@ -425,11 +425,11 @@ function SettingsView() {
       const getStatusText = (status: string) => {
         switch (status) {
           case 'valid':
-            return 'Valid'
+            return t('settings_status_valid')
           case 'notfound':
-            return 'Not found'
+            return t('settings_status_not_found')
           case 'notgit':
-            return 'Not a git repo'
+            return t('settings_status_not_git')
           default:
             return status
         }
@@ -439,7 +439,7 @@ function SettingsView() {
         setSwitchingRepo(path)
         try {
           await adminApi.switchRepo(path)
-          message.success('Switched to ' + path)
+          message.success(t('settings_switched_to') + ' ' + path)
           // Refresh repo list
           const list = await adminApi.getRepoList()
           setRepoList(list)
@@ -447,7 +447,7 @@ function SettingsView() {
           const config = await adminApi.getRepoConfig()
           repoForm.setFieldsValue(config)
         } catch (err: any) {
-          message.error(err?.response?.data?.message || 'Failed to switch repo')
+          message.error(err?.response?.data?.message || t('settings_switch_failed'))
         } finally {
           setSwitchingRepo(null)
         }
@@ -455,15 +455,15 @@ function SettingsView() {
 
       return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card title="Multi-Repo Management" extra={
+          <Card title={t('settings_multi_repo_management')} extra={
             <Button icon={<SwapOutlined />} onClick={() => {
               adminApi.getRepoList().then((list) => {
                 setRepoList(list)
               }).catch(() => {})
-            }}>Refresh</Button>
+            }}>{t('settings_refresh')}</Button>
           }>
             {repoListLoading ? (
-              <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>
+              <div style={{ padding: 20, textAlign: 'center' }}>{t('common_loading')}</div>
             ) : repoList && repoList.repos.length > 0 ? (
               <List
                 size="small"
@@ -481,7 +481,7 @@ function SettingsView() {
                           loading={switchingRepo === repo.path}
                           onClick={() => handleSwitchRepo(repo.path)}
                         >
-                          Switch
+                          {t('settings_switch')}
                         </Button>
                       ] : []}
                     >
@@ -490,7 +490,7 @@ function SettingsView() {
                         title={
                           <Space>
                             <span>{repo.path}</span>
-                            {isCurrent && <Tag color="blue">Current</Tag>}
+                            {isCurrent && <Tag color="blue">{t('settings_current')}</Tag>}
                           </Space>
                         }
                         description={getStatusText(repo.status)}
@@ -501,46 +501,46 @@ function SettingsView() {
               />
             ) : (
               <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>
-                No repositories configured. Run <code>ep init &lt;path&gt;</code> to add one.
+                {t('settings_no_repos_configured')}
               </div>
             )}
           </Card>
 
-          <Card title="Repository Settings">
+          <Card title={t('settings_repository_settings')}>
             <Form form={repoForm} layout="vertical">
               <Form.Item
                 name="repo_path"
-                label="Repository Path"
+                label={t('settings_repo_path')}
                 rules={[{ required: true }]}
-                extra="Absolute path to the git repository root containing prompt assets"
+                extra={t('settings_repo_path_extra')}
               >
                 <Input placeholder="/Users/name/prompts-repo" />
               </Form.Item>
               <Form.Item
                 name="assets_dir"
-                label="Assets Directory"
+                label={t('settings_assets_dir')}
                 rules={[{ required: true }]}
-                extra="Directory where .md prompt files are stored, relative to repo root"
+                extra={t('settings_assets_dir_extra')}
               >
                 <Input placeholder="prompts" />
               </Form.Item>
               <Form.Item
                 name="evals_dir"
-                label="Evals Directory"
+                label={t('settings_evals_dir')}
                 rules={[{ required: true }]}
-                extra="Directory for eval results and traces, relative to repo root"
+                extra={t('settings_evals_dir_extra')}
               >
                 <Input placeholder=".evals" />
               </Form.Item>
               <Button type="primary" onClick={() => {
                 repoForm.validateFields().then((values) => {
                   adminApi.saveRepoConfig(values).then(() => {
-                    message.success('Saved')
+                    message.success(t('settings_saved'))
                   }).catch(() => {
-                    message.error('Failed to save')
+                    message.error(t('settings_save_failed'))
                   })
                 })
-              }}>Save</Button>
+              }}>{t('settings_save')}</Button>
             </Form>
           </Card>
         </Space>
@@ -564,25 +564,24 @@ function SettingsView() {
       }
 
       return (
-        <Card title="Language / 语言">
+        <Card title={t('settings_language_title')}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <div>
               <p style={{ color: '#666', marginBottom: 16 }}>
-                Select your preferred language. This affects the UI display language.
+                {t('settings_language_description')}
               </p>
               <Select
                 value={currentLang}
                 onChange={handleLangChange}
                 style={{ width: 200 }}
                 options={[
-                  { value: 'en-US', label: 'English' },
-                  { value: 'zh-CN', label: '中文' },
+                  { value: 'en-US', label: t('settings_lang_english') },
+                  { value: 'zh-CN', label: t('settings_lang_chinese') },
                 ]}
               />
             </div>
             <div style={{ color: '#999', fontSize: 12 }}>
-              <p>Note: Server-side config requires restart to take effect.</p>
-              <p>注意：服务器端配置需要重启服务才能生效。</p>
+              <p>{t('settings_language_note')}</p>
             </div>
           </Space>
         </Card>
@@ -612,7 +611,7 @@ function SettingsView() {
       </Content>
 
       <Modal
-        title={editingAssetType ? 'Edit Asset Type' : 'Add Asset Type'}
+        title={editingAssetType ? t('settings_edit_asset_type') : t('settings_add_asset_type_title')}
         open={assetTypeModalOpen}
         onOk={handleAssetTypeSave}
         onCancel={() => {
@@ -622,20 +621,20 @@ function SettingsView() {
         }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('settings_col_name')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('settings_col_description')}>
             <Input />
           </Form.Item>
-          <Form.Item name="color" label="Color" valuePropName="color">
+          <Form.Item name="color" label={t('settings_color')} valuePropName="color">
             <ColorPicker />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={editingTag ? 'Edit Tag' : 'Add Tag'}
+        title={editingTag ? t('settings_edit_tag') : t('settings_add_tag_title')}
         open={tagModalOpen}
         onOk={handleTagSave}
         onCancel={() => {
@@ -645,17 +644,17 @@ function SettingsView() {
         }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('settings_col_name')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="color" label="Color" valuePropName="color">
+          <Form.Item name="color" label={t('settings_color')} valuePropName="color">
             <ColorPicker />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={editingLlm ? 'Edit LLM' : 'Add LLM'}
+        title={editingLlm ? t('settings_edit_llm') : t('settings_add_llm_title')}
         open={llmModalOpen}
         onCancel={() => {
           setLlmModalOpen(false)
@@ -668,36 +667,36 @@ function SettingsView() {
             form.resetFields()
             setEditingLlm(null)
           }}>
-            Cancel
+            {t('common_cancel')}
           </Button>,
           <Button key="save" type="primary" onClick={handleLlmSave}>
-            Save
+            {t('common_confirm')}
           </Button>,
         ]}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]} extra="Unique identifier for this LLM config">
+          <Form.Item name="name" label={t('settings_col_name')} rules={[{ required: true }]} extra={t('settings_llm_name_extra')}>
             <Input placeholder="e.g., openai-eval" />
           </Form.Item>
-          <Form.Item name="provider" label="Provider" rules={[{ required: true }]}>
-            <Select placeholder="Select provider">
+          <Form.Item name="provider" label={t('settings_col_provider')} rules={[{ required: true }]}>
+            <Select placeholder={t('settings_select_provider')}>
               <Select.Option value="openai">OpenAI</Select.Option>
               <Select.Option value="openai-compatible">OpenAI Compatible</Select.Option>
               <Select.Option value="claude">Claude</Select.Option>
               <Select.Option value="ollama">Ollama</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="api_key" label="API Key" extra="API key will be stored securely">
+          <Form.Item name="api_key" label={t('settings_col_api_key')} extra={t('settings_api_key_extra')}>
             <Input.Password placeholder="sk-..." />
           </Form.Item>
-          <Form.Item name="endpoint" label="Endpoint" extra="Leave empty for default (optional for OpenAI/Claude)">
+          <Form.Item name="endpoint" label={t('settings_endpoint')} extra={t('settings_endpoint_extra')}>
             <Input placeholder="https://api.openai.com/v1" />
           </Form.Item>
-          <Form.Item name="default_model" label="Default Model" rules={[{ required: true }]}>
+          <Form.Item name="default_model" label={t('settings_col_default_model')} rules={[{ required: true }]}>
             <Input placeholder="gpt-4o" />
           </Form.Item>
-          <Form.Item name="default" valuePropName="checked" extra="Set as the default LLM provider">
-            <label><input type="checkbox" style={{ marginRight: 8 }} />Set as default</label>
+          <Form.Item name="default" valuePropName="checked" extra={t('settings_default_extra')}>
+            <label><input type="checkbox" style={{ marginRight: 8 }} />{t('settings_set_as_default')}</label>
           </Form.Item>
         </Form>
       </Modal>
@@ -712,15 +711,15 @@ function SettingsView() {
       >
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <RocketOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 16 }} />
-          <h2 style={{ marginBottom: 8 }}>Welcome to eval-prompt</h2>
+          <h2 style={{ marginBottom: 8 }}>{t('settings_welcome_title')}</h2>
           <p style={{ color: '#666', marginBottom: 24 }}>
-            Let's set up your first prompt assets repository to get started.
+            {t('settings_welcome_description')}
           </p>
 
           <Form layout="vertical">
             <Form.Item
-              label="Repository Path"
-              extra="Choose a directory to store your prompt assets"
+              label={t('settings_repo_path')}
+              extra={t('settings_repo_path_extra')}
               required
             >
               <Input
@@ -747,17 +746,17 @@ function SettingsView() {
                     setRepoList(list)
                     const config = await adminApi.getRepoConfig()
                     repoForm.setFieldsValue(config)
-                    message.success('Repository initialized!')
+                    message.success(t('settings_repo_initialized'))
                     // Trigger repo section to refresh
                     setSelectedSection('repo')
                   } catch (err: any) {
-                    message.error(err?.response?.data?.message || 'Failed to initialize repository')
+                    message.error(err?.response?.data?.message || t('settings_init_failed'))
                   } finally {
                     setFirstUseLoading(false)
                   }
                 }}
               >
-                Initialize Repository
+                {t('settings_init_repo_button')}
               </Button>
               <Button
                 block
@@ -766,20 +765,19 @@ function SettingsView() {
                   setIsFirstUse(false)
                 }}
               >
-                Skip for now
+                {t('settings_skip_for_now')}
               </Button>
             </Space>
           </Form>
 
           <div style={{ marginTop: 24, padding: '16px', background: '#f5f5f5', borderRadius: 8, fontSize: 12, color: '#666' }}>
-            <strong>Note:</strong> You can manage multiple repositories later using{' '}
-            <code>ep init &lt;path&gt;</code> or via the Repository settings page.
+            <strong>{t('settings_note')}:</strong> {t('settings_repo_note')}
           </div>
         </div>
       </Modal>
 
       <Modal
-        title="Test LLM Connection"
+        title={t('settings_test_llm_title')}
         open={testModalOpen}
         onCancel={() => setTestModalOpen(false)}
         footer={null}
@@ -787,11 +785,11 @@ function SettingsView() {
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 6, fontSize: 13 }}>
-            <div style={{ color: '#666' }}>Testing config: <strong>{testConfigName}</strong></div>
+            <div style={{ color: '#666' }}>{t('settings_testing_config')}: <strong>{testConfigName}</strong></div>
           </div>
 
           <Select
-            placeholder="Select a saved config to test"
+            placeholder={t('settings_select_config_to_test')}
             value={testConfigName}
             onChange={(name) => setTestConfigName(name)}
             style={{ width: '100%' }}
@@ -804,7 +802,7 @@ function SettingsView() {
           </Select>
 
           <Input.TextArea
-            placeholder="Test message (leave empty for default)"
+            placeholder={t('settings_test_message_placeholder')}
             value={testMessage}
             onChange={(e) => setTestMessage(e.target.value)}
             rows={2}
@@ -823,14 +821,14 @@ function SettingsView() {
                 const result = await llmConfigApi.testByName(testConfigName, testMessage || undefined)
                 setTestResponse(result)
               } catch (err: any) {
-                setTestResponse({ success: false, error: err?.message || 'Request failed' })
+                setTestResponse({ success: false, error: err?.message || t('settings_request_failed') })
               } finally {
                 setTestLoading(false)
               }
             }}
             block
           >
-            Send Test Message
+            {t('settings_send_test_message')}
           </Button>
 
           {testResponse && (
@@ -841,7 +839,7 @@ function SettingsView() {
               border: `1px solid ${testResponse.success ? '#b7eb8f' : '#ffa39e'}`,
             }}>
               <div style={{ marginBottom: 4, fontWeight: 500, color: testResponse.success ? '#52c41a' : '#ff4d4f' }}>
-                {testResponse.success ? 'Success!' : 'Failed'}
+                {testResponse.success ? t('settings_test_success') : t('settings_test_failed')}
               </div>
               {testResponse.success && testResponse.content && (
                 <div style={{ color: '#333', whiteSpace: 'pre-wrap' }}>{testResponse.content}</div>

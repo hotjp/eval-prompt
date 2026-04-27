@@ -3,8 +3,10 @@ import { Card, Select, Row, Col, Statistic, Tag, Table, message, Button, Space, 
 import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined, DiffOutlined } from '@ant-design/icons'
 import { assetApi, evalApi, llmApi } from '../api/client'
 import type { AssetSummary, AssetDetail, CompareResult, Snapshot } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 function CompareView() {
+  const { t } = useTranslation()
   const [assets, setAssets] = useState<AssetSummary[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string>('')
   const [assetDetail, setAssetDetail] = useState<AssetDetail | null>(null)
@@ -88,9 +90,9 @@ function CompareView() {
       setShowSemanticDiffModal(true)
     } catch (err: any) {
       if (err?.response?.status === 503) {
-        message.warning('请先在设置中配置 LLM')
+        message.warning(t('compare_llm_not_configured'))
       } else {
-        message.error('Semantic diff failed')
+        message.error(t('compare_semantic_diff_failed'))
       }
     } finally {
       setSemanticDiffLoading(false)
@@ -110,10 +112,10 @@ function CompareView() {
   return (
     <div>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Card title="Compare Versions">
+        <Card title={t('compare_title')}>
           <Space wrap>
             <Select
-              placeholder="Select Asset"
+              placeholder={t('compare_select_asset')}
               style={{ width: 200 }}
               loading={assetLoading}
               value={selectedAsset || undefined}
@@ -124,7 +126,7 @@ function CompareView() {
               options={assets.map((a) => ({ label: a.name, value: a.id }))}
             />
             <Select
-              placeholder="Version 1"
+              placeholder={t('compare_version_1')}
               style={{ width: 150 }}
               value={version1 || undefined}
               onChange={setVersion1}
@@ -132,7 +134,7 @@ function CompareView() {
               disabled={versionOptions.length === 0}
             />
             <Select
-              placeholder="Version 2"
+              placeholder={t('compare_version_2')}
               style={{ width: 150 }}
               value={version2 || undefined}
               onChange={setVersion2}
@@ -146,7 +148,7 @@ function CompareView() {
               loading={loading}
               disabled={!selectedAsset || versionOptions.length < 2}
             >
-              Compare
+              {t('compare_compare')}
             </Button>
             <Button
               icon={<DiffOutlined />}
@@ -154,23 +156,23 @@ function CompareView() {
               loading={semanticDiffLoading}
               disabled={!selectedAsset || versionOptions.length < 2}
             >
-              语义 Diff
+              {t('compare_semantic_diff')}
             </Button>
           </Space>
           {versionOptions.length === 0 && selectedAsset && (
             <div style={{ marginTop: 8, color: '#888' }}>
-              No evaluation history found for this asset. Run an eval first.
+              {t('compare_no_history')}
             </div>
           )}
         </Card>
 
         {compareResult && (
-          <Card title="Comparison Result">
+          <Card title={t('compare_result')}>
             <Row gutter={16}>
               <Col span={12}>
                 <Card size="small">
                   <Statistic
-                    title={`Score Delta (${version1} → ${version2})`}
+                    title={`${t('compare_score_delta')} (${version1} → ${version2})`}
                     value={compareResult.score_delta}
                     precision={3}
                     prefix={
@@ -189,7 +191,7 @@ function CompareView() {
               <Col span={12}>
                 <Card size="small">
                   <Statistic
-                    title="Pass Rate Delta"
+                    title={t('compare_pass_rate_delta')}
                     value={compareResult.passed_delta}
                     precision={0}
                     prefix={
@@ -212,11 +214,11 @@ function CompareView() {
         )}
 
         {compareResult && assetDetail && (
-          <Card title="Change Summary">
+          <Card title={t('compare_change_summary')}>
             <Table
               dataSource={[
                 {
-                  metric: 'Eval Score',
+                  metric: t('compare_eval_score'),
                   v1: getSnapshotData(version1)?.eval_score?.toFixed(2) ?? 'N/A',
                   v2: getSnapshotData(version2)?.eval_score?.toFixed(2) ?? 'N/A',
                   delta: compareResult.score_delta.toFixed(3),
@@ -226,11 +228,11 @@ function CompareView() {
               size="small"
               pagination={false}
               columns={[
-                { title: 'Metric', dataIndex: 'metric', key: 'metric' },
+                { title: t('compare_metric'), dataIndex: 'metric', key: 'metric' },
                 { title: version1, dataIndex: 'v1', key: 'v1' },
                 { title: version2, dataIndex: 'v2', key: 'v2' },
                 {
-                  title: 'Delta',
+                  title: t('compare_delta'),
                   dataIndex: 'delta',
                   key: 'delta',
                   render: (delta) => (
@@ -246,7 +248,7 @@ function CompareView() {
       </Space>
 
       <Modal
-        title="Semantic Diff"
+        title={t('compare_semantic_diff_modal')}
         open={showSemanticDiffModal}
         onCancel={() => setShowSemanticDiffModal(false)}
         footer={null}
@@ -254,13 +256,13 @@ function CompareView() {
       >
         {semanticDiffResult && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title="Summary">
+            <Card size="small" title={t('compare_summary')}>
               <p>{semanticDiffResult.summary}</p>
             </Card>
-            <Card size="small" title="Changes">
+            <Card size="small" title={t('compare_changes')}>
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{semanticDiffResult.changes}</pre>
             </Card>
-            <Card size="small" title="Impact">
+            <Card size="small" title={t('compare_impact')}>
               <p>{semanticDiffResult.impact}</p>
             </Card>
           </Space>

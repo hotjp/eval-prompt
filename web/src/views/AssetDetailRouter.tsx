@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Spin } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { assetApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
 import ContentDetailView from './ContentDetailView'
@@ -8,6 +9,7 @@ import EvalCasesView from './EvalCasesView'
 import MetricDetailView from './MetricDetailView'
 
 function AssetDetailRouter() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ function AssetDetailRouter() {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('asset_detail_not_found')}</div>
   }
 
   const category = asset.category || 'content'

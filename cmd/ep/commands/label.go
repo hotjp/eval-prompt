@@ -7,13 +7,15 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/plugins/search"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var labelCmd = &cobra.Command{
 	Use:   "label",
-	Short: "标签操作",
+	Short: i18n.T(i18n.MsgLabelCmdShort, nil),
 }
 
 func init() {
@@ -24,7 +26,7 @@ func init() {
 
 var labelListCmd = &cobra.Command{
 	Use:   "list <id>",
-	Short: "列出标签",
+	Short: i18n.T(i18n.MsgLabelListShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -33,7 +35,7 @@ var labelListCmd = &cobra.Command{
 		indexer := search.NewIndexer()
 		detail, err := indexer.GetByID(context.Background(), assetID)
 		if err != nil {
-			return fmt.Errorf("获取资产失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgLabelGetFailed, nil), err)
 		}
 
 		if jsonOutput {
@@ -53,14 +55,14 @@ var labelListCmd = &cobra.Command{
 
 var labelSetCmd = &cobra.Command{
 	Use:   "set <id> <name> <v>",
-	Short: "设置标签",
+	Short: i18n.T(i18n.MsgLabelSetShort, nil),
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
 		name := args[1]
 		version := args[2]
 
-		fmt.Printf("设置标签 %s -> %s (版本 %s)\n", name, assetID, version)
+		fmt.Println(i18n.T(i18n.MsgLabelSetOutput, pongo2.Context{"name": name, "assetID": assetID, "version": version}))
 		// TODO: Implement label set via storage
 		return fmt.Errorf("not implemented: requires storage integration")
 	},
@@ -68,18 +70,18 @@ var labelSetCmd = &cobra.Command{
 
 var labelUnsetCmd = &cobra.Command{
 	Use:   "unset <id> <name>",
-	Short: "取消标签",
+	Short: i18n.T(i18n.MsgLabelUnsetShort, nil),
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
 		name := args[1]
 
-		fmt.Printf("取消标签 %s 从 %s\n", name, assetID)
+		fmt.Println(i18n.T(i18n.MsgLabelUnsetOutput, pongo2.Context{"name": name, "assetID": assetID}))
 		// TODO: Implement label unset via storage
 		return fmt.Errorf("not implemented: requires storage integration")
 	},
 }
 
 func init() {
-	labelListCmd.Flags().Bool("json", false, "JSON 输出")
+	labelListCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 }

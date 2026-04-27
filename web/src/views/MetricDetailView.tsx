@@ -4,12 +4,14 @@ import { Card, Tabs, Tag, Button, Space, Spin, message, List, Collapse, Row, Col
 import { EditOutlined, HistoryOutlined, LinkOutlined } from '@ant-design/icons'
 import { assetApi } from '../api/client'
 import type { AssetDetail } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 interface MetricDetailViewProps {
   asset?: AssetDetail | null
 }
 
 function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -43,7 +45,7 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('metric_detail_asset_not_found')}</div>
   }
 
   const rubric = asset.rubric || []
@@ -76,25 +78,25 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
         items={[
           {
             key: 'overview',
-            label: 'Overview',
+            label: t('metric_detail_tab_overview'),
             children: (
               <Row gutter={16}>
                 <Col span={12}>
-                  <Card title="Metric Info">
+                  <Card title={t('metric_detail_metric_info')}>
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       <div>
-                        <span style={{ color: '#888' }}>Total Rubric Checks: </span>
+                        <span style={{ color: '#888' }}>{t('metric_detail_total_rubric_checks')}: </span>
                         <span>{rubric.length}</span>
                       </div>
                       <div>
-                        <span style={{ color: '#888' }}>Total Weight: </span>
+                        <span style={{ color: '#888' }}>{t('metric_detail_total_weight')}: </span>
                         <span>{rubric.reduce((sum, r) => sum + r.weight, 0)}%</span>
                       </div>
                     </Space>
                   </Card>
                 </Col>
                 <Col span={12}>
-                  <Card title="Used By">
+                  <Card title={t('metric_detail_used_by')}>
                     {usedBy.length > 0 ? (
                       <Space direction="vertical" size="small">
                         {usedBy.map((ref) => (
@@ -110,7 +112,7 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
                         ))}
                       </Space>
                     ) : (
-                      <span style={{ color: '#888' }}>Not used by any eval cases</span>
+                      <span style={{ color: '#888' }}>{t('metric_detail_not_used')}</span>
                     )}
                   </Card>
                 </Col>
@@ -119,16 +121,16 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
           },
           {
             key: 'rubric_editor',
-            label: 'Rubric Editor',
+            label: t('metric_detail_tab_rubric_editor'),
             children: (
               <Row gutter={16}>
                 {/* Left: Rubric List */}
                 <Col span={16}>
                   <Card
-                    title="Rubric Checks"
+                    title={t('metric_detail_rubric_checks')}
                     extra={
                       <Button icon={<EditOutlined />} size="small">
-                        Edit Rubric
+                        {t('metric_detail_edit_rubric')}
                       </Button>
                     }
                   >
@@ -151,7 +153,7 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
                       />
                     ) : (
                       <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-                        No rubric defined
+                        {t('metric_detail_no_rubric')}
                       </div>
                     )}
                   </Card>
@@ -159,7 +161,7 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
 
                 {/* Right: Used By */}
                 <Col span={8}>
-                  <Card title="Used By">
+                  <Card title={t('metric_detail_used_by')}>
                     {usedBy.length > 0 ? (
                       <List
                         dataSource={usedBy}
@@ -177,7 +179,7 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
                         )}
                       />
                     ) : (
-                      <div style={{ color: '#888' }}>Not used by any eval cases</div>
+                      <div style={{ color: '#888' }}>{t('metric_detail_not_used')}</div>
                     )}
                   </Card>
                 </Col>
@@ -186,17 +188,17 @@ function MetricDetailView({ asset: propAsset }: MetricDetailViewProps) {
           },
           {
             key: 'versions',
-            label: 'Versions',
+            label: t('metric_detail_tab_versions'),
             children: (
               <Card
                 extra={
                   <Button icon={<HistoryOutlined />} onClick={() => navigate(`/assets/${id}/versions`)}>
-                    View Full History
+                    {t('metric_detail_view_full_history')}
                   </Button>
                 }
               >
                 <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
-                  Version history is available in the full history view
+                  {t('metric_detail_version_history_note')}
                 </div>
               </Card>
             ),

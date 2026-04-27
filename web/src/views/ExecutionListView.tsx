@@ -5,8 +5,10 @@ import { ReloadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { executionApi } from '../api/client'
 import type { Execution } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 function ExecutionListView() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [executions, setExecutions] = useState<Execution[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,21 +55,21 @@ function ExecutionListView() {
 
   const columns: ColumnsType<Execution> = [
     {
-      title: 'ID',
+      title: t('execution_list_col_id'),
       dataIndex: 'id',
       key: 'id',
       width: 120,
       render: (id: string) => <code style={{ fontSize: 11 }}>{id.slice(-10)}</code>,
     },
     {
-      title: 'Asset',
+      title: t('execution_list_col_asset'),
       dataIndex: 'asset_id',
       key: 'asset_id',
       width: 150,
       render: (assetId: string) => <span style={{ fontSize: 13 }}>{assetId}</span>,
     },
     {
-      title: 'Status',
+      title: t('execution_list_col_status'),
       dataIndex: 'status',
       key: 'status',
       width: 110,
@@ -76,29 +78,29 @@ function ExecutionListView() {
       ),
     },
     {
-      title: 'Progress',
+      title: t('execution_list_col_progress'),
       key: 'progress',
       width: 120,
       render: (_: unknown, record: Execution) => (
         <span>
-          {record.completed_cases}/{record.total_cases} cases
+          {record.completed_cases}/{record.total_cases} {t('execution_list_cases')}
         </span>
       ),
     },
     {
-      title: 'Model',
+      title: t('execution_list_col_model'),
       dataIndex: 'model',
       key: 'model',
       width: 100,
     },
     {
-      title: 'Time',
+      title: t('execution_list_col_time'),
       key: 'duration',
       width: 80,
       render: (_: unknown, record: Execution) => formatDuration(record),
     },
     {
-      title: 'Action',
+      title: t('execution_list_col_action'),
       key: 'action',
       width: 120,
       render: (_: unknown, record: Execution) => (
@@ -107,7 +109,7 @@ function ExecutionListView() {
           icon={<EyeOutlined />}
           onClick={() => navigate(`/executions/${record.id}/calls`)}
         >
-          View Calls
+          {t('execution_list_view_calls')}
         </Button>
       ),
     },
@@ -120,7 +122,7 @@ function ExecutionListView() {
   return (
     <div>
       <Card
-        title="Executions"
+        title={t('execution_list_title')}
         extra={
           <Space>
             <Select
@@ -128,15 +130,15 @@ function ExecutionListView() {
               onChange={setStatusFilter}
               style={{ width: 140 }}
               options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'running', label: 'Running' },
-                { value: 'failed', label: 'Failed' },
-                { value: 'pending', label: 'Pending' },
+                { value: 'all', label: t('execution_list_all_status') },
+                { value: 'completed', label: t('execution_list_completed') },
+                { value: 'running', label: t('execution_list_running') },
+                { value: 'failed', label: t('execution_list_failed') },
+                { value: 'pending', label: t('execution_list_pending') },
               ]}
             />
             <Button icon={<ReloadOutlined />} onClick={loadExecutions}>
-              Refresh
+              {t('execution_list_refresh')}
             </Button>
           </Space>
         }

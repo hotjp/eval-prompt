@@ -9,11 +9,13 @@ import (
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +35,7 @@ func newEvalService(evalsDir string) *service.EvalService {
 
 var evalCmd = &cobra.Command{
 	Use:   "eval",
-	Short: "Eval operations",
+	Short: i18n.T(i18n.MsgEvalCmdShort, nil),
 }
 
 func init() {
@@ -49,7 +51,7 @@ func init() {
 
 var evalRunCmd = &cobra.Command{
 	Use:   "run <id>",
-	Short: "Run Eval",
+	Short: i18n.T(i18n.MsgEvalRunShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -77,7 +79,7 @@ var evalRunCmd = &cobra.Command{
 		}
 		execution, err := evalService.RunEval(context.Background(), svcReq)
 		if err != nil {
-			return fmt.Errorf("Eval execution failed: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalRunFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if !noSync {
@@ -89,14 +91,14 @@ var evalRunCmd = &cobra.Command{
 			indexer := search.Default()
 			indexer.SetPersistDir(filepath.Join(wd, ".eval-prompt"))
 			if err := indexer.Load(); err != nil {
-				fmt.Printf("Warning: failed to load index: %v\n", err)
+				fmt.Println(i18n.T(i18n.MsgSyncReconcileWarning, pongo2.Context{"error": err.Error()}))
 			}
 			gitBridge := gitbridge.NewBridge()
 			if err := gitBridge.Open(wd); err == nil {
 				indexer.SetGitBridge(gitBridge)
 				report, err := indexer.Reconcile(context.Background())
 				if err == nil {
-					fmt.Printf("Index synced: 新增 %d, 更新 %d, 删除 %d\n", report.Added, report.Updated, report.Deleted)
+					fmt.Println(i18n.T(i18n.MsgSyncReconcileDone, pongo2.Context{"count": report.Added + report.Updated + report.Deleted}))
 				}
 			}
 		}
@@ -107,16 +109,16 @@ var evalRunCmd = &cobra.Command{
 			return encoder.Encode(execution)
 		}
 
-		fmt.Printf("Eval run started: %s\n", execution.ID)
-		fmt.Printf("Status: %s\n", execution.Status)
+		fmt.Println(i18n.T(i18n.MsgEvalRunStarted, pongo2.Context{"id": execution.ID}))
+		fmt.Println(i18n.T(i18n.MsgEvalRunStatus, pongo2.Context{"status": execution.Status}))
 		if concurrency > 0 {
-			fmt.Printf("Concurrency: %d\n", concurrency)
+			fmt.Println(i18n.T(i18n.MsgEvalRunConcurrency, pongo2.Context{"value": concurrency}))
 		}
 		if model != "" {
-			fmt.Printf("Model: %s\n", model)
+			fmt.Println(i18n.T(i18n.MsgEvalRunModel, pongo2.Context{"model": model}))
 		}
 		if temperature > 0 {
-			fmt.Printf("Temperature: %.2f\n", temperature)
+			fmt.Println(i18n.T(i18n.MsgEvalRunTemperature, pongo2.Context{"value": temperature}))
 		}
 		return nil
 	},
@@ -124,7 +126,7 @@ var evalRunCmd = &cobra.Command{
 
 var evalCasesCmd = &cobra.Command{
 	Use:   "cases <id>",
-	Short: "List test cases",
+	Short: i18n.T(i18n.MsgEvalCasesShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -135,7 +137,7 @@ var evalCasesCmd = &cobra.Command{
 
 		cases, err := evalService.ListEvalCases(context.Background(), assetID)
 		if err != nil {
-			return fmt.Errorf("Failed to get eval cases: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalCasesFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -159,7 +161,7 @@ var evalCasesCmd = &cobra.Command{
 
 var evalCompareCmd = &cobra.Command{
 	Use:   "compare <id> <v1> <v2>",
-	Short: "A/B Compare",
+	Short: i18n.T(i18n.MsgEvalCompareShort, nil),
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -170,7 +172,7 @@ var evalCompareCmd = &cobra.Command{
 		evalService := newEvalService("")
 		result, err := evalService.CompareEval(context.Background(), assetID, v1, v2)
 		if err != nil {
-			return fmt.Errorf("Compare failed: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalCompareFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		switch format {
@@ -198,7 +200,7 @@ var evalCompareCmd = &cobra.Command{
 
 var evalReportCmd = &cobra.Command{
 	Use:   "report <run-id>",
-	Short: "Eval Report",
+	Short: i18n.T(i18n.MsgEvalReportShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		runID := args[0]
@@ -207,7 +209,7 @@ var evalReportCmd = &cobra.Command{
 		evalService := newEvalService("")
 		report, err := evalService.GenerateReport(context.Background(), runID)
 		if err != nil {
-			return fmt.Errorf("Failed to generate report: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalReportFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -216,16 +218,14 @@ var evalReportCmd = &cobra.Command{
 			return encoder.Encode(report)
 		}
 
-		fmt.Printf("Eval Report: %s\n", runID)
-		fmt.Printf("Score: %d/%d\n", report.RubricScore, 100)
-		fmt.Printf("状态: %s\n", report.Status)
+		fmt.Println(i18n.T(i18n.MsgEvalReportComplete, pongo2.Context{"run_id": runID, "score": report.RubricScore, "status": report.Status}))
 		return nil
 	},
 }
 
 var evalDiagnoseCmd = &cobra.Command{
 	Use:   "diagnose <run-id>",
-	Short: "Failure Diagnosis",
+	Short: i18n.T(i18n.MsgEvalDiagnoseShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		runID := args[0]
@@ -234,7 +234,7 @@ var evalDiagnoseCmd = &cobra.Command{
 		evalService := newEvalService("")
 		diagnosis, err := evalService.DiagnoseEval(context.Background(), runID)
 		if err != nil {
-			return fmt.Errorf("Failed to diagnose: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalDiagnoseFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		switch format {
@@ -243,14 +243,14 @@ var evalDiagnoseCmd = &cobra.Command{
 			encoder.SetIndent("", "  ")
 			return encoder.Encode(diagnosis)
 		default:
-			fmt.Printf("Diagnosis Report: %s\n\n", runID)
-			fmt.Printf("Severity: %s\n", diagnosis.OverallSeverity)
-			fmt.Printf("Recommended Strategy: %s\n\n", diagnosis.RecommendedStrategy)
+			fmt.Println(i18n.T(i18n.MsgEvalDiagnoseComplete, pongo2.Context{"run_id": runID}))
+			fmt.Println(i18n.T(i18n.MsgEvalDiagnoseSeverity, pongo2.Context{"severity": diagnosis.OverallSeverity}))
+			fmt.Println(i18n.T(i18n.MsgEvalDiagnoseStrategy, pongo2.Context{"strategy": diagnosis.RecommendedStrategy}))
 			for _, f := range diagnosis.Findings {
 				fmt.Printf("## [%s] %s\n", f.Severity, f.Category)
-				fmt.Printf("Location: %s\n", f.Location)
-				fmt.Printf("Problem: %s\n", f.Problem)
-				fmt.Printf("Suggestion: %s\n\n", f.Suggestion)
+				fmt.Println(i18n.T(i18n.MsgEvalDiagnoseLocation, pongo2.Context{"location": f.Location}))
+				fmt.Println(i18n.T(i18n.MsgEvalDiagnoseProblem, pongo2.Context{"problem": f.Problem}))
+				fmt.Println(i18n.T(i18n.MsgEvalDiagnoseSuggestion, pongo2.Context{"suggestion": f.Suggestion}))
 			}
 		}
 
@@ -260,7 +260,7 @@ var evalDiagnoseCmd = &cobra.Command{
 
 var evalSetupCmd = &cobra.Command{
 	Use:   "setup <asset_id>",
-	Short: "Create Eval Prompt Template",
+	Short: i18n.T(i18n.MsgEvalSetupShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -268,7 +268,7 @@ var evalSetupCmd = &cobra.Command{
 		model, _ := cmd.Flags().GetString("model")
 
 		if err := pathutil.ValidateID(assetID); err != nil {
-			return fmt.Errorf("invalid asset id: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupInvalidID, pongo2.Context{"error": err.Error()}))
 		}
 
 		if evalsDir == "" {
@@ -281,7 +281,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Create evals directory if it doesn't exist
 		if err := os.MkdirAll(evalsDir, 0755); err != nil {
-			return fmt.Errorf("Failed to create evals directory: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupCreateDirFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Generate eval prompt file path
@@ -289,7 +289,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Check if file already exists
 		if _, err := os.Stat(evalFilePath); err == nil {
-			return fmt.Errorf("eval prompt file already exists: %s", evalFilePath)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupAlreadyExists, pongo2.Context{"path": evalFilePath}))
 		}
 
 		// Create eval prompt front matter
@@ -323,35 +323,35 @@ Describe the expected output format.
 		// Format the complete markdown file
 		mdContent, err := yamlutil.FormatEvalPromptMarkdown(fm, content)
 		if err != nil {
-			return fmt.Errorf("Failed to format eval prompt: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupFormatFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Write the file
 		if err := os.WriteFile(evalFilePath, []byte(mdContent), 0644); err != nil {
-			return fmt.Errorf("Failed to write eval prompt file: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupWriteFailed, pongo2.Context{"error": err.Error()}))
 		}
 
-		fmt.Printf("Eval Prompt template created: %s\n", evalFilePath)
-		fmt.Printf("Model: %s\n", model)
+		fmt.Println(i18n.T(i18n.MsgEvalSetupComplete, pongo2.Context{"path": evalFilePath}))
+		fmt.Println(i18n.T(i18n.MsgEvalSetupModel, pongo2.Context{"model": model}))
 		return nil
 	},
 }
 
 var evalListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List Eval Executions",
+	Short: i18n.T(i18n.MsgEvalListShort, nil),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID, _ := cmd.Flags().GetString("asset-id")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		if assetID == "" {
-			return fmt.Errorf("--asset-id is required")
+			return fmt.Errorf(i18n.T(i18n.MsgEvalListAssetIDRequired, nil))
 		}
 
 		evalService := newEvalService("")
 		runs, err := evalService.ListEvalRuns(context.Background(), assetID)
 		if err != nil {
-			return fmt.Errorf("Failed to list eval executions: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalListFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -372,46 +372,46 @@ var evalListCmd = &cobra.Command{
 
 var evalCancelCmd = &cobra.Command{
 	Use:   "cancel <execution-id>",
-	Short: "取消正在执行的 Eval",
+	Short: i18n.T(i18n.MsgEvalCancelShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		executionID := args[0]
 		evalService := newEvalService("")
 
 		if err := evalService.CancelExecution(context.Background(), executionID); err != nil {
-			return fmt.Errorf("Failed to cancel eval: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgEvalCancelFailed, pongo2.Context{"error": err.Error()}))
 		}
 
-		fmt.Printf("Eval 已取消: %s\n", executionID)
+		fmt.Println(i18n.T(i18n.MsgEvalCancelStarted, pongo2.Context{"id": executionID}))
 		return nil
 	},
 }
 
 func init() {
-	evalRunCmd.Flags().String("snapshot", "", "快照版本")
-	evalRunCmd.Flags().StringSlice("case", []string{}, "指定测试用例 ID")
-	evalRunCmd.Flags().Int("concurrency", 0, "并发数")
-	evalRunCmd.Flags().String("model", "", "使用的模型")
-	evalRunCmd.Flags().Float64("temperature", 0, "温度参数")
-	evalRunCmd.Flags().Bool("json", false, "JSON 输出")
-	evalRunCmd.Flags().Bool("no-sync", false, "跳过自动同步索引")
-	evalRunCmd.Flags().String("dir", "", "项目目录路径")
-	evalRunCmd.Flags().String("evals-dir", "", "Eval 提示词目录 (默认: evals)")
+	evalRunCmd.Flags().String("snapshot", "", i18n.T(i18n.MsgFlagSnapshot, nil))
+	evalRunCmd.Flags().StringSlice("case", []string{}, i18n.T(i18n.MsgFlagCase, nil))
+	evalRunCmd.Flags().Int("concurrency", 0, i18n.T(i18n.MsgFlagConcurrency, nil))
+	evalRunCmd.Flags().String("model", "", i18n.T(i18n.MsgFlagModel, nil))
+	evalRunCmd.Flags().Float64("temperature", 0, i18n.T(i18n.MsgFlagTemperature, nil))
+	evalRunCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
+	evalRunCmd.Flags().Bool("no-sync", false, i18n.T(i18n.MsgFlagNoSync, nil))
+	evalRunCmd.Flags().String("dir", "", i18n.T(i18n.MsgFlagDir, nil))
+	evalRunCmd.Flags().String("evals-dir", "", i18n.T(i18n.MsgFlagEvalsDir, nil))
 
-	evalCasesCmd.Flags().Bool("json", false, "JSON 输出")
-	evalCasesCmd.Flags().String("evals-dir", "", "Eval 提示词目录 (默认: evals)")
+	evalCasesCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
+	evalCasesCmd.Flags().String("evals-dir", "", i18n.T(i18n.MsgFlagEvalsDir, nil))
 
-	evalCompareCmd.Flags().String("format", "table", "输出格式: table|json|markdown")
+	evalCompareCmd.Flags().String("format", "table", i18n.T(i18n.MsgFlagFormat, nil))
 
-	evalReportCmd.Flags().Bool("json", false, "JSON 输出")
+	evalReportCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 
-	evalDiagnoseCmd.Flags().String("format", "markdown", "输出格式: json|markdown")
+	evalDiagnoseCmd.Flags().String("format", "markdown", i18n.T(i18n.MsgFlagFormat, nil))
 
-	evalSetupCmd.Flags().String("evals-dir", "evals", "Eval 提示词目录")
-	evalSetupCmd.Flags().String("model", "gpt-4o", "使用的模型")
+	evalSetupCmd.Flags().String("evals-dir", "evals", i18n.T(i18n.MsgFlagEvalsDir, nil))
+	evalSetupCmd.Flags().String("model", "gpt-4o", i18n.T(i18n.MsgFlagModel, nil))
 
-	evalListCmd.Flags().String("asset-id", "", "资产 ID (必需)")
-	evalListCmd.Flags().Bool("json", false, "JSON 输出")
+	evalListCmd.Flags().String("asset-id", "", i18n.T(i18n.MsgFlagAssetID, nil))
+	evalListCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 
-	evalCancelCmd.Flags().Bool("json", false, "JSON 输出")
+	evalCancelCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 }

@@ -3,12 +3,14 @@ package commands
 import (
 	"fmt"
 
+	"github.com/eval-prompt/internal/i18n"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var optimizeCmd = &cobra.Command{
-	Use:   "optimize <id>",
-	Short: "Agent 自主优化",
+	Use:   i18n.T(i18n.MsgOptimizeCmd, nil),
+	Short: i18n.T(i18n.MsgOptimizeCmdShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -17,13 +19,13 @@ var optimizeCmd = &cobra.Command{
 		thresholdDelta, _ := cmd.Flags().GetFloat64("threshold-delta")
 		autoPromote, _ := cmd.Flags().GetBool("auto-promote")
 
-		fmt.Printf("优化资产: %s\n", assetID)
-		fmt.Printf("策略: %s\n", strategy)
-		fmt.Printf("最大迭代: %d\n", iterations)
-		fmt.Printf("得分提升阈值: %.1f\n", thresholdDelta)
+		fmt.Print(i18n.T(i18n.MsgOptimizeAsset, pongo2.Context{"asset": assetID}))
+		fmt.Print(i18n.T(i18n.MsgOptimizeStrategy, pongo2.Context{"strategy": strategy}))
+		fmt.Print(i18n.T(i18n.MsgOptimizeMaxIterations, pongo2.Context{"iterations": iterations}))
+		fmt.Print(i18n.T(i18n.MsgOptimizeThresholdDelta, pongo2.Context{"delta": thresholdDelta}))
 
 		if autoPromote {
-			fmt.Println("优化通过后将自动申请 Label 晋升")
+			fmt.Print(i18n.T(i18n.MsgOptimizeAutoPromoteNote, nil))
 		}
 
 		// TODO: Implement auto-optimization workflow
@@ -32,8 +34,8 @@ var optimizeCmd = &cobra.Command{
 }
 
 func init() {
-	optimizeCmd.Flags().String("strategy", "failure_driven", "优化策略: failure_driven | score_max | compact")
-	optimizeCmd.Flags().Int("iterations", 3, "最大迭代次数")
-	optimizeCmd.Flags().Float64("threshold-delta", 5, "得分提升阈值")
-	optimizeCmd.Flags().Bool("auto-promote", false, "优化通过后自动申请 Label 晋升")
+	optimizeCmd.Flags().String("strategy", "failure_driven", i18n.T(i18n.MsgOptimizeFlagStrategy, nil))
+	optimizeCmd.Flags().Int("iterations", 3, i18n.T(i18n.MsgOptimizeFlagIterations, nil))
+	optimizeCmd.Flags().Float64("threshold-delta", 5, i18n.T(i18n.MsgOptimizeFlagThreshold, nil))
+	optimizeCmd.Flags().Bool("auto-promote", false, i18n.T(i18n.MsgOptimizeFlagAutoPromote, nil))
 }

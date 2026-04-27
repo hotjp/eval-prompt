@@ -6,16 +6,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var syncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "同步操作",
+	Short: i18n.T(i18n.MsgSyncCmdShort, nil),
 }
 
 func init() {
@@ -36,21 +38,21 @@ func resolveWorkDir(cmd *cobra.Command) (string, error) {
 		// --repo specified: add to lock and switch to it
 		absPath, err := filepath.Abs(repoPath)
 		if err != nil {
-			return "", fmt.Errorf("无法获取绝对路径: %w", err)
+			return "", fmt.Errorf(i18n.T(i18n.MsgSyncResolvePathFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		repoLock, err := lock.ReadLock()
 		if err != nil {
-			return "", fmt.Errorf("读取 lock 文件失败: %w", err)
+			return "", fmt.Errorf(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		repoLock.AddRepo(absPath)
 		repoLock.SetCurrent(absPath)
 		if err := lock.WriteLock(repoLock); err != nil {
-			return "", fmt.Errorf("写入 lock 文件失败: %w", err)
+			return "", fmt.Errorf(i18n.T(i18n.MsgSyncWriteLockFailed, pongo2.Context{"error": err.Error()}))
 		}
 
-		fmt.Printf("已切换到仓库: %s\n", absPath)
+		fmt.Println(i18n.T(i18n.MsgSyncRepoSwitch, pongo2.Context{"path": absPath}))
 		return absPath, nil
 	}
 
@@ -62,19 +64,19 @@ func resolveWorkDir(cmd *cobra.Command) (string, error) {
 	// Neither --repo nor --dir specified: require current repo from lock
 	repoLock, err := lock.ReadLock()
 	if err != nil {
-		return "", fmt.Errorf("读取 lock 文件失败: %w", err)
+		return "", fmt.Errorf(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
 	}
 
 	current := repoLock.GetCurrent()
 	if current == "" {
-		return "", fmt.Errorf("未设置仓库，请先运行 ep init 或使用 --repo 指定")
+		return "", fmt.Errorf(i18n.T(i18n.MsgSyncNoRepoSet, nil))
 	}
 	return current, nil
 }
 
 var syncReconcileCmd = &cobra.Command{
 	Use:   "reconcile",
-	Short: "对账",
+	Short: i18n.T(i18n.MsgSyncReconcileShort, nil),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		wd, err := resolveWorkDir(cmd)
 		if err != nil {
@@ -84,39 +86,39 @@ var syncReconcileCmd = &cobra.Command{
 		indexer := search.Default()
 		indexer.SetPersistDir(filepath.Join(wd, ".eval-prompt"))
 		if err := indexer.Load(); err != nil {
-			fmt.Printf("警告: 加载索引失败: %v\n", err)
+			fmt.Println(i18n.T(i18n.MsgSyncReconcileWarning, pongo2.Context{"error": err.Error()}))
 		}
 		gitBridge := gitbridge.NewBridge()
 		if err := gitBridge.Open(wd); err != nil {
-			return fmt.Errorf("打开git仓库失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
 		}
 		indexer.SetGitBridge(gitBridge)
 
 		syncService := service.NewSyncService(indexer, gitBridge)
 		report, err := syncService.Reconcile(context.Background())
 		if err != nil {
-			return fmt.Errorf("对账失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
 		}
 
-		fmt.Printf("对账完成\n")
-		fmt.Printf("新增: %d\n", report.Added)
-		fmt.Printf("更新: %d\n", report.Updated)
-		fmt.Printf("删除: %d\n", report.Deleted)
+		fmt.Println(i18n.T(i18n.MsgSyncReconcileDone, pongo2.Context{"count": report.Added + report.Updated + report.Deleted}))
+		fmt.Println(i18n.T(i18n.MsgSyncAdded, pongo2.Context{"count": report.Added}))
+		fmt.Println(i18n.T(i18n.MsgSyncUpdated, pongo2.Context{"count": report.Updated}))
+		fmt.Println(i18n.T(i18n.MsgSyncDeleted, pongo2.Context{"count": report.Deleted}))
 		if len(report.Errors) > 0 {
-			fmt.Printf("错误: %v\n", report.Errors)
+			fmt.Println(i18n.T(i18n.MsgSyncError, pongo2.Context{"error": fmt.Sprintf("%v", report.Errors)}))
 		}
 		return nil
 	},
 }
 
 func init() {
-	syncReconcileCmd.Flags().String("repo", "", "仓库路径（默认为当前仓库）")
-	syncReconcileCmd.Flags().String("dir", "", "项目目录路径（仅影响 --dir 模式，不写入 lock）")
+	syncReconcileCmd.Flags().String("repo", "", i18n.T(i18n.MsgFlagRepo, nil))
+	syncReconcileCmd.Flags().String("dir", "", i18n.T(i18n.MsgFlagDir, nil))
 }
 
 var syncExportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "导出备份",
+	Short: i18n.T(i18n.MsgSyncExportShort, nil),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		format, _ := cmd.Flags().GetString("format")
 		output, _ := cmd.Flags().GetString("output")
@@ -129,7 +131,7 @@ var syncExportCmd = &cobra.Command{
 		indexer := search.Default()
 		gitBridge := gitbridge.NewBridge()
 		if err := gitBridge.Open(wd); err != nil {
-			return fmt.Errorf("打开git仓库失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
 		}
 		indexer.SetGitBridge(gitBridge)
 
@@ -137,12 +139,12 @@ var syncExportCmd = &cobra.Command{
 
 		// Run reconcile first to populate the index from git
 		if _, err := syncService.Reconcile(context.Background()); err != nil {
-			return fmt.Errorf("对账失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		data, err := syncService.Export(context.Background(), format)
 		if err != nil {
-			return fmt.Errorf("导出失败: %w", err)
+			return fmt.Errorf(i18n.T(i18n.MsgSyncExportFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if output != "" {
@@ -155,8 +157,8 @@ var syncExportCmd = &cobra.Command{
 }
 
 func init() {
-	syncExportCmd.Flags().String("format", "json", "导出格式: json|yaml")
-	syncExportCmd.Flags().String("output", "", "输出文件路径")
-	syncExportCmd.Flags().String("repo", "", "仓库路径（默认为当前仓库）")
-	syncExportCmd.Flags().String("dir", "", "项目目录路径（仅影响 --dir 模式，不写入 lock）")
+	syncExportCmd.Flags().String("format", "json", i18n.T(i18n.MsgFlagFormat, nil))
+	syncExportCmd.Flags().String("output", "", i18n.T(i18n.MsgFlagOutput, nil))
+	syncExportCmd.Flags().String("repo", "", i18n.T(i18n.MsgFlagRepo, nil))
+	syncExportCmd.Flags().String("dir", "", i18n.T(i18n.MsgFlagDir, nil))
 }

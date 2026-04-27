@@ -6,8 +6,10 @@ import * as echarts from 'echarts'
 import { assetApi, evalApi } from '../api/client'
 import type { AssetDetail, EvalRun, EvalReport, Execution } from '../api/client'
 import { useStore } from '../store'
+import { useTranslation } from 'react-i18next'
 
 function EvalPanelView() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -143,7 +145,7 @@ function EvalPanelView() {
   }
 
   if (!asset) {
-    return <div>Asset not found</div>
+    return <div>{t('eval_panel_asset_not_found')}</div>
   }
 
   const passRate = currentRun && currentRun.rubric_details.length > 0
@@ -181,14 +183,14 @@ function EvalPanelView() {
         </Card>
 
         <Card
-          title="Score Trend"
-          extra={<Button icon={<ReloadOutlined />} onClick={() => id && loadData(id)}>Refresh</Button>}
+          title={t('eval_panel_score_trend')}
+          extra={<Button icon={<ReloadOutlined />} onClick={() => id && loadData(id)}>{t('eval_panel_refresh')}</Button>}
         >
           <div ref={chartRef} style={{ height: 300 }} />
         </Card>
 
         <Card
-          title="Run Eval"
+          title={t('eval_panel_run_eval')}
           extra={
             <Space>
               <Select
@@ -197,9 +199,9 @@ function EvalPanelView() {
                 style={{ width: 120 }}
                 disabled={running}
                 options={[
-                  { value: 'single', label: 'Single' },
-                  { value: 'batch', label: 'Batch' },
-                  { value: 'matrix', label: 'Matrix' },
+                  { value: 'single', label: t('eval_panel_mode_single') },
+                  { value: 'batch', label: t('eval_panel_mode_batch') },
+                  { value: 'matrix', label: t('eval_panel_mode_matrix') },
                 ]}
               />
               <Select
@@ -207,7 +209,7 @@ function EvalPanelView() {
                 onChange={setEvalModel}
                 style={{ width: 160 }}
                 disabled={running}
-                placeholder="Select model"
+                placeholder={t('eval_panel_select_model')}
                 allowClear
                 options={[
                   { value: 'gpt-4o', label: 'GPT-4o' },
@@ -216,7 +218,7 @@ function EvalPanelView() {
                   { value: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku' },
                 ]}
               />
-              <span>Temp:</span>
+              <span>{t('eval_panel_temp')}:</span>
               <InputNumber
                 value={evalTemperature}
                 onChange={(v) => setEvalTemperature(v ?? 0.7)}
@@ -226,14 +228,14 @@ function EvalPanelView() {
                 disabled={running}
                 style={{ width: 80 }}
               />
-              <span>Concurrency: {evalConcurrency}</span>
+              <span>{t('eval_panel_concurrency')}: {evalConcurrency}</span>
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
                 onClick={handleRunEval}
                 loading={running}
               >
-                Run Eval
+                {t('eval_panel_run_eval_button')}
               </Button>
               {running && execution && (
                 <Button
@@ -241,7 +243,7 @@ function EvalPanelView() {
                   icon={<StopOutlined />}
                   onClick={handleCancelExecution}
                 >
-                  Cancel
+                  {t('eval_panel_cancel')}
                 </Button>
               )}
             </Space>
@@ -255,17 +257,17 @@ function EvalPanelView() {
                   : 0}
                 status="active"
                 format={() =>
-                  `${execution.completed_cases} / ${execution.total_cases} cases`
+                  `${execution.completed_cases} / ${execution.total_cases} ${t('eval_panel_cases')}`
                 }
               />
               <div style={{ marginTop: 8, color: '#888' }}>
-                Status: {execution.status} | Concurrency: {execution.concurrency} | Model: {execution.model}
+                {t('eval_panel_status')}: {execution.status} | {t('eval_panel_concurrency')}: {execution.concurrency} | {t('eval_panel_model')}: {execution.model}
               </div>
             </div>
           )}
         </Card>
 
-        <Card title="Rubric Details">
+        <Card title={t('eval_panel_rubric_details')}>
           {currentRun ? (
             <Table
               dataSource={currentRun.rubric_details}
@@ -273,36 +275,36 @@ function EvalPanelView() {
               size="small"
               pagination={false}
               columns={[
-                { title: 'Check ID', dataIndex: 'check_id', key: 'check_id' },
+                { title: t('eval_panel_col_check_id'), dataIndex: 'check_id', key: 'check_id' },
                 {
-                  title: 'Status',
+                  title: t('eval_panel_col_status'),
                   dataIndex: 'passed',
                   key: 'passed',
                   render: (passed: boolean) => (
                     <Tag icon={passed ? <CheckCircleOutlined /> : <CloseCircleOutlined />} color={passed ? 'green' : 'red'}>
-                      {passed ? 'Passed' : 'Failed'}
+                      {passed ? t('eval_panel_passed') : t('eval_panel_failed')}
                     </Tag>
                   ),
                 },
-                { title: 'Score', dataIndex: 'score', key: 'score', render: (s: number) => s.toFixed(2) },
-                { title: 'Details', dataIndex: 'details', key: 'details', ellipsis: true },
+                { title: t('eval_panel_col_score'), dataIndex: 'score', key: 'score', render: (s: number) => s.toFixed(2) },
+                { title: t('eval_panel_col_details'), dataIndex: 'details', key: 'details', ellipsis: true },
               ]}
             />
           ) : (
-            <div style={{ textAlign: 'center', color: '#888' }}>No eval results yet</div>
+            <div style={{ textAlign: 'center', color: '#888' }}>{t('eval_panel_no_results')}</div>
           )}
         </Card>
 
-        <Card title="Recent Runs">
+        <Card title={t('eval_panel_recent_runs')}>
           <Table
             dataSource={runs.slice(0, 10)}
             rowKey="id"
             size="small"
             pagination={false}
             columns={[
-              { title: 'Run ID', dataIndex: 'id', key: 'id', render: (id) => id.slice(-8) },
+              { title: t('eval_panel_col_run_id'), dataIndex: 'id', key: 'id', render: (id) => id.slice(-8) },
               {
-                title: 'Status',
+                title: t('eval_panel_col_status'),
                 dataIndex: 'status',
                 key: 'status',
                 render: (status) => {
@@ -310,15 +312,15 @@ function EvalPanelView() {
                   return <Tag color={color}>{status}</Tag>
                 },
               },
-              { title: 'Det. Score', dataIndex: 'deterministic_score', key: 'deterministic_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
-              { title: 'Rubric Score', dataIndex: 'rubric_score', key: 'rubric_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
-              { title: 'Created', dataIndex: 'created_at', key: 'created_at', render: (d) => d ? new Date(d).toLocaleString() : 'N/A' },
+              { title: t('eval_panel_col_det_score'), dataIndex: 'deterministic_score', key: 'deterministic_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
+              { title: t('eval_panel_col_rubric_score'), dataIndex: 'rubric_score', key: 'rubric_score', render: (s) => s?.toFixed(2) ?? 'N/A' },
+              { title: t('eval_panel_col_created'), dataIndex: 'created_at', key: 'created_at', render: (d) => d ? new Date(d).toLocaleString() : 'N/A' },
               {
-                title: 'Action',
+                title: t('eval_panel_col_action'),
                 key: 'action',
                 render: () => (
                   <Button size="small" onClick={() => navigate(`/assets/${id}/versions`)}>
-                    Details
+                    {t('eval_panel_details')}
                   </Button>
                 ),
               },

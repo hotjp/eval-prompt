@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Select, Button, Space, message } from 'antd'
 import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { assetApi } from '../api/client'
 import { getAssetTypes } from '../config/assetTypes'
 import { getTags } from '../config/tags'
@@ -18,6 +19,7 @@ const stateOptions = [
 ]
 
 function CreateAssetView() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
@@ -35,10 +37,10 @@ function CreateAssetView() {
         category: values.category,
       }
       await assetApi.create(payload)
-      message.success('Asset created successfully')
+      message.success(t('asset_create_success'))
       navigate(`/assets/${values.name}/edit`)
     } catch {
-      message.error('Failed to create asset')
+      message.error(t('asset_create_failed'))
     } finally {
       setSaving(false)
     }
@@ -48,13 +50,13 @@ function CreateAssetView() {
     switch (selectedCategory) {
       case 'eval':
         return (
-          <Form.Item label="Test Cases (YAML)" name="test_cases">
+          <Form.Item label={t('create_test_cases')} name="test_cases">
             <TextArea rows={10} style={{ width: 600, fontFamily: 'monospace' }} placeholder="test_cases:&#10;  - id: case1&#10;    name: Test Case 1&#10;    input: |&#10;      ...&#10;    expected: |&#10;      ..." />
           </Form.Item>
         )
       case 'metric':
         return (
-          <Form.Item label="Rubric (YAML)" name="rubric">
+          <Form.Item label={t('create_rubric')} name="rubric">
             <TextArea rows={10} style={{ width: 600, fontFamily: 'monospace' }} placeholder="rubric:&#10;  - check: correctness&#10;    weight: 0.4&#10;    criteria: |&#10;      ..." />
           </Form.Item>
         )
@@ -67,10 +69,10 @@ function CreateAssetView() {
     <div>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Card
-          title="Create New Asset"
+          title={t('create_title')}
           extra={
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/assets')}>
-              Back
+              {t('create_back')}
             </Button>
           }
         >
@@ -81,10 +83,10 @@ function CreateAssetView() {
             initialValues={{ state: 'draft', asset_type: defaultAssetType, category: 'content' }}
           >
             <Form.Item
-              label="Category"
+              label={t('create_category')}
               name="category"
-              rules={[{ required: true, message: 'Please select category' }]}
-              tooltip="Category determines the asset type. This cannot be changed after creation."
+              rules={[{ required: true, message: t('create_select_category') }]}
+              tooltip={t('create_category_tooltip')}
             >
               <Select
                 options={categoryOptions}
@@ -94,39 +96,39 @@ function CreateAssetView() {
             </Form.Item>
 
             <Form.Item
-              label="Asset Name"
+              label={t('create_asset_name')}
               name="name"
               rules={[
-                { required: true, message: 'Please enter asset name' },
-                { pattern: /^[a-zA-Z0-9_-]+$/, message: 'Only letters, numbers, - and _ are allowed' },
+                { required: true, message: t('create_enter_asset_name') },
+                { pattern: /^[a-zA-Z0-9_-]+$/, message: t('create_asset_name_pattern') },
               ]}
-              extra="This will be used as the asset ID"
+              extra={t('create_asset_name_hint')}
             >
               <Input placeholder="e.g., customer-churn-scorer" style={{ width: 400 }} />
             </Form.Item>
 
             <Form.Item
-              label="Asset Type"
+              label={t('create_asset_type')}
               name="asset_type"
-              rules={[{ required: true, message: 'Please select business line' }]}
+              rules={[{ required: true, message: t('create_select_biz_line') }]}
             >
               <Select options={assetTypeOptions} style={{ width: 200 }} />
             </Form.Item>
 
-            <Form.Item label="Tags" name="tags">
-              <Select mode="multiple" options={tagOptions} style={{ width: 400 }} placeholder="Select one or more tags (e.g., prod, llm)" />
+            <Form.Item label={t('create_tags')} name="tags">
+              <Select mode="multiple" options={tagOptions} style={{ width: 400 }} placeholder={t('create_tags_placeholder')} />
             </Form.Item>
 
-            <Form.Item label="State" name="state">
+            <Form.Item label={t('create_state')} name="state">
               <Select options={stateOptions} style={{ width: 200 }} />
             </Form.Item>
 
             <Form.Item
-              label="Description"
+              label={t('create_description')}
               name="description"
-              tooltip="Describe the purpose, use cases, and expected behavior"
+              tooltip={t('create_description_tooltip')}
             >
-              <TextArea rows={3} style={{ width: 600 }} placeholder="Describe this asset..." />
+              <TextArea rows={3} style={{ width: 600 }} placeholder={t('create_description_placeholder')} />
             </Form.Item>
 
             {renderCategoryFields()}
@@ -134,9 +136,9 @@ function CreateAssetView() {
             <Form.Item>
               <Space>
                 <Button type="primary" icon={<SaveOutlined />} htmlType="submit" loading={saving}>
-                  Create
+                  {t('create_submit')}
                 </Button>
-                <Button onClick={() => navigate('/assets')}>Cancel</Button>
+                <Button onClick={() => navigate('/assets')}>{t('common_cancel')}</Button>
               </Space>
             </Form.Item>
           </Form>

@@ -12,16 +12,18 @@ import (
 	"text/tabwriter"
 
 	"github.com/eval-prompt/internal/domain"
+	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 	"github.com/eval-prompt/plugins/search"
+	"github.com/flosch/pongo2/v6"
 	"github.com/spf13/cobra"
 )
 
 var assetCmd = &cobra.Command{
 	Use:   "asset",
-	Short: "资产操作",
+	Short: i18n.T(i18n.MsgAssetCmdShort, nil),
 }
 
 func init() {
@@ -49,7 +51,7 @@ func getIndexer() service.AssetIndexer {
 
 var assetListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "列出所有资产",
+	Short: i18n.T(i18n.MsgAssetListShort, nil),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		indexer := getIndexer()
 
@@ -66,7 +68,7 @@ var assetListCmd = &cobra.Command{
 
 		results, err := indexer.Search(cmd.Context(), "", filters)
 		if err != nil {
-			return fmt.Errorf("搜索失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetSearchFailed, nil), err)
 		}
 
 		if jsonOutput {
@@ -77,7 +79,7 @@ var assetListCmd = &cobra.Command{
 
 		// Table output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "ID\tNAME\tBIZ_LINE\tSTATE\tTAGS\n")
+		fmt.Fprint(w, i18n.T(i18n.MsgAssetListHeader, nil))
 		for _, r := range results {
 			tags := ""
 			if len(r.Tags) > 0 {
@@ -91,7 +93,7 @@ var assetListCmd = &cobra.Command{
 
 var assetShowCmd = &cobra.Command{
 	Use:   "show <id>",
-	Short: "显示资产详情",
+	Short: i18n.T(i18n.MsgAssetShowShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		indexer := getIndexer()
@@ -99,7 +101,7 @@ var assetShowCmd = &cobra.Command{
 		id := args[0]
 		detail, err := indexer.GetByID(cmd.Context(), id)
 		if err != nil {
-			return fmt.Errorf("获取资产失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetGetFailed, nil), err)
 		}
 
 		encoder := json.NewEncoder(os.Stdout)
@@ -110,7 +112,7 @@ var assetShowCmd = &cobra.Command{
 
 var assetCatCmd = &cobra.Command{
 	Use:   "cat <id>",
-	Short: "纯文本输出（管道首选）",
+	Short: i18n.T(i18n.MsgAssetCatShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		indexer := getIndexer()
@@ -118,7 +120,7 @@ var assetCatCmd = &cobra.Command{
 		id := args[0]
 		detail, err := indexer.GetByID(cmd.Context(), id)
 		if err != nil {
-			return fmt.Errorf("获取资产失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetGetFailed, nil), err)
 		}
 
 		// Output raw content for piping
@@ -129,7 +131,7 @@ var assetCatCmd = &cobra.Command{
 
 var assetCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "创建资产",
+	Short: i18n.T(i18n.MsgAssetCreateShort, nil),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id, _ := cmd.Flags().GetString("id")
 		name, _ := cmd.Flags().GetString("name")
@@ -138,12 +140,12 @@ var assetCreateCmd = &cobra.Command{
 		bizLine, _ := cmd.Flags().GetString("biz-line")
 
 		if name == "" {
-			return fmt.Errorf("name 是必需的")
+			return fmt.Errorf(i18n.T(i18n.MsgAssetNameRequired, nil))
 		}
 
 		// --content and --file are mutually exclusive
 		if contentFlag != "" && file != "" {
-			return fmt.Errorf("--content 和 --file 不能同时使用")
+			return fmt.Errorf(i18n.T(i18n.MsgAssetContentFileConflict, nil))
 		}
 
 		// Determine content source: --content > --file > stdin
@@ -153,7 +155,7 @@ var assetCreateCmd = &cobra.Command{
 		} else if file != "" {
 			fileContent, err := os.ReadFile(file)
 			if err != nil {
-				return fmt.Errorf("读取文件失败: %w", err)
+				return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadFailed, nil), err)
 			}
 			content = string(fileContent)
 		} else {
@@ -162,12 +164,12 @@ var assetCreateCmd = &cobra.Command{
 			if (stat.Mode() & os.ModeCharDevice) == 0 {
 				stdinContent, err := io.ReadAll(os.Stdin)
 				if err != nil {
-					return fmt.Errorf("读取 stdin 失败: %w", err)
+					return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetStdinReadFailed, nil), err)
 				}
 				content = string(stdinContent)
 			}
 			if content == "" {
-				return fmt.Errorf("必须提供 --content、--file 或 stdin 输入")
+				return fmt.Errorf(i18n.T(i18n.MsgAssetInputRequired, nil))
 			}
 		}
 
@@ -178,7 +180,7 @@ var assetCreateCmd = &cobra.Command{
 
 		// Validate ID format if provided
 		if !domain.IsValidULID(id) {
-			return fmt.Errorf("id 必须是有效的 ULID 格式")
+			return fmt.Errorf("%s: %s", i18n.T(i18n.MsgAssetInvalidIDFormat, nil), id)
 		}
 
 		// Compute content hash
@@ -188,7 +190,7 @@ var assetCreateCmd = &cobra.Command{
 		// Ensure prompts directory exists
 		promptsDir := "prompts"
 		if err := os.MkdirAll(promptsDir, 0755); err != nil {
-			return fmt.Errorf("创建 prompts 目录失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetDirCreateFailed, nil), err)
 		}
 
 		// Write asset file
@@ -201,10 +203,10 @@ var assetCreateCmd = &cobra.Command{
 		}
 		markdown, err := yamlutil.FormatMarkdown(fm, content)
 		if err != nil {
-			return fmt.Errorf("格式化 markdown 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetMarkdownFormatFailed, nil), err)
 		}
 		if err := os.WriteFile(filePath, []byte(markdown), 0644); err != nil {
-			return fmt.Errorf("写入文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileWriteFailed, nil), err)
 		}
 
 		// Save to indexer
@@ -219,23 +221,23 @@ var assetCreateCmd = &cobra.Command{
 			State:       "created",
 		}
 		if err := indexer.Save(context.Background(), asset); err != nil {
-			return fmt.Errorf("保存资产失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetSaveFailed, nil), err)
 		}
 
 		// Call Reconcile to update index
 		if _, err := indexer.Reconcile(context.Background()); err != nil {
 			// Log but don't fail
-			fmt.Fprintf(os.Stderr, "警告: Reconcile 失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "%s: %v\n", i18n.T(i18n.MsgAssetReconcileWarn, nil), err)
 		}
 
-		fmt.Printf("资产已创建: %s\n", id)
+		fmt.Println(i18n.T(i18n.MsgAssetCreateSuccess, pongo2.Context{"id": id}))
 		return nil
 	},
 }
 
 var assetEditCmd = &cobra.Command{
 	Use:   "edit <id>",
-	Short: "编辑资产",
+	Short: i18n.T(i18n.MsgAssetEditShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO: Implement edit functionality - would open editor
@@ -245,7 +247,7 @@ var assetEditCmd = &cobra.Command{
 
 var assetRmCmd = &cobra.Command{
 	Use:   "rm <id>",
-	Short: "删除资产（必须先 archive）",
+	Short: i18n.T(i18n.MsgAssetRmShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
@@ -259,42 +261,42 @@ var assetRmCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("资产文件不存在: %s", id)
+				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
-			return fmt.Errorf("读取资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
 
 		// Parse front matter
 		fm, _, err := yamlutil.ParseFrontMatter(string(content))
 		if err != nil {
-			return fmt.Errorf("解析 front matter 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFrontmatterParseError, nil), err)
 		}
 
 		// Check state - must be archived
 		if fm.State != "archived" {
-			return fmt.Errorf("请先 archive: %s", id)
+			return fmt.Errorf("%s: %s", i18n.T(i18n.MsgAssetPleaseArchiveFirst, nil), id)
 		}
 
 		// Delete the file
 		if err := os.Remove(filePath); err != nil {
-			return fmt.Errorf("删除资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileDeleteFailed, nil), err)
 		}
 
 		// Also remove from index
 		indexer := getIndexer()
 		if err := indexer.Delete(context.Background(), id); err != nil {
 			// Log but don't fail - file is already deleted
-			fmt.Fprintf(os.Stderr, "警告: 从索引删除失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "%s: %v\n", i18n.T(i18n.MsgAssetIndexRemoveWarn, nil), err)
 		}
 
-		fmt.Printf("资产已删除: %s\n", id)
+		fmt.Println(i18n.T(i18n.MsgAssetDeleteSuccess, pongo2.Context{"id": id}))
 		return nil
 	},
 }
 
 var assetArchiveCmd = &cobra.Command{
 	Use:   "archive <id>",
-	Short: "归档资产",
+	Short: i18n.T(i18n.MsgAssetArchiveShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
@@ -308,15 +310,15 @@ var assetArchiveCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("资产文件不存在: %s", id)
+				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
-			return fmt.Errorf("读取资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
 
 		// Parse front matter
 		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
 		if err != nil {
-			return fmt.Errorf("解析 front matter 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFrontmatterParseError, nil), err)
 		}
 
 		// Update state
@@ -325,21 +327,21 @@ var assetArchiveCmd = &cobra.Command{
 		// Write back
 		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
 		if err != nil {
-			return fmt.Errorf("序列化失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetMarkdownFormatFailed, nil), err)
 		}
 
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
-			return fmt.Errorf("写入文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileWriteFailed, nil), err)
 		}
 
-		fmt.Printf("资产已归档: %s\n", id)
+		fmt.Println(i18n.T(i18n.MsgAssetArchiveSuccess, pongo2.Context{"id": id}))
 		return nil
 	},
 }
 
 var assetRestoreCmd = &cobra.Command{
 	Use:   "restore <id>",
-	Short: "恢复资产",
+	Short: i18n.T(i18n.MsgAssetRestoreShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
@@ -353,15 +355,15 @@ var assetRestoreCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("资产文件不存在: %s", id)
+				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
-			return fmt.Errorf("读取资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
 
 		// Parse front matter
 		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
 		if err != nil {
-			return fmt.Errorf("解析 front matter 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFrontmatterParseError, nil), err)
 		}
 
 		// Update state
@@ -370,21 +372,21 @@ var assetRestoreCmd = &cobra.Command{
 		// Write back
 		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
 		if err != nil {
-			return fmt.Errorf("序列化失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetMarkdownFormatFailed, nil), err)
 		}
 
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
-			return fmt.Errorf("写入文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileWriteFailed, nil), err)
 		}
 
-		fmt.Printf("资产已恢复: %s\n", id)
+		fmt.Println(i18n.T(i18n.MsgAssetRestoreSuccess, pongo2.Context{"id": id}))
 		return nil
 	},
 }
 
 var assetPromoteCmd = &cobra.Command{
 	Use:   "promote <asset_id> <snapshot_id>",
-	Short: "标记推荐版本",
+	Short: i18n.T(i18n.MsgAssetPromoteShort, nil),
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -399,15 +401,15 @@ var assetPromoteCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("资产文件不存在: %s", assetID)
+				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
 			}
-			return fmt.Errorf("读取资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
 
 		// Parse front matter
 		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
 		if err != nil {
-			return fmt.Errorf("解析 front matter 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFrontmatterParseError, nil), err)
 		}
 
 		// Update recommended_snapshot_id
@@ -416,11 +418,11 @@ var assetPromoteCmd = &cobra.Command{
 		// Write back
 		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
 		if err != nil {
-			return fmt.Errorf("序列化失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetMarkdownFormatFailed, nil), err)
 		}
 
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
-			return fmt.Errorf("写入文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileWriteFailed, nil), err)
 		}
 
 		fmt.Printf("已标记推荐版本: %s -> %s\n", assetID, snapshotID)
@@ -430,7 +432,7 @@ var assetPromoteCmd = &cobra.Command{
 
 var assetDemoteCmd = &cobra.Command{
 	Use:   "demote <asset_id>",
-	Short: "取消推荐版本",
+	Short: i18n.T(i18n.MsgAssetDemoteShort, nil),
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		assetID := args[0]
@@ -444,15 +446,15 @@ var assetDemoteCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("资产文件不存在: %s", assetID)
+				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
 			}
-			return fmt.Errorf("读取资产文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
 
 		// Parse front matter
 		fm, markdownContent, err := yamlutil.ParseFrontMatter(string(content))
 		if err != nil {
-			return fmt.Errorf("解析 front matter 失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFrontmatterParseError, nil), err)
 		}
 
 		// Clear recommended_snapshot_id
@@ -461,11 +463,11 @@ var assetDemoteCmd = &cobra.Command{
 		// Write back
 		newContent, err := yamlutil.FormatMarkdown(fm, markdownContent)
 		if err != nil {
-			return fmt.Errorf("序列化失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetMarkdownFormatFailed, nil), err)
 		}
 
 		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
-			return fmt.Errorf("写入文件失败: %w", err)
+			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileWriteFailed, nil), err)
 		}
 
 		fmt.Printf("已取消推荐版本: %s\n", assetID)
@@ -474,13 +476,13 @@ var assetDemoteCmd = &cobra.Command{
 }
 
 func init() {
-	assetCreateCmd.Flags().String("id", "", "资产 ID (可选，默认自动生成 ULID)")
-	assetCreateCmd.Flags().String("name", "", "资产名称 (必需)")
-	assetCreateCmd.Flags().String("file", "", "资产文件路径")
-	assetCreateCmd.Flags().String("content", "", "资产内容 (支持 stdin)")
-	assetCreateCmd.Flags().String("biz-line", "", "业务线")
+	assetCreateCmd.Flags().String("id", "", i18n.T(i18n.MsgFlagAssetID, nil))
+	assetCreateCmd.Flags().String("name", "", i18n.T(i18n.MsgFlagAssetName, nil))
+	assetCreateCmd.Flags().String("file", "", i18n.T(i18n.MsgFlagAssetFile, nil))
+	assetCreateCmd.Flags().String("content", "", i18n.T(i18n.MsgFlagAssetContent, nil))
+	assetCreateCmd.Flags().String("biz-line", "", i18n.T(i18n.MsgFlagAssetBizLine, nil))
 
-	assetListCmd.Flags().String("biz-line", "", "按业务线过滤")
-	assetListCmd.Flags().String("tag", "", "按标签过滤")
-	assetListCmd.Flags().Bool("json", false, "JSON 输出")
+	assetListCmd.Flags().String("biz-line", "", i18n.T(i18n.MsgFlagBizLine, nil))
+	assetListCmd.Flags().String("tag", "", i18n.T(i18n.MsgFlagAssetTag, nil))
+	assetListCmd.Flags().Bool("json", false, i18n.T(i18n.MsgFlagJsonOutput, nil))
 }
