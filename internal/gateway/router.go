@@ -61,6 +61,9 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	if cfg.SemanticAnalyzer != nil {
 		assetHandler = assetHandler.WithSemanticAnalyzer(cfg.SemanticAnalyzer, "")
 	}
+	if cfg.GitBridge != nil {
+		assetHandler = assetHandler.WithGitBridge(cfg.GitBridge)
+	}
 	evalHandler := handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
 	if cfg.SemanticAnalyzer != nil {
 		evalHandler.SetSemanticAnalyzer(cfg.SemanticAnalyzer)
@@ -118,6 +121,8 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/assets/{id}/commit", assetHandler.CommitAsset)
 	mux.HandleFunc("POST /api/v1/assets/commit", assetHandler.CommitBatchAssets)
 	mux.HandleFunc("POST /api/v1/assets/batch/tag", assetHandler.BatchTagAssets)
+	mux.HandleFunc("GET /api/v1/assets/{id}/history", assetHandler.AssetHistory)
+	mux.HandleFunc("GET /api/v1/assets/{id}/diff", assetHandler.AssetDiff)
 
 	// Eval API routes
 	mux.HandleFunc("GET /api/v1/evals", evalHandler.ListEvalRuns)

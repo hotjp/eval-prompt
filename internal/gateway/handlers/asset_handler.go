@@ -24,6 +24,7 @@ type AssetHandler struct {
 	indexer          service.AssetIndexer
 	fileManager      service.AssetFileManager
 	semanticAnalyzer service.SemanticAnalyzer
+	gitBridge        service.GitBridger
 	model            string
 	logger           *slog.Logger
 	config           *config.Config
@@ -37,6 +38,12 @@ func NewAssetHandler(indexer service.AssetIndexer, fileManager service.AssetFile
 		logger:      logger,
 		config:      cfg,
 	}
+}
+
+// WithGitBridge sets the git bridge for version history and diff.
+func (h *AssetHandler) WithGitBridge(bridge service.GitBridger) *AssetHandler {
+	h.gitBridge = bridge
+	return h
 }
 
 // WithSemanticAnalyzer sets the semantic analyzer for trigger auto-generation.
@@ -912,6 +919,135 @@ func (h *AssetHandler) GetAssetFiles(w http.ResponseWriter, r *http.Request) {
 		"id":      id,
 		"files":   files,
 		"external": external,
+	})
+}
+
+// AssetHistory handles GET /api/v1/assets/{id}/history.
+// Returns the git commit history for an asset.
+func (h *AssetHandler) AssetHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	limit := 10 // default limit
+	if l := r.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+
+	// Get asset to find the file path
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
+		return
+	}
+
+	// Determine the file path to get history for
+	var filePath string
+	if detail.AssetPath != "" {
+		// New folder structure: get history for both asset.yaml and main file
+		filePath = detail.AssetPath
+	} else {
+		// Legacy .md structure
+		filePath = fmt.Sprintf("prompts/%s.md", id)
+	}
+
+	// Get commit history
+	if h.gitBridge == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "git bridge not available")
+		return
+	}
+
+	commits, err := h.gitBridge.Log(ctx, filePath, limit)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to get history: %v", err)
+		return
+	}
+
+	// Convert to response format
+	type CommitResponse struct {
+		Hash      string `json:"hash"`
+		ShortHash string `json:"short_hash"`
+		Date      string `json:"date"`
+		Message   string `json:"message"`
+		Author    string `json:"author"`
+	}
+
+	commitsResp := make([]CommitResponse, len(commits))
+	for i, c := range commits {
+		commitsResp[i] = CommitResponse{
+			Hash:      c.Hash,
+			ShortHash: c.ShortHash,
+			Date:      c.Timestamp.Format(time.RFC3339),
+			Message:   c.Subject,
+			Author:    c.Author,
+		}
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"id":      id,
+		"commits": commitsResp,
+	})
+}
+
+// AssetDiff handles GET /api/v1/assets/{id}/diff.
+// Returns the diff between two commits for an asset.
+// Note: Current implementation returns repo-wide diff; file-specific diff is a future enhancement.
+func (h *AssetHandler) AssetDiff(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	if from == "" || to == "" {
+		h.writeError(w, http.StatusBadRequest, "from and to commit hashes are required")
+		return
+	}
+
+	// Get asset to verify it exists
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
+		return
+	}
+
+	// Get diff
+	if h.gitBridge == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "git bridge not available")
+		return
+	}
+
+	diff, err := h.gitBridge.Diff(ctx, from, to)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to get diff: %v", err)
+		return
+	}
+
+	// Determine files affected
+	var files []string
+	if detail.AssetPath != "" {
+		files = append(files, detail.AssetPath)
+		if detail.Main != "" {
+			files = append(files, detail.Main)
+		}
+	} else {
+		files = append(files, fmt.Sprintf("prompts/%s.md", id))
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"id":    id,
+		"from":  from,
+		"to":    to,
+		"files": files,
+		"diff":  diff,
 	})
 }
 
