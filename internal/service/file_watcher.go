@@ -6,7 +6,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,9 +114,12 @@ func (w *FileWatcher) handleEvent(ctx context.Context, event fsnotify.Event) {
 		return
 	}
 
-	// Check if it's a directory
-	info, err := filepath.Match(filepath.Join(w.importPath, "*"), event.Name)
-	if err != nil || !info {
+	// Check if it's a directory under import path
+	if !strings.HasPrefix(event.Name, w.importPath) {
+		return
+	}
+	info, err := os.Stat(event.Name)
+	if err != nil || !info.IsDir() {
 		return
 	}
 

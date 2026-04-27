@@ -326,7 +326,7 @@ func (i *Indexer) CheckConsistency(ctx context.Context) (*ConsistencyReport, err
 
 				mainResolved, _, _ := ay.ResolveMain(repoPath)
 				if !strings.HasPrefix(mainResolved, "/") && !strings.HasPrefix(mainResolved, "~") {
-					report.OrphanYAMLs = append(report.OrphanYAMLs, filepath.Join("assets", assetType, id+".yaml"))
+					report.OrphanYAMLs = append(report.OrphanYAMLs, filepath.Join("assets", assetType+"s", id+".yaml"))
 				}
 			}
 		}

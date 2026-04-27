@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -656,7 +657,10 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 		// Parse frontmatter to get content_hash and updated_at
 		frontmatterBlock := strings.Join(lines[1:frontmatterEnd], "\n")
 		fullFrontmatter := "---\n" + frontmatterBlock + "\n---"
-		fm, _, _ := yamlutil.ParseFrontMatter(fullFrontmatter)
+		fm, _, err := yamlutil.ParseFrontMatter(fullFrontmatter)
+		if err != nil {
+			h.logger.Warn("failed to parse frontmatter", "asset_id", id, "error", err, "layer", "L5")
+		}
 		if fm != nil {
 			contentHash = fm.ContentHash
 			if !fm.UpdatedAt.IsZero() {
@@ -945,26 +949,42 @@ func (h *AssetHandler) AssetHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine the file path to get history for
-	var filePath string
-	if detail.AssetPath != "" {
-		// New folder structure: get history for both asset.yaml and main file
-		filePath = detail.AssetPath
-	} else {
-		// Legacy .md structure
-		filePath = fmt.Sprintf("prompts/%s.md", id)
-	}
-
 	// Get commit history
 	if h.gitBridge == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "git bridge not available")
 		return
 	}
 
-	commits, err := h.gitBridge.Log(ctx, filePath, limit)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "failed to get history: %v", err)
-		return
+	var commits []service.CommitInfo
+
+	if detail.AssetPath != "" {
+		// New folder structure: get history for both asset.yaml and main file
+		yamlCommits, err := h.gitBridge.Log(ctx, detail.AssetPath, limit)
+		if err == nil {
+			commits = append(commits, yamlCommits...)
+		}
+		if detail.Main != "" {
+			mainCommits, err := h.gitBridge.Log(ctx, detail.Main, limit)
+			if err == nil {
+				commits = append(commits, mainCommits...)
+			}
+		}
+		// Deduplicate by hash
+		commits = deduplicateCommits(commits)
+		// Sort by timestamp descending
+		sortCommitsByDate(commits)
+		// Apply limit
+		if len(commits) > limit {
+			commits = commits[:limit]
+		}
+	} else {
+		// Legacy .md structure
+		filePath := fmt.Sprintf("prompts/%s.md", id)
+		commits, err = h.gitBridge.Log(ctx, filePath, limit)
+		if err != nil {
+			h.writeError(w, http.StatusInternalServerError, "failed to get history: %v", err)
+			return
+		}
 	}
 
 	// Convert to response format
@@ -995,7 +1015,8 @@ func (h *AssetHandler) AssetHistory(w http.ResponseWriter, r *http.Request) {
 
 // AssetDiff handles GET /api/v1/assets/{id}/diff.
 // Returns the diff between two commits for an asset.
-// Note: Current implementation returns repo-wide diff; file-specific diff is a future enhancement.
+// AssetDiff handles GET /api/v1/assets/{id}/diff.
+// Returns the diff between two commits for an asset, limited to the asset's files.
 func (h *AssetHandler) AssetDiff(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -1042,12 +1063,15 @@ func (h *AssetHandler) AssetDiff(w http.ResponseWriter, r *http.Request) {
 		files = append(files, fmt.Sprintf("prompts/%s.md", id))
 	}
 
+	// Filter diff to only include the asset's files
+	filteredDiff := filterDiffByFiles(diff, files)
+
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"id":    id,
 		"from":  from,
 		"to":    to,
 		"files": files,
-		"diff":  diff,
+		"diff":  filteredDiff,
 	})
 }
 
@@ -1107,9 +1131,12 @@ func (h *AssetHandler) BatchTagAssets(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if !hasTag {
-				newTags = append(detail.Tags, req.Tag)
+				newTags = make([]string, len(detail.Tags))
+				copy(newTags, detail.Tags)
+				newTags = append(newTags, req.Tag)
 			} else {
-				newTags = detail.Tags
+				newTags = make([]string, len(detail.Tags))
+				copy(newTags, detail.Tags)
 			}
 		} else {
 			// Remove tag
@@ -1142,6 +1169,19 @@ func (h *AssetHandler) BatchTagAssets(w http.ResponseWriter, r *http.Request) {
 			}, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
 			if err != nil {
 				errors[id] = fmt.Sprintf("failed to update frontmatter: %v", err)
+				continue
+			}
+		} else {
+			// New folder structure: update asset.yaml
+			ay, err := h.fileManager.GetAssetYAML(ctx, detail.AssetPath)
+			if err != nil {
+				errors[id] = fmt.Sprintf("failed to read asset.yaml: %v", err)
+				continue
+			}
+			ay.Tags = newTags
+			_, err = h.fileManager.SaveAssetYAML(ctx, detail.AssetPath, ay, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
+			if err != nil {
+				errors[id] = fmt.Sprintf("failed to update asset.yaml: %v", err)
 				continue
 			}
 		}
@@ -1331,4 +1371,82 @@ func (h *AssetHandler) writeError(w http.ResponseWriter, status int, format stri
 	json.NewEncoder(w).Encode(map[string]any{
 		"error": fmt.Sprintf(format, args...),
 	})
+}
+
+// deduplicateCommits removes duplicate commits based on hash.
+func deduplicateCommits(commits []service.CommitInfo) []service.CommitInfo {
+	seen := make(map[string]bool)
+	result := make([]service.CommitInfo, 0, len(commits))
+	for _, c := range commits {
+		if !seen[c.Hash] {
+			seen[c.Hash] = true
+			result = append(result, c)
+		}
+	}
+	return result
+}
+
+// sortCommitsByDate sorts commits by timestamp in descending order (newest first).
+func sortCommitsByDate(commits []service.CommitInfo) {
+	sort.Slice(commits, func(i, j int) bool {
+		return commits[i].Timestamp.After(commits[j].Timestamp)
+	})
+}
+
+// filterDiffByFiles filters a git diff output to only include changes to the specified files.
+func filterDiffByFiles(diff string, files []string) string {
+	if diff == "" || len(files) == 0 {
+		return diff
+	}
+
+	// Create a set of files to include
+	fileSet := make(map[string]bool)
+	for _, f := range files {
+		fileSet[f] = true
+	}
+
+	// Split diff into blocks (each block starts with "diff --git")
+	var result string
+	var currentBlock string
+	inBlock := false
+	currentFile := ""
+
+	lines := strings.Split(diff, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "diff --git") {
+			// Start of a new block - flush previous block if it matches
+			if inBlock && currentFile != "" && fileSet[currentFile] {
+				result += currentBlock
+			}
+			currentBlock = line + "\n"
+			inBlock = true
+			currentFile = ""
+
+			// Extract file path from "diff --git a/path b/path"
+			parts := strings.Split(line, " ")
+			if len(parts) >= 4 {
+				// a/path and b/path - extract the b/path (destination)
+				// or just use a/path since they're usually the same
+				gitPath := strings.TrimPrefix(parts[2], "a/")
+				currentFile = gitPath
+			}
+		} else if inBlock {
+			currentBlock += line + "\n"
+			// Check if this block should be included
+			if currentFile != "" && fileSet[currentFile] {
+				// This block matches - we don't need to do anything special here
+				// since we're already including all lines
+			}
+		} else {
+			// Lines before first diff block (e.g., warnings)
+			result += line + "\n"
+		}
+	}
+
+	// Flush the last block
+	if inBlock && currentFile != "" && fileSet[currentFile] {
+		result += currentBlock
+	}
+
+	return result
 }

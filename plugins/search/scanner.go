@@ -75,7 +75,7 @@ func (i *Indexer) Scan(ctx context.Context, source string) (*service.ScanResult,
 
 		// Determine destination paths
 		assetDir := fmt.Sprintf("%s/%s", assetType, dirName) // e.g., "skills/calculator"
-		assetYAMLPath := filepath.Join("assets", ay.AssetType, fmt.Sprintf("%s.yaml", dirName))
+		assetYAMLPath := filepath.Join("assets", ay.AssetType+"s", fmt.Sprintf("%s.yaml", dirName))
 
 		// Check if asset.yaml already exists (update) or is new (create)
 		existingAY, err := i.GetAssetYAML(ctx, assetYAMLPath)
