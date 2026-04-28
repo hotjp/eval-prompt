@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,18 +39,18 @@ func resolveWorkDir(cmd *cobra.Command) (string, error) {
 		// --repo specified: add to lock and switch to it
 		absPath, err := filepath.Abs(repoPath)
 		if err != nil {
-			return "", fmt.Errorf(i18n.T(i18n.MsgSyncResolvePathFailed, pongo2.Context{"error": err.Error()}))
+			return "", errors.New(i18n.T(i18n.MsgSyncResolvePathFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		repoLock, err := lock.ReadLock()
 		if err != nil {
-			return "", fmt.Errorf(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
+			return "", errors.New(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		repoLock.AddRepo(absPath)
 		repoLock.SetCurrent(absPath)
 		if err := lock.WriteLock(repoLock); err != nil {
-			return "", fmt.Errorf(i18n.T(i18n.MsgSyncWriteLockFailed, pongo2.Context{"error": err.Error()}))
+			return "", errors.New(i18n.T(i18n.MsgSyncWriteLockFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		fmt.Println(i18n.T(i18n.MsgSyncRepoSwitch, pongo2.Context{"path": absPath}))
@@ -64,12 +65,12 @@ func resolveWorkDir(cmd *cobra.Command) (string, error) {
 	// Neither --repo nor --dir specified: require current repo from lock
 	repoLock, err := lock.ReadLock()
 	if err != nil {
-		return "", fmt.Errorf(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
+		return "", errors.New(i18n.T(i18n.MsgSyncReadLockFailed, pongo2.Context{"error": err.Error()}))
 	}
 
 	current := repoLock.GetCurrent()
 	if current == "" {
-		return "", fmt.Errorf(i18n.T(i18n.MsgSyncNoRepoSet, nil))
+		return "", errors.New(i18n.T(i18n.MsgSyncNoRepoSet, nil))
 	}
 	return current, nil
 }
@@ -90,14 +91,14 @@ var syncReconcileCmd = &cobra.Command{
 		}
 		gitBridge := gitbridge.NewBridge()
 		if err := gitBridge.Open(wd); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
 		}
 		indexer.SetGitBridge(gitBridge)
 
 		syncService := service.NewSyncService(indexer, gitBridge)
 		report, err := syncService.Reconcile(context.Background())
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		fmt.Println(i18n.T(i18n.MsgSyncReconcileDone, pongo2.Context{"count": report.Added + report.Updated + report.Deleted}))
@@ -131,7 +132,7 @@ var syncExportCmd = &cobra.Command{
 		indexer := search.Default()
 		gitBridge := gitbridge.NewBridge()
 		if err := gitBridge.Open(wd); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgSyncOpenRepoFailed, pongo2.Context{"error": err.Error()}))
 		}
 		indexer.SetGitBridge(gitBridge)
 
@@ -139,12 +140,12 @@ var syncExportCmd = &cobra.Command{
 
 		// Run reconcile first to populate the index from git
 		if _, err := syncService.Reconcile(context.Background()); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgSyncReconcileFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		data, err := syncService.Export(context.Background(), format)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgSyncExportFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgSyncExportFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if output != "" {

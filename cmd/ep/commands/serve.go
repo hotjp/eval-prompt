@@ -26,6 +26,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// llmInvokerAdapter wraps plugins/llm.Interface to satisfy service.LLMInvoker.
+// Lives in the command layer (not service layer) to avoid importing plugins in service.
+type llmInvokerAdapter struct {
+	invoker llm.Interface
+}
+
+func (a *llmInvokerAdapter) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*service.LLMResponse, error) {
+	resp, err := a.invoker.Invoke(ctx, prompt, model, temperature)
+	if err != nil {
+		return nil, err
+	}
+	return &service.LLMResponse{
+		Content:   resp.Content,
+		TokensIn:  resp.TokensIn,
+		TokensOut: resp.TokensOut,
+		Model:     resp.Model,
+	}, nil
+}
+
+func (a *llmInvokerAdapter) InvokeWithSchema(ctx context.Context, prompt string, schema []byte) ([]byte, error) {
+	return a.invoker.InvokeWithSchema(ctx, prompt, schema)
+}
+
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "启动本地 HTTP 服务（包含 Web UI）",
@@ -178,7 +201,7 @@ var serveCmd = &cobra.Command{
 		// Create semantic service only if LLM is properly configured with a model
 		var semanticService *service.SemanticService
 		if defaultModel != "" {
-			semanticService = service.NewSemanticService(llmInvoker, defaultModel)
+			semanticService = service.NewSemanticService(&llmInvokerAdapter{invoker: llmInvoker}, defaultModel)
 			triggerService = triggerService.WithSemanticAnalyzer(semanticService, defaultModel)
 			evalService = evalService.WithSemanticAnalyzer(semanticService)
 		} else {

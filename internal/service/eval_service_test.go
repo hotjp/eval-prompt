@@ -39,15 +39,14 @@ func TestEvalService_ListEvalRuns_NotConfigured(t *testing.T) {
 	svc := NewEvalService()
 	ctx := context.Background()
 
-	_, err := svc.ListEvalRuns(ctx, "asset-id")
-	if err == nil {
-		t.Error("expected error for not configured")
+	runs, err := svc.ListEvalRuns(ctx, "asset-id")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	// ListEvalRuns requires prompts directory and asset file to exist
-	if err != nil && err.Error() == "failed to read asset file: open prompts/asset-id.md: no such file or directory" {
-		return // expected (asset file doesn't exist in test)
+	// When asset file does not exist, ListEvalRuns returns an empty slice
+	if len(runs) != 0 {
+		t.Errorf("expected empty runs for non-existent asset, got %d", len(runs))
 	}
-	t.Errorf("expected 'failed to read asset file', got %v", err)
 }
 
 func TestEvalService_CompareEval_NotConfigured(t *testing.T) {

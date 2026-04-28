@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,7 +80,7 @@ var evalRunCmd = &cobra.Command{
 		}
 		execution, err := evalService.RunEval(context.Background(), svcReq)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalRunFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalRunFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if !noSync {
@@ -137,7 +138,7 @@ var evalCasesCmd = &cobra.Command{
 
 		cases, err := evalService.ListEvalCases(context.Background(), assetID)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalCasesFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalCasesFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -172,7 +173,7 @@ var evalCompareCmd = &cobra.Command{
 		evalService := newEvalService("")
 		result, err := evalService.CompareEval(context.Background(), assetID, v1, v2)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalCompareFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalCompareFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		switch format {
@@ -209,7 +210,7 @@ var evalReportCmd = &cobra.Command{
 		evalService := newEvalService("")
 		report, err := evalService.GenerateReport(context.Background(), runID)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalReportFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalReportFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -234,7 +235,7 @@ var evalDiagnoseCmd = &cobra.Command{
 		evalService := newEvalService("")
 		diagnosis, err := evalService.DiagnoseEval(context.Background(), runID)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalDiagnoseFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalDiagnoseFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		switch format {
@@ -268,7 +269,7 @@ var evalSetupCmd = &cobra.Command{
 		model, _ := cmd.Flags().GetString("model")
 
 		if err := pathutil.ValidateID(assetID); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupInvalidID, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalSetupInvalidID, pongo2.Context{"error": err.Error()}))
 		}
 
 		if evalsDir == "" {
@@ -281,7 +282,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Create evals directory if it doesn't exist
 		if err := os.MkdirAll(evalsDir, 0755); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupCreateDirFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalSetupCreateDirFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Generate eval prompt file path
@@ -289,7 +290,7 @@ var evalSetupCmd = &cobra.Command{
 
 		// Check if file already exists
 		if _, err := os.Stat(evalFilePath); err == nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupAlreadyExists, pongo2.Context{"path": evalFilePath}))
+			return errors.New(i18n.T(i18n.MsgEvalSetupAlreadyExists, pongo2.Context{"path": evalFilePath}))
 		}
 
 		// Create eval prompt front matter
@@ -323,12 +324,12 @@ Describe the expected output format.
 		// Format the complete markdown file
 		mdContent, err := yamlutil.FormatEvalPromptMarkdown(fm, content)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupFormatFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalSetupFormatFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Write the file
 		if err := os.WriteFile(evalFilePath, []byte(mdContent), 0644); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalSetupWriteFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalSetupWriteFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		fmt.Println(i18n.T(i18n.MsgEvalSetupComplete, pongo2.Context{"path": evalFilePath}))
@@ -345,13 +346,13 @@ var evalListCmd = &cobra.Command{
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		if assetID == "" {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalListAssetIDRequired, nil))
+			return errors.New(i18n.T(i18n.MsgEvalListAssetIDRequired, nil))
 		}
 
 		evalService := newEvalService("")
 		runs, err := evalService.ListEvalRuns(context.Background(), assetID)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalListFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalListFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {
@@ -379,7 +380,7 @@ var evalCancelCmd = &cobra.Command{
 		evalService := newEvalService("")
 
 		if err := evalService.CancelExecution(context.Background(), executionID); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgEvalCancelFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgEvalCancelFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		fmt.Println(i18n.T(i18n.MsgEvalCancelStarted, pongo2.Context{"id": executionID}))

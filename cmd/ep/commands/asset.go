@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -140,12 +141,12 @@ var assetCreateCmd = &cobra.Command{
 		bizLine, _ := cmd.Flags().GetString("biz-line")
 
 		if name == "" {
-			return fmt.Errorf(i18n.T(i18n.MsgAssetNameRequired, nil))
+			return errors.New(i18n.T(i18n.MsgAssetNameRequired, nil))
 		}
 
 		// --content and --file are mutually exclusive
 		if contentFlag != "" && file != "" {
-			return fmt.Errorf(i18n.T(i18n.MsgAssetContentFileConflict, nil))
+			return errors.New(i18n.T(i18n.MsgAssetContentFileConflict, nil))
 		}
 
 		// Determine content source: --content > --file > stdin
@@ -169,7 +170,7 @@ var assetCreateCmd = &cobra.Command{
 				content = string(stdinContent)
 			}
 			if content == "" {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetInputRequired, nil))
+				return errors.New(i18n.T(i18n.MsgAssetInputRequired, nil))
 			}
 		}
 
@@ -261,7 +262,7 @@ var assetRmCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
+				return errors.New(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
 			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
@@ -310,7 +311,7 @@ var assetArchiveCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
+				return errors.New(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
 			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
@@ -355,7 +356,7 @@ var assetRestoreCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
+				return errors.New(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": id}))
 			}
 			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
@@ -401,7 +402,7 @@ var assetPromoteCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
+				return errors.New(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
 			}
 			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}
@@ -446,7 +447,7 @@ var assetDemoteCmd = &cobra.Command{
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
+				return errors.New(i18n.T(i18n.MsgAssetFileNotFound, pongo2.Context{"id": assetID}))
 			}
 			return fmt.Errorf("%s: %w", i18n.T(i18n.MsgAssetFileReadError, nil), err)
 		}

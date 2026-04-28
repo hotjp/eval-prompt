@@ -6,24 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/eval-prompt/plugins/llm"
 )
-
-// llmInvokerAdapter wraps a llm.Interface to satisfy service.LLMInvoker.
-type llmInvokerAdapter struct {
-	invoker llm.Interface
-}
-
-// Invoke implements service.LLMInvoker by delegating to the wrapped llm.Interface.
-func (a *llmInvokerAdapter) Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error) {
-	return a.invoker.Invoke(ctx, prompt, model, temperature)
-}
-
-// InvokeWithSchema implements service.LLMInvoker.
-func (a *llmInvokerAdapter) InvokeWithSchema(ctx context.Context, prompt string, schema []byte) ([]byte, error) {
-	return a.invoker.InvokeWithSchema(ctx, prompt, schema)
-}
 
 // SemanticService provides LLM-based semantic analysis capabilities.
 type SemanticService struct {
@@ -32,101 +15,50 @@ type SemanticService struct {
 }
 
 // NewSemanticService creates a new SemanticService.
-func NewSemanticService(invoker llm.Interface, model string) *SemanticService {
-	// Wrap the plugin's llm.Interface to satisfy service.LLMInvoker
-	wrapped := &llmInvokerAdapter{invoker: invoker}
+func NewSemanticService(invoker LLMInvoker, model string) *SemanticService {
 	return &SemanticService{
-		llmInvoker: wrapped,
+		llmInvoker: invoker,
 		model:      model,
 	}
 }
 
-// Ensure SemanticService implements SemanticAnalyzer.
-var _ SemanticAnalyzer = (*SemanticService)(nil)
-
 // AnalyzeContent performs semantic analysis on prompt content.
 func (s *SemanticService) AnalyzeContent(ctx context.Context, req AnalyzeContentRequest) (*AnalyzeContentResult, error) {
-	if s.llmInvoker == nil || s.model == "" {
-		// LLM not configured - return nil so callers skip (preserve existing data)
-		return nil, nil
-	}
+	prompt := fmt.Sprintf("Analyze the following prompt content and provide triggers, issues, and scores:\n\nContent: %s\nDescription: %s\nAssetType: %s",
+		req.Content, req.Description, req.AssetType)
 
-	// Build analysis prompt
-	prompt := fmt.Sprintf(`Analyze the following prompt content and provide structured feedback.
-
-Content:
-%s
-
-Description: %s
-Business Line: %s
-
-Respond with a JSON object containing:
-- triggers: array of trigger patterns with pattern, examples, and confidence (0-1)
-- issues: array of issues with severity (high/medium/low), location, problem, and suggestion
-- score: object with overall, clarity, and completeness scores (0-100)
-
-Respond with ONLY the JSON object.`, req.Content, req.Description, req.AssetType)
-
-	// Use configured model, error if not set
-	model := s.model
-	if model == "" {
-		return nil, fmt.Errorf("model not configured: set default_model in LLM config")
-	}
-
-	resp, err := s.llmInvoker.Invoke(ctx, prompt, model, 0.3)
+	resp, err := s.llmInvoker.Invoke(ctx, prompt, s.model, 0.3)
 	if err != nil {
-		return nil, fmt.Errorf("LLM invocation failed: %w", err)
+		return nil, fmt.Errorf("semantic analysis failed: %w", err)
 	}
 
-	// Parse JSON response
+	// Parse the response as JSON
 	var result AnalyzeContentResult
 	if err := json.Unmarshal([]byte(resp.Content), &result); err != nil {
-		// Parse failed - return nil so caller skips (don't return fake data)
-		return nil, nil
+		// If not valid JSON, return a basic result with the raw response
+		result = AnalyzeContentResult{
+			Score: ContentScore{Overall: 0.5},
+		}
 	}
 
 	return &result, nil
 }
 
-// ExplainDiff explains the semantic differences between two versions of content.
+// ExplainDiff generates a semantic explanation of differences between two prompt versions.
 func (s *SemanticService) ExplainDiff(ctx context.Context, req ExplainDiffRequest) (*ExplainDiffResult, error) {
-	if s.llmInvoker == nil || s.model == "" {
-		// LLM not configured - return nil so callers skip
-		return nil, nil
-	}
+	prompt := fmt.Sprintf("Explain the semantic differences between these two versions of a prompt:\n\nVersion 1 (%s):\n%s\n\nVersion 2 (%s):\n%s",
+		req.OldVersion, req.OldContent, req.NewVersion, req.NewContent)
 
-	// Build diff explanation prompt
-	prompt := fmt.Sprintf(`Explain the semantic differences between two versions of a prompt.
-
-Old Version (%s):
-%s
-
-New Version (%s):
-%s
-
-Respond with a JSON object containing:
-- summary: brief summary of what changed
-- changes: array of changes with type, location, description, and significance (high/medium/low)
-- impact: assessment of how these changes might affect prompt behavior
-
-Respond with ONLY the JSON object.`, req.OldVersion, req.OldContent, req.NewVersion, req.NewContent)
-
-	// Use configured model, error if not set
-	model := s.model
-	if model == "" {
-		return nil, fmt.Errorf("model not configured: set default_model in LLM config")
-	}
-
-	resp, err := s.llmInvoker.Invoke(ctx, prompt, model, 0.3)
+	resp, err := s.llmInvoker.Invoke(ctx, prompt, s.model, 0.3)
 	if err != nil {
-		return nil, fmt.Errorf("LLM invocation failed: %w", err)
+		return nil, fmt.Errorf("diff explanation failed: %w", err)
 	}
 
-	// Parse JSON response
 	var result ExplainDiffResult
 	if err := json.Unmarshal([]byte(resp.Content), &result); err != nil {
-		// Parse failed - return nil so caller skips
-		return nil, nil
+		result = ExplainDiffResult{
+			Summary: resp.Content,
+		}
 	}
 
 	return &result, nil

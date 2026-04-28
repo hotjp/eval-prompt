@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
-	"github.com/eval-prompt/plugins/llm"
 )
 
 // CommitInfo represents git commit information.
@@ -215,12 +214,21 @@ type Asset struct {
 	UpdatedAt   time.Time
 }
 
+// LLMResponse contains the LLM output and metadata.
+// Mirrors plugins/llm.LLMResponse to avoid importing the plugin package in service layer.
+type LLMResponse struct {
+	Content   string
+	TokensIn  int
+	TokensOut int
+	Model     string
+}
+
 // LLMInvoker abstracts LLM provider calls.
-// Implemented by plugins/llm.
+// Implemented by plugins/llm via an adapter.
 type LLMInvoker interface {
 	// Invoke calls the LLM with a prompt, model, and temperature.
 	// Returns the text response and usage metadata.
-	Invoke(ctx context.Context, prompt string, model string, temperature float64) (*llm.LLMResponse, error)
+	Invoke(ctx context.Context, prompt string, model string, temperature float64) (*LLMResponse, error)
 
 	// InvokeWithSchema calls the LLM and enforces a JSON output schema.
 	// The schema is a JSON Schema (draft-07) describing the expected output structure.

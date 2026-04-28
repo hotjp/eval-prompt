@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,7 +59,7 @@ var initCmd = &cobra.Command{
 		// Create SQLite database path
 		dbDir := filepath.Join(os.Getenv("HOME"), ".eval-prompt")
 		if err := os.MkdirAll(dbDir, 0755); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgInitDBDirFail, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgInitDBDirFail, pongo2.Context{"error": err.Error()}))
 		}
 		dbPath := filepath.Join(dbDir, "index.db")
 

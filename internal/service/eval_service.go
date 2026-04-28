@@ -15,7 +15,6 @@ import (
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/yamlutil"
-	"github.com/eval-prompt/plugins/llm"
 )
 
 // EvalRun represents an evaluation run (service-level view).
@@ -380,7 +379,7 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 			}
 
 			// Append successful call
-			s.appendSuccessfulCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, resp, latencyMs)
+			s.appendSuccessfulCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, *resp, latencyMs)
 
 			mu.Lock()
 			completed++
@@ -470,7 +469,7 @@ func (s *EvalService) readEvalCase(ctx context.Context, caseID string) (string, 
 }
 
 // appendSuccessfulCall appends a successful LLM call record.
-func (s *EvalService) appendSuccessfulCall(ctx context.Context, execID, runID, assetID, snapshotID, caseID string, runNumber int, model string, temp float64, resp *llm.LLMResponse, latencyMs int64) {
+func (s *EvalService) appendSuccessfulCall(ctx context.Context, execID, runID, assetID, snapshotID, caseID string, runNumber int, model string, temp float64, resp LLMResponse, latencyMs int64) {
 	call := &LLMCall{
 		RunID:           runID,
 		ExecutionID:     execID,

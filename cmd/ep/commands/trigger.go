@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -38,7 +39,7 @@ var triggerMatchCmd = &cobra.Command{
 
 		matches, err := triggerService.MatchTrigger(cmd.Context(), input, top)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgTriggerMatchFailed, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgTriggerMatchFailed, pongo2.Context{"error": err.Error()}))
 		}
 
 		if jsonOutput {

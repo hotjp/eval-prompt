@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ var repoListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		repoLock, err := lock.ReadLock()
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgRepoLockReadFail, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgRepoLockReadFail, pongo2.Context{"error": err.Error()}))
 		}
 
 		if len(repoLock.Repos) == 0 {
@@ -81,17 +82,17 @@ var repoSwitchCmd = &cobra.Command{
 		path := args[0]
 		absPath, err := filepath.Abs(path)
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgRepoSwitchLockWriteFail, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgRepoSwitchLockWriteFail, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Reject path traversal
 		if strings.Contains(absPath, "..") {
-			return fmt.Errorf(i18n.T(i18n.MsgRepoSwitchLockWriteFail, nil))
+			return errors.New(i18n.T(i18n.MsgRepoSwitchLockWriteFail, nil))
 		}
 
 		repoLock, err := lock.ReadLock()
 		if err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgRepoLockReadFail, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgRepoLockReadFail, pongo2.Context{"error": err.Error()}))
 		}
 
 		// Check if path exists in repos
@@ -145,7 +146,7 @@ var repoSwitchCmd = &cobra.Command{
 			for _, dir := range dirs {
 				fullPath := filepath.Join(absPath, dir)
 				if err := os.MkdirAll(fullPath, 0755); err != nil {
-					return fmt.Errorf(i18n.T(i18n.MsgRepoSwitchDirFail, pongo2.Context{"error": err.Error()}))
+					return errors.New(i18n.T(i18n.MsgRepoSwitchDirFail, pongo2.Context{"error": err.Error()}))
 				}
 			}
 			// Init git
@@ -175,14 +176,14 @@ var repoSwitchCmd = &cobra.Command{
 			}
 			bridge := gitbridge.NewBridge()
 			if err := bridge.InitRepo(context.Background(), absPath); err != nil {
-				return fmt.Errorf(i18n.T(i18n.MsgRepoSwitchGitFail, pongo2.Context{"error": err.Error()}))
+				return errors.New(i18n.T(i18n.MsgRepoSwitchGitFail, pongo2.Context{"error": err.Error()}))
 			}
 		}
 
 		// Update lock
 		repoLock.SetCurrent(absPath)
 		if err := lock.WriteLock(repoLock); err != nil {
-			return fmt.Errorf(i18n.T(i18n.MsgRepoSwitchLockWriteFail, pongo2.Context{"error": err.Error()}))
+			return errors.New(i18n.T(i18n.MsgRepoSwitchLockWriteFail, pongo2.Context{"error": err.Error()}))
 		}
 
 		fmt.Print(i18n.T(i18n.MsgRepoSwitchComplete, pongo2.Context{"path": absPath}))
