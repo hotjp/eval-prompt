@@ -10,12 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/eval-prompt/internal/domain"
-	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
 )
@@ -195,193 +193,9 @@ var (
 var _ service.AssetIndexer = (*Indexer)(nil)
 
 // Reconcile synchronizes the index with the Git repository.
-// It scans the filesystem for .md files and updates the index.
+// It scans assets/{type}/*.yaml files and updates the index.
 func (i *Indexer) Reconcile(ctx context.Context) (service.ReconcileReport, error) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	report := service.ReconcileReport{}
-	if i.gitBridge == nil {
-		return report, nil
-	}
-
-	added, modified, deleted, err := i.gitBridge.Status(ctx)
-	if err != nil {
-		report.Errors = append(report.Errors, err.Error())
-		return report, nil
-	}
-
-	// Process deleted files
-	for _, filePath := range deleted {
-		if strings.HasSuffix(filePath, ".md") {
-			id := extractIDFromPath(filePath)
-			if id != "" {
-				delete(i.assets, id)
-				report.Deleted++
-			}
-		}
-	}
-
-	// Process added and modified files - read frontmatter from disk
-	allFiles := append(added, modified...)
-	for _, filePath := range allFiles {
-		if strings.HasSuffix(filePath, ".md") {
-			if err := i.reconcileFile(ctx, filePath, &report); err != nil {
-				report.Errors = append(report.Errors, err.Error())
-			}
-		}
-	}
-
-	// If no changes detected, do a full scan of the prompts directory to ensure committed files are indexed
-	if len(added) == 0 && len(modified) == 0 && i.gitBridge != nil && i.gitBridge.RepoPath() != "" {
-		if err := i.scanPromptsDir(ctx, &report); err != nil {
-			report.Errors = append(report.Errors, err.Error())
-		}
-	}
-
-	// Persist index to disk for cross-process sharing
-	if err := i.persist(); err != nil {
-		report.Errors = append(report.Errors, fmt.Sprintf("persist index: %v", err))
-	}
-
-	return report, nil
-}
-
-// reconcileFile reads a .md file, parses frontmatter, and saves to index.
-func (i *Indexer) reconcileFile(ctx context.Context, filePath string, report *service.ReconcileReport) error {
-	// Resolve relative file path against repo root
-	absPath := filePath
-	if i.gitBridge != nil && i.gitBridge.RepoPath() != "" {
-		absPath = filepath.Join(i.gitBridge.RepoPath(), filePath)
-	}
-
-	content, err := os.ReadFile(absPath)
-	if err != nil {
-		return fmt.Errorf("read file %s: %w", filePath, err)
-	}
-
-	// Parse frontmatter
-	lines := strings.Split(string(content), "\n")
-	if len(lines) < 3 || lines[0] != "---" {
-		return nil // No frontmatter, skip
-	}
-
-	// Find end of frontmatter
-	endIdx := -1
-	for idx := 1; idx < len(lines); idx++ {
-		if lines[idx] == "---" {
-			endIdx = idx
-			break
-		}
-	}
-	if endIdx < 0 {
-		return nil
-	}
-
-	frontmatter := strings.Join(lines[1:endIdx], "\n")
-	// ParseFrontMatter expects full markdown with --- delimiters
-	fullContent := "---\n" + frontmatter + "\n---"
-	fm, _, err := yamlutil.ParseFrontMatter(fullContent)
-	if err != nil {
-		return fmt.Errorf("parse frontmatter %s: %w", filePath, err)
-	}
-
-	// Check if asset already exists (update) or is new (add)
-	_, existed := i.assets[fm.ID]
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	asset := service.Asset{
-		ID:          fm.ID,
-		Name:        fm.Name,
-		Description: fm.Description,
-		AssetType:   fm.AssetType,
-		Category:    fm.Category,
-		Tags:        fm.Tags,
-		State:       fm.State,
-		ContentHash: fm.ContentHash,
-		RepoPath:    repoPath,
-	}
-
-	// Build snapshots from eval history
-	snapshots := make([]service.SnapshotSummary, 0, len(fm.EvalHistory))
-	for _, entry := range fm.EvalHistory {
-		createdAt, _ := time.Parse("2006-01-02", entry.Date)
-		score := float64(entry.Score) / 100.0 // Convert 0-100 to 0.0-1.0
-		snapshots = append(snapshots, service.SnapshotSummary{
-			Version:    entry.EvalCaseVersion,
-			CommitHash: "",
-			Author:     entry.By,
-			Reason:     "",
-			EvalScore:  &score,
-			CreatedAt:  createdAt,
-		})
-	}
-	// Sort by CreatedAt descending (newest first)
-	sort.Slice(snapshots, func(i, j int) bool {
-		return snapshots[i].CreatedAt.After(snapshots[j].CreatedAt)
-	})
-
-	i.assets[fm.ID] = &assetEntry{asset: asset, detail: &service.AssetDetail{
-		ID:          asset.ID,
-		Name:        asset.Name,
-		Description: asset.Description,
-		AssetType:     asset.AssetType,
-		Tags:        asset.Tags,
-		State:       asset.State,
-		Snapshots:   snapshots,
-		Category:              fm.Category,
-		EvalHistory:          fm.EvalHistory,
-		EvalStats:            fm.EvalStats,
-		Triggers:             fm.Triggers,
-		TestCases:            fm.TestCases,
-		RecommendedSnapshotID: fm.RecommendedSnapshotID,
-		Labels:               service.ParseLabels(fm.Labels),
-	}}
-	if existed {
-		report.Updated++
-	} else {
-		report.Added++
-	}
-	return nil
-}
-
-// scanPromptsDir scans the prompts directory and indexes all .md files.
-// This ensures that committed files are indexed even when git status shows no uncommitted changes.
-func (i *Indexer) scanPromptsDir(ctx context.Context, report *service.ReconcileReport) error {
-	repoPath := i.gitBridge.RepoPath()
-	promptsDir := filepath.Join(repoPath, "prompts")
-
-	entries, err := os.ReadDir(promptsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // prompts dir doesn't exist, nothing to index
-		}
-		return fmt.Errorf("read prompts directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		filePath := filepath.Join("prompts", entry.Name())
-		// Only index if not already in assets (avoid re-processing)
-		id := extractIDFromPath(filePath)
-		if id != "" && i.assets[id] == nil {
-			if err := i.reconcileFile(ctx, filePath, report); err != nil {
-				// Log but don't fail the whole scan
-				report.Errors = append(report.Errors, err.Error())
-			}
-		}
-	}
-	return nil
-}
-
-// extractIDFromPath extracts the asset ID from a file path like "prompts/01ARZ3NDEKTSV4RRFFQ69G5FAV.md"
-func extractIDFromPath(filePath string) string {
-	base := filepath.Base(filePath)
-	return strings.TrimSuffix(base, ".md")
+	return i.ReconcileAssetYAML(ctx)
 }
 
 // Search searches for assets matching the query and filters.
@@ -457,277 +271,11 @@ func (i *Indexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetFileContent reads the raw content of a prompt file from disk.
-func (i *Indexer) GetFileContent(ctx context.Context, id string) (string, error) {
-	if err := pathutil.ValidateID(id); err != nil {
-		return "", err
-	}
-
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	if repoPath == "" {
-		return "", fmt.Errorf("repository not initialized")
-	}
-
-	filePath := filepath.Join(repoPath, "prompts", id+".md")
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("read file %s: %w", filePath, err)
-	}
-	return string(content), nil
-}
-
-// SaveFileContent writes the full file content (including frontmatter) to a prompt file and commits it to Git.
-func (i *Indexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
-	if err := pathutil.ValidateID(id); err != nil {
-		return "", err
-	}
-
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	if repoPath == "" {
-		return "", fmt.Errorf("repository not initialized")
-	}
-
-	promptsDir := filepath.Join(repoPath, "prompts")
-	if err := os.MkdirAll(promptsDir, 0755); err != nil {
-		return "", fmt.Errorf("create prompts directory: %w", err)
-	}
-
-	filePath := filepath.Join(promptsDir, id+".md")
-	if err := os.WriteFile(filePath, []byte(fullContent), 0644); err != nil {
-		return "", fmt.Errorf("write file %s: %w", filePath, err)
-	}
-
-	// Stage and commit via GitBridge
-	relativePath := filepath.Join("prompts", id+".md")
-	hash, err := i.gitBridge.StageAndCommit(ctx, relativePath, commitMessage)
-	if err != nil {
-		return "", fmt.Errorf("git commit: %w", err)
-	}
-
-	return hash, nil
-}
-
-// CreatePlaceholder creates a draft placeholder file and commits it to Git.
-func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	if err := pathutil.ValidateID(id); err != nil {
-		return err
-	}
-
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	if repoPath == "" {
-		return fmt.Errorf("repository not initialized")
-	}
-
-	promptsDir := filepath.Join(repoPath, "prompts")
-	if err := os.MkdirAll(promptsDir, 0755); err != nil {
-		return fmt.Errorf("create prompts directory: %w", err)
-	}
-
-	fm := &domain.FrontMatter{
-		ID:       id,
-		Name:     name,
-		AssetType: bizLine,
-		Tags:     tags,
-		State:    "draft",
-		Category: category,
-	}
-
-	fullContent, err := yamlutil.FormatMarkdown(fm, `
-# Draft
-
-This is a placeholder. Content will be added in a future commit.
-`)
-	if err != nil {
-		return fmt.Errorf("format placeholder: %w", err)
-	}
-
-	filePath := filepath.Join(promptsDir, id+".md")
-	if err := os.WriteFile(filePath, []byte(fullContent), 0644); err != nil {
-		return fmt.Errorf("write placeholder file %s: %w", filePath, err)
-	}
-
-	relativePath := filepath.Join("prompts", id+".md")
-	_, err = i.gitBridge.StageAndCommit(ctx, relativePath, fmt.Sprintf("Create placeholder for %s (%s draft)", id, name))
-	if err != nil {
-		return fmt.Errorf("git commit placeholder: %w", err)
-	}
-
-	return nil
-}
-
 // Ensure Indexer implements service.AssetFileManager.
 var _ service.AssetFileManager = (*Indexer)(nil)
 
-// GetFrontmatter reads and parses the frontmatter from a prompt file.
-func (i *Indexer) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
-	fullContent, err := i.GetFileContent(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get file content: %w", err)
-	}
-
-	fm, _, err := yamlutil.ParseFrontMatter(fullContent)
-	if err != nil {
-		return nil, fmt.Errorf("parse frontmatter: %w", err)
-	}
-	return fm, nil
-}
-
-// UpdateFrontmatter reads the existing file, applies the updater to frontmatter,
-// writes back and commits to Git. Returns the commit hash. Body is preserved.
-func (i *Indexer) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
-	fullContent, err := i.GetFileContent(ctx, id)
-	if err != nil {
-		return "", fmt.Errorf("get file content: %w", err)
-	}
-
-	fm, body, err := yamlutil.ParseFrontMatter(fullContent)
-	if err != nil {
-		return "", fmt.Errorf("parse frontmatter: %w", err)
-	}
-
-	if err := updater(fm); err != nil {
-		return "", fmt.Errorf("updater rejected: %w", err)
-	}
-
-	newFullContent, err := yamlutil.FormatMarkdown(fm, body)
-	if err != nil {
-		return "", fmt.Errorf("format markdown: %w", err)
-	}
-
-	hash, err := i.SaveFileContent(ctx, id, newFullContent, commitMsg)
-	if err != nil {
-		return "", fmt.Errorf("save file content: %w", err)
-	}
-
-	return hash, nil
-}
-
-// UpdateFrontmatterFileOnly reads the existing file, applies the updater to frontmatter,
-// writes back WITHOUT committing to Git. Body is preserved.
-func (i *Indexer) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	if repoPath == "" {
-		return fmt.Errorf("repository not initialized")
-	}
-
-	filePath := filepath.Join(repoPath, "prompts", id+".md")
-
-	fullContent, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("read file %s: %w", filePath, err)
-	}
-
-	fm, body, err := yamlutil.ParseFrontMatter(string(fullContent))
-	if err != nil {
-		return fmt.Errorf("parse frontmatter: %w", err)
-	}
-
-	if err := updater(fm); err != nil {
-		return fmt.Errorf("updater rejected: %w", err)
-	}
-
-	newFullContent, err := yamlutil.FormatMarkdown(fm, body)
-	if err != nil {
-		return fmt.Errorf("format markdown: %w", err)
-	}
-
-	// Write without git commit
-	if err := os.WriteFile(filePath, []byte(newFullContent), 0644); err != nil {
-		return fmt.Errorf("write file %s: %w", filePath, err)
-	}
-
-	return nil
-}
-
-// WriteFileOnly reads the existing file, applies the updater to frontmatter,
-// replaces the body with newBody, then writes back WITHOUT committing to Git.
-// If the file doesn't exist, returns error.
-func (i *Indexer) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
-	repoPath := ""
-	if i.gitBridge != nil {
-		repoPath = i.gitBridge.RepoPath()
-	}
-	if repoPath == "" {
-		return fmt.Errorf("repository not initialized")
-	}
-
-	filePath := filepath.Join(repoPath, "prompts", id+".md")
-
-	// Read existing file
-	fullContent, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("read file %s: %w", filePath, err)
-	}
-
-	fm, _, err := yamlutil.ParseFrontMatter(string(fullContent))
-	if err != nil {
-		return fmt.Errorf("parse frontmatter: %w", err)
-	}
-
-	if err := updater(fm); err != nil {
-		return fmt.Errorf("updater rejected: %w", err)
-	}
-
-	newFullContent, err := yamlutil.FormatMarkdown(fm, newBody)
-	if err != nil {
-		return fmt.Errorf("format markdown: %w", err)
-	}
-
-	// Write without git commit
-	if err := os.WriteFile(filePath, []byte(newFullContent), 0644); err != nil {
-		return fmt.Errorf("write file %s: %w", filePath, err)
-	}
-
-	return nil
-}
-
-// WriteContent reads the existing file, applies the updater to frontmatter,
-// replaces the body with newBody, then writes back and commits to Git.
-// Returns the commit hash.
-func (i *Indexer) WriteContent(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error) {
-	fullContent, err := i.GetFileContent(ctx, id)
-	if err != nil {
-		return "", fmt.Errorf("get file content: %w", err)
-	}
-
-	fm, _, err := yamlutil.ParseFrontMatter(fullContent)
-	if err != nil {
-		return "", fmt.Errorf("parse frontmatter: %w", err)
-	}
-
-	if err := updater(fm); err != nil {
-		return "", fmt.Errorf("updater rejected: %w", err)
-	}
-
-	newFullContent, err := yamlutil.FormatMarkdown(fm, newBody)
-	if err != nil {
-		return "", fmt.Errorf("format markdown: %w", err)
-	}
-
-	hash, err := i.SaveFileContent(ctx, id, newFullContent, commitMsg)
-	if err != nil {
-		return "", fmt.Errorf("save file content: %w", err)
-	}
-
-	return hash, nil
-}
-
-// CommitFile stages and commits an existing file without modifying its content.
+// CommitFile stages and commits an asset without modifying its content.
+// For folder-based assets, commits both asset.yaml and main file.
 // Returns the commit hash.
 func (i *Indexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
 	repoPath := ""
@@ -738,15 +286,42 @@ func (i *Indexer) CommitFile(ctx context.Context, id string, commitMsg string) (
 		return "", fmt.Errorf("repository not initialized")
 	}
 
-	relativePath := fmt.Sprintf("prompts/%s.md", id)
-	hash, err := i.gitBridge.StageAndCommit(ctx, relativePath, commitMsg)
+	// Lookup asset to find asset.yaml path
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("asset not found: %w", err)
+	}
+
+	if detail.AssetPath == "" {
+		return "", fmt.Errorf("legacy .md assets are not supported")
+	}
+
+	// Read asset.yaml to resolve main path
+	ay, err := i.GetAssetYAML(ctx, detail.AssetPath)
+	if err != nil {
+		return "", fmt.Errorf("read asset.yaml: %w", err)
+	}
+
+	mainResolved, isExternal, err := ay.ResolveMain(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve main path: %w", err)
+	}
+
+	// Collect files to commit
+	filesToCommit := []string{detail.AssetPath}
+	if !isExternal {
+		filesToCommit = append(filesToCommit, mainResolved)
+	}
+
+	hash, err := i.gitBridge.StageAndCommitFiles(ctx, filesToCommit, commitMsg)
 	if err != nil {
 		return "", fmt.Errorf("git commit: %w", err)
 	}
+
 	return hash, nil
 }
 
-// CommitFiles stages and commits multiple existing files in batch.
+// CommitFiles stages and commits multiple assets in batch.
 // Returns a map of asset ID to commit hash.
 func (i *Indexer) CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error) {
 	results := make(map[string]string)
@@ -759,33 +334,6 @@ func (i *Indexer) CommitFiles(ctx context.Context, ids []string, commitMsg strin
 		results[id] = hash
 	}
 	return results, nil
-}
-
-// GetBody reads the file, strips frontmatter, returns only the body.
-func (i *Indexer) GetBody(ctx context.Context, id string) (string, error) {
-	fullContent, err := i.GetFileContent(ctx, id)
-	if err != nil {
-		return "", fmt.Errorf("get file content: %w", err)
-	}
-
-	lines := strings.Split(fullContent, "\n")
-	frontmatterEnd := -1
-	inFrontmatter := false
-	for idx, line := range lines {
-		if idx == 0 && strings.HasPrefix(line, "---") {
-			inFrontmatter = true
-			continue
-		}
-		if inFrontmatter && strings.HasPrefix(line, "---") {
-			frontmatterEnd = idx
-			break
-		}
-	}
-
-	if frontmatterEnd >= 0 {
-		return yamlutil.NormalizeBody(strings.Join(lines[frontmatterEnd+1:], "\n")), nil
-	}
-	return yamlutil.NormalizeBody(fullContent), nil
 }
 
 // matchAsset returns true if the asset matches the query and filters.
@@ -1057,4 +605,239 @@ func (i *Indexer) GetAssetFiles(ctx context.Context, assetPath string) (files []
 	}
 
 	return files, external, nil
+}
+
+// GetFrontmatter reads and parses the frontmatter from an asset's main file.
+func (i *Indexer) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("asset not found: %s: %w", id, err)
+	}
+	if detail.AssetPath == "" {
+		return nil, fmt.Errorf("asset path is empty for: %s", id)
+	}
+	content, _, _, err := i.GetMainFileContent(ctx, detail.AssetPath)
+	if err != nil {
+		return nil, fmt.Errorf("read main file: %w", err)
+	}
+	fm, _, err := yamlutil.ParseFrontMatter(content)
+	if err != nil {
+		return nil, fmt.Errorf("parse frontmatter: %w", err)
+	}
+	return fm, nil
+}
+
+// UpdateFrontmatter reads the frontmatter, applies the updater function, and writes it back.
+// Then creates a Git commit.
+func (i *Indexer) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("asset not found: %s: %w", id, err)
+	}
+	if detail.AssetPath == "" {
+		return "", fmt.Errorf("asset path is empty for: %s", id)
+	}
+
+	// Read current content
+	content, mainPath, isExt, err := i.GetMainFileContent(ctx, detail.AssetPath)
+	if err != nil {
+		return "", fmt.Errorf("read main file: %w", err)
+	}
+
+	// Parse frontmatter
+	fm, body, err := yamlutil.ParseFrontMatter(content)
+	if err != nil {
+		return "", fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	// Apply updater
+	if err := updater(fm); err != nil {
+		return "", fmt.Errorf("updater failed: %w", err)
+	}
+
+	// Serialize frontmatter back
+	yamlStr, err := yamlutil.SerializeFrontMatter(fm)
+	if err != nil {
+		return "", fmt.Errorf("serialize frontmatter: %w", err)
+	}
+
+	// Reconstruct file content: --- + yaml + --- + body
+	newContent := fmt.Sprintf("---\n%s---\n%s", yamlStr, body)
+
+	// Write back
+	repoPath := i.gitBridge.RepoPath()
+	if !isExt {
+		fullPath := filepath.Join(repoPath, mainPath)
+		if err := os.WriteFile(fullPath, []byte(newContent), 0644); err != nil {
+			return "", fmt.Errorf("write file: %w", err)
+		}
+	}
+
+	// Git commit
+	if i.gitBridge != nil && commitMsg != "" {
+		commitHash, err := i.gitBridge.StageAndCommit(ctx, mainPath, commitMsg)
+		if err != nil {
+			return "", fmt.Errorf("git commit: %w", err)
+		}
+		return commitHash, nil
+	}
+	return "", nil
+}
+
+// UpdateFrontmatterFileOnly updates frontmatter without creating a Git commit.
+func (i *Indexer) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
+	_, err := i.UpdateFrontmatter(ctx, id, updater, "")
+	return err
+}
+
+// GetBody returns the body content (markdown) without frontmatter.
+func (i *Indexer) GetBody(ctx context.Context, id string) (string, error) {
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("asset not found: %s: %w", id, err)
+	}
+	if detail.AssetPath == "" {
+		return "", fmt.Errorf("asset path is empty for: %s", id)
+	}
+	content, _, _, err := i.GetMainFileContent(ctx, detail.AssetPath)
+	if err != nil {
+		return "", fmt.Errorf("read main file: %w", err)
+	}
+	_, body, err := yamlutil.ParseFrontMatter(content)
+	if err != nil {
+		// If no frontmatter, return the whole content as body
+		return content, nil
+	}
+	return body, nil
+}
+
+// WriteFileOnly writes the body content without updating frontmatter metadata.
+func (i *Indexer) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("asset not found: %s: %w", id, err)
+	}
+	if detail.AssetPath == "" {
+		return fmt.Errorf("asset path is empty for: %s", id)
+	}
+
+	// Read current content
+	content, mainPath, isExt, err := i.GetMainFileContent(ctx, detail.AssetPath)
+	if err != nil {
+		return fmt.Errorf("read main file: %w", err)
+	}
+
+	// Parse frontmatter
+	fm, _, err := yamlutil.ParseFrontMatter(content)
+	if err != nil {
+		return fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	// Apply updater to frontmatter
+	if err := updater(fm); err != nil {
+		return fmt.Errorf("updater failed: %w", err)
+	}
+
+	// Serialize frontmatter
+	yamlStr, err := yamlutil.SerializeFrontMatter(fm)
+	if err != nil {
+		return fmt.Errorf("serialize frontmatter: %w", err)
+	}
+
+	// Reconstruct: --- + yaml + --- + newBody
+	newContent := fmt.Sprintf("---\n%s---\n%s", yamlStr, newBody)
+
+	// Write back (skip for external assets)
+	if !isExt {
+		repoPath := i.gitBridge.RepoPath()
+		fullPath := filepath.Join(repoPath, mainPath)
+		if err := os.WriteFile(fullPath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("write file: %w", err)
+		}
+	}
+	return nil
+}
+
+// GetFileContent reads the raw file content (including frontmatter) for an asset.
+func (i *Indexer) GetFileContent(ctx context.Context, id string) (string, error) {
+	detail, err := i.GetByID(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("asset not found: %s: %w", id, err)
+	}
+	if detail.AssetPath == "" {
+		return "", fmt.Errorf("asset path is empty for: %s", id)
+	}
+	content, _, _, err := i.GetMainFileContent(ctx, detail.AssetPath)
+	if err != nil {
+		return "", fmt.Errorf("read main file: %w", err)
+	}
+	return content, nil
+}
+
+// CreatePlaceholder creates a placeholder file for a new asset.
+func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, assetType string, tags []string, category string) error {
+	repoPath := i.gitBridge.RepoPath()
+	if repoPath == "" {
+		return fmt.Errorf("repository not initialized")
+	}
+
+	// Determine the subdirectory based on asset type
+	subDir := assetType
+	switch assetType {
+	case "prompt":
+		subDir = "prompts"
+	case "skill":
+		subDir = "skills"
+	case "agent":
+		subDir = "agents"
+	case "mcp":
+		subDir = "mcp"
+	case "workflow":
+		subDir = "workflows"
+	case "knowledge":
+		subDir = "knowledge"
+	default:
+		subDir = "prompts"
+	}
+
+	// Create directory structure
+	assetDir := filepath.Join(repoPath, "assets", subDir, id)
+	if err := os.MkdirAll(assetDir, 0755); err != nil {
+		return fmt.Errorf("create asset directory: %w", err)
+	}
+
+	// Create asset.yaml
+	ay := domain.NewAssetYAML(assetType, name, filepath.Join(subDir, id, "main.md"))
+	ay.Tags = tags
+	ay.Category = category
+
+	assetYamlPath := filepath.Join(assetDir, "asset.yaml")
+	yamlContent, err := domain.SerializeAssetYAML(ay)
+	if err != nil {
+		return fmt.Errorf("serialize asset.yaml: %w", err)
+	}
+	if err := os.WriteFile(assetYamlPath, []byte(yamlContent), 0644); err != nil {
+		return fmt.Errorf("write asset.yaml: %w", err)
+	}
+
+	// Create main.md with frontmatter
+	fm := &domain.FrontMatter{
+		ID:          id,
+		Name:        name,
+		AssetType:     assetType,
+		Tags:        tags,
+		State:       "draft",
+		ContentHash: "placeholder",
+	}
+	yamlStr, err := yamlutil.SerializeFrontMatter(fm)
+	if err != nil {
+		return fmt.Errorf("serialize frontmatter: %w", err)
+	}
+	mainContent := fmt.Sprintf("---\n%s---\n\n# %s\n\nPlaceholder content", yamlStr, name)
+	mainPath := filepath.Join(assetDir, "main.md")
+	if err := os.WriteFile(mainPath, []byte(mainContent), 0644); err != nil {
+		return fmt.Errorf("write main.md: %w", err)
+	}
+
+	return nil
 }

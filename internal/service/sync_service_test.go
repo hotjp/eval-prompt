@@ -50,20 +50,16 @@ func (m *mockSyncIndexer) Reconcile(ctx context.Context) (ReconcileReport, error
 	return ReconcileReport{}, nil
 }
 
-func (m *mockSyncIndexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
+func (m *mockSyncIndexer) GetMainFileContent(ctx context.Context, assetPath string) (string, string, bool, error) {
+	return "", "", false, nil
+}
+
+func (m *mockSyncIndexer) WriteMainFileContent(ctx context.Context, assetPath string, content string) (string, error) {
 	return "", nil
 }
 
-func (m *mockSyncIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	return nil
-}
-
-func (m *mockSyncIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
-	return "", nil
-}
-
-func (m *mockSyncIndexer) GetBody(ctx context.Context, id string) (string, error) {
-	return "", nil
+func (m *mockSyncIndexer) GetAssetFiles(ctx context.Context, assetPath string) ([]FileInfo, []FileInfo, error) {
+	return nil, nil, nil
 }
 
 func (m *mockSyncIndexer) ReInit(ctx context.Context, path string) error {

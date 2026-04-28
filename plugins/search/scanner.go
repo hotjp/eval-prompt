@@ -330,6 +330,9 @@ func (i *Indexer) GetAssetYAML(ctx context.Context, assetPath string) (*domain.A
 
 // SaveAssetYAML writes an AssetYAML to disk and commits it to Git.
 func (i *Indexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error) {
+	if i.gitBridge == nil {
+		return "", fmt.Errorf("git bridge not configured")
+	}
 	repoPath := i.gitBridge.RepoPath()
 	if repoPath == "" {
 		return "", fmt.Errorf("repository not initialized")

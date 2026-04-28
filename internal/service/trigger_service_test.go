@@ -49,20 +49,16 @@ func (m *mockAssetIndexer) Reconcile(ctx context.Context) (ReconcileReport, erro
 	return ReconcileReport{}, nil
 }
 
-func (m *mockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
+func (m *mockAssetIndexer) GetMainFileContent(ctx context.Context, assetPath string) (string, string, bool, error) {
+	return "", "", false, nil
+}
+
+func (m *mockAssetIndexer) WriteMainFileContent(ctx context.Context, assetPath string, content string) (string, error) {
 	return "", nil
 }
 
-func (m *mockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
-	return "", nil
-}
-
-func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error) {
-	return "", nil
-}
-
-func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	return nil
+func (m *mockAssetIndexer) GetAssetFiles(ctx context.Context, assetPath string) ([]FileInfo, []FileInfo, error) {
+	return nil, nil, nil
 }
 
 func (m *mockAssetIndexer) ReInit(ctx context.Context, path string) error {

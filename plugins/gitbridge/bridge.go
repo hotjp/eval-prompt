@@ -100,13 +100,19 @@ func (b *Bridge) InitRepo(ctx context.Context, path string) error {
 
 // StageAndCommit stages the file at filePath and creates a commit with the given message.
 func (b *Bridge) StageAndCommit(ctx context.Context, filePath, message string) (string, error) {
+	return b.StageAndCommitFiles(ctx, []string{filePath}, message)
+}
+
+// StageAndCommitFiles stages multiple files and creates a single commit with the given message.
+func (b *Bridge) StageAndCommitFiles(ctx context.Context, filePaths []string, message string) (string, error) {
 	if b.repoPath == "" {
 		return "", errors.New("repository not initialized")
 	}
 
-	// Stage file
-	if _, err := b.runGit(ctx, "add", filePath); err != nil {
-		return "", fmt.Errorf("stage file %s: %w", filePath, err)
+	// Stage files
+	args := append([]string{"add"}, filePaths...)
+	if _, err := b.runGit(ctx, args...); err != nil {
+		return "", fmt.Errorf("stage files: %w", err)
 	}
 
 	// Create commit

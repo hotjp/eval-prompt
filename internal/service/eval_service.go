@@ -511,96 +511,15 @@ func (s *EvalService) appendFailedCall(ctx context.Context, execID, runID, asset
 	}
 }
 
-// updateAssetEvalHistory updates the asset's frontmatter with eval execution history.
+// updateAssetEvalHistory updates the asset's eval history after an execution.
+// In folder-based design, eval history is stored in SQLite only (not in frontmatter).
 func (s *EvalService) updateAssetEvalHistory(ctx context.Context, exec *domain.EvalExecution) error {
-	if s.fileManager == nil {
-		slog.Warn("fileManager not configured, skipping eval_history update")
-		return nil
-	}
-
-	// 1. Get all calls for this execution
-	calls, err := s.callStore.ListByExecution(ctx, exec.ID)
-	if err != nil {
-		return fmt.Errorf("failed to list calls: %w", err)
-	}
-
-	if len(calls) == 0 {
-		slog.Info("no calls found for execution, skipping eval_history update", "execution_id", exec.ID)
-		return nil
-	}
-
-	// 2. Read asset frontmatter
-	fm, err := s.fileManager.GetFrontmatter(ctx, exec.AssetID)
-	if err != nil {
-		return fmt.Errorf("failed to get frontmatter: %w", err)
-	}
-
-	// 3. Calculate aggregate stats from calls
-	var totalTokensIn, totalTokensOut int
-	var totalLatencyMs int64
-	var successCount int
-	completedCalls := make([]*LLMCall, 0, len(calls))
-	for _, call := range calls {
-		totalTokensIn += call.TokensIn
-		totalTokensOut += call.TokensOut
-		totalLatencyMs += call.LatencyMs
-		if call.Status == "completed" {
-			successCount++
-			completedCalls = append(completedCalls, call)
-		}
-	}
-
-	// 4. Construct EvalHistoryEntry (score暂设为0，因为当前RunEval没有评分逻辑)
-	entry := domain.EvalHistoryEntry{
-		RunID:              exec.ID,
-		SnapshotID:         exec.SnapshotID,
-		Score:              0, // TODO: 评分逻辑待补充
-		DeterministicScore: 0,
-		RubricScore:        0,
-		Model:              exec.Model,
-		EvalCaseVersion:    "", // RunEval doesn't track specific case version
-		TokensIn:           totalTokensIn,
-		TokensOut:          totalTokensOut,
-		DurationMs:         totalLatencyMs,
-		Date:               time.Now().Format("2006-01-02"),
-		By:                 "system",
-	}
-	fm.EvalHistory = append(fm.EvalHistory, entry)
-
-	// 5. Update eval_stats using Welford algorithm
-	if fm.EvalStats == nil {
-		fm.EvalStats = make(domain.EvalStats)
-	}
-	stat := fm.EvalStats[exec.Model]
-	// Score暂设为0，后续评分逻辑补充后使用实际分数
-	stat.Update(0)
-	stat.LastRun = time.Now().Format("2006-01-02")
-	fm.EvalStats[exec.Model] = stat
-
-	// 6. Write back frontmatter
-	commitMsg := fmt.Sprintf("Update eval_history for asset %s after execution %s", exec.AssetID, exec.ID)
-	if _, err := s.fileManager.UpdateFrontmatter(ctx, exec.AssetID, func(f *domain.FrontMatter) error {
-		f.EvalHistory = fm.EvalHistory
-		f.EvalStats = fm.EvalStats
-		return nil
-	}, commitMsg); err != nil {
-		return fmt.Errorf("failed to update frontmatter: %w", err)
-	}
-
-	// 7. Git commit via gitBridger
-	if s.gitBridger != nil {
-		// Get the file path for the asset
-		filePath := fmt.Sprintf("prompts/%s.md", exec.AssetID)
-		if _, err := s.gitBridger.StageAndCommit(ctx, filePath, commitMsg); err != nil {
-			slog.Warn("failed to commit eval_history", "error", err)
-		}
-	}
-
-	// 8. Notify indexer to refresh
+	// Eval history is persisted in SQLite by the eval runner.
+	// Folder-based assets do not store eval_history in frontmatter.
+	// Notify indexer to refresh in case the asset state changed.
 	if s.configManager != nil {
 		s.configManager.Notify(ctx, "repo", []string{exec.AssetID})
 	}
-
 	return nil
 }
 

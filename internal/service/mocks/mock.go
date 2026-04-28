@@ -12,16 +12,13 @@ import (
 
 // MockAssetIndexer is a mock implementation of service.AssetIndexer.
 type MockAssetIndexer struct {
-	MockAssetFileManager // embeds AssetFileManager methods (GetFrontmatter, UpdateFrontmatter, WriteContent, GetBody)
-	SearchFunc          func(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error)
-	GetByIDFunc         func(ctx context.Context, id string) (*service.AssetDetail, error)
-	SaveFunc            func(ctx context.Context, asset service.Asset) error
-	DeleteFunc          func(ctx context.Context, id string) error
-	CreatePlaceholderFunc func(ctx context.Context, id, name, bizLine string, tags []string, category string) error
-	GetFileContentFunc  func(ctx context.Context, id string) (string, error)
-	SaveFileContentFunc func(ctx context.Context, id, content, commitMsg string) (string, error)
-	CommitFileFunc      func(ctx context.Context, id string, commitMsg string) (string, error)
-	CommitFilesFunc     func(ctx context.Context, ids []string, commitMsg string) (map[string]string, error)
+	MockAssetFileManager
+	SearchFunc           func(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error)
+	GetByIDFunc          func(ctx context.Context, id string) (*service.AssetDetail, error)
+	SaveFunc             func(ctx context.Context, asset service.Asset) error
+	DeleteFunc           func(ctx context.Context, id string) error
+	CommitFileFunc       func(ctx context.Context, id string, commitMsg string) (string, error)
+	CommitFilesFunc      func(ctx context.Context, ids []string, commitMsg string) (map[string]string, error)
 }
 
 func (m *MockAssetIndexer) Search(ctx context.Context, query string, filters service.SearchFilters) ([]service.AssetSummary, error) {
@@ -40,9 +37,10 @@ func (m *MockAssetIndexer) GetByID(ctx context.Context, id string) (*service.Ass
 		ID:          id,
 		Name:        "Test Asset",
 		Description: "Test description",
-		AssetType:     "ai",
+		AssetType:   "ai",
 		Tags:        []string{"test"},
 		State:       "created",
+		AssetPath:   "assets/prompts/test.yaml",
 		Snapshots:   []service.SnapshotSummary{},
 		Labels:      []service.LabelInfo{},
 	}, nil
@@ -64,27 +62,6 @@ func (m *MockAssetIndexer) Delete(ctx context.Context, id string) error {
 
 func (m *MockAssetIndexer) Reconcile(ctx context.Context) (service.ReconcileReport, error) {
 	return service.ReconcileReport{}, nil
-}
-
-func (m *MockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	if m.CreatePlaceholderFunc != nil {
-		return m.CreatePlaceholderFunc(ctx, id, name, bizLine, tags, category)
-	}
-	return nil
-}
-
-func (m *MockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
-	if m.GetFileContentFunc != nil {
-		return m.GetFileContentFunc(ctx, id)
-	}
-	return "", nil
-}
-
-func (m *MockAssetIndexer) SaveFileContent(ctx context.Context, id, content, commitMsg string) (string, error) {
-	if m.SaveFileContentFunc != nil {
-		return m.SaveFileContentFunc(ctx, id, content, commitMsg)
-	}
-	return "mock-commit-hash", nil
 }
 
 func (m *MockAssetIndexer) CommitFile(ctx context.Context, id string, commitMsg string) (string, error) {
@@ -111,62 +88,14 @@ func (m *MockAssetIndexer) ReInit(ctx context.Context, path string) error {
 
 // MockAssetFileManager is a mock implementation of service.AssetFileManager.
 type MockAssetFileManager struct {
-	GetFrontmatterFunc    func(ctx context.Context, id string) (*domain.FrontMatter, error)
-	UpdateFrontmatterFunc func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error)
-	WriteContentFunc      func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error)
-	GetBodyFunc           func(ctx context.Context, id string) (string, error)
-	WriteFileOnlyFunc     func(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error
-	UpdateFrontmatterFileOnlyFunc func(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error
-	GetMainFileContentFunc func(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error)
+	GetMainFileContentFunc   func(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error)
 	WriteMainFileContentFunc func(ctx context.Context, assetPath string, content string) (newContentHash string, err error)
-	GetAssetFilesFunc     func(ctx context.Context, assetPath string) (files []service.FileInfo, external []service.FileInfo, err error)
-	ScanFunc             func(ctx context.Context, source string) (*service.ScanResult, error)
-	GetAssetYAMLFunc     func(ctx context.Context, assetPath string) (*domain.AssetYAML, error)
-	SaveAssetYAMLFunc    func(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error)
-	MoveAssetFilesFunc   func(ctx context.Context, sourceDir, destDir string) error
-	GetRepoPathFunc      func() string
-}
-
-func (m *MockAssetFileManager) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
-	if m.GetFrontmatterFunc != nil {
-		return m.GetFrontmatterFunc(ctx, id)
-	}
-	return &domain.FrontMatter{ID: id, Name: "Test Asset"}, nil
-}
-
-func (m *MockAssetFileManager) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
-	if m.UpdateFrontmatterFunc != nil {
-		return m.UpdateFrontmatterFunc(ctx, id, updater, commitMsg)
-	}
-	return "mock-commit-hash", nil
-}
-
-func (m *MockAssetFileManager) WriteContent(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error) {
-	if m.WriteContentFunc != nil {
-		return m.WriteContentFunc(ctx, id, updater, newBody, commitMsg)
-	}
-	return "mock-commit-hash", nil
-}
-
-func (m *MockAssetFileManager) GetBody(ctx context.Context, id string) (string, error) {
-	if m.GetBodyFunc != nil {
-		return m.GetBodyFunc(ctx, id)
-	}
-	return "# Test Content", nil
-}
-
-func (m *MockAssetFileManager) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
-	if m.WriteFileOnlyFunc != nil {
-		return m.WriteFileOnlyFunc(ctx, id, updater, newBody)
-	}
-	return nil
-}
-
-func (m *MockAssetFileManager) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
-	if m.UpdateFrontmatterFileOnlyFunc != nil {
-		return m.UpdateFrontmatterFileOnlyFunc(ctx, id, updater)
-	}
-	return nil
+	GetAssetFilesFunc        func(ctx context.Context, assetPath string) (files []service.FileInfo, external []service.FileInfo, err error)
+	ScanFunc                 func(ctx context.Context, source string) (*service.ScanResult, error)
+	GetAssetYAMLFunc         func(ctx context.Context, assetPath string) (*domain.AssetYAML, error)
+	SaveAssetYAMLFunc        func(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error)
+	MoveAssetFilesFunc       func(ctx context.Context, sourceDir, destDir string) error
+	GetRepoPathFunc          func() string
 }
 
 func (m *MockAssetFileManager) GetMainFileContent(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error) {

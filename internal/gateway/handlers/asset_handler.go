@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -17,7 +19,7 @@ import (
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/internal/service"
-	"github.com/eval-prompt/internal/yamlutil"
+
 )
 
 // AssetHandler handles asset CRUD API endpoints.
@@ -70,53 +72,7 @@ func (h *AssetHandler) getCurrentRepoPath() string {
 // generateTriggers analyzes content and updates triggers in frontmatter.
 // Returns the generated triggers or nil if generation failed/skipped.
 func (h *AssetHandler) generateTriggers(ctx context.Context, id, content string) ([]domain.TriggerEntry, error) {
-	if h.semanticAnalyzer == nil {
-		return nil, nil
-	}
-
-	// Get existing frontmatter for description and asset_type
-	fm, err := h.fileManager.GetFrontmatter(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get frontmatter: %w", err)
-	}
-
-	// Analyze content
-	result, err := h.semanticAnalyzer.AnalyzeContent(ctx, service.AnalyzeContentRequest{
-		Content:     content,
-		Description: fm.Description,
-		AssetType:     fm.AssetType,
-	})
-	if err != nil || result == nil {
-		return nil, err
-	}
-
-	if len(result.Triggers) == 0 {
-		return nil, nil
-	}
-
-	// Convert service.TriggerEntry to domain.TriggerEntry
-	incoming := make([]domain.TriggerEntry, len(result.Triggers))
-	for i, t := range result.Triggers {
-		incoming[i] = domain.TriggerEntry{
-			Pattern:    t.Pattern,
-			Examples:   t.Examples,
-			Confidence: t.Confidence,
-		}
-	}
-
-	// Merge with existing triggers (keep higher confidence)
-	merged := mergeTriggers(fm.Triggers, incoming)
-
-	// Update frontmatter with merged triggers (write only, no git commit)
-	err = h.fileManager.UpdateFrontmatterFileOnly(ctx, id, func(frontmatter *domain.FrontMatter) error {
-		frontmatter.Triggers = merged
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("update frontmatter: %w", err)
-	}
-
-	return merged, nil
+	return nil, nil
 }
 
 // mergeTriggers merges new triggers with existing ones, keeping higher confidence.
@@ -462,11 +418,16 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	assetType := req.AssetType
+	if assetType == "" {
+		assetType = "prompt"
+	}
+
 	asset := service.Asset{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
-		AssetType:     req.AssetType,
+		AssetType:   assetType,
 		Tags:        req.Tags,
 		State:       "created",
 		RepoPath:    h.getCurrentRepoPath(),
@@ -477,10 +438,41 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create placeholder file and commit to Git (best effort — non-fatal if git unavailable)
-	if err := h.indexer.CreatePlaceholder(ctx, req.ID, req.Name, req.AssetType, req.Tags, req.Category); err != nil {
-		// Log but don't fail — placeholder is a courtesy for Git users
-		h.logger.Warn("failed to create placeholder file", "asset_id", req.ID, "error", err, "layer", "L5")
+	// Create asset.yaml and placeholder content (best effort — non-fatal if git unavailable)
+	assetPath := fmt.Sprintf("assets/%ss/%s.yaml", assetType, req.ID)
+	mainPath := fmt.Sprintf("%ss/%s/overview.md", assetType, req.ID)
+	if assetType == "skill" {
+		mainPath = fmt.Sprintf("skills/%s/handler.py", req.ID)
+	} else if assetType == "agent" {
+		mainPath = fmt.Sprintf("agents/%s/agent.md", req.ID)
+	} else if assetType == "mcp" {
+		mainPath = fmt.Sprintf("mcps/%s/mcp.yaml", req.ID)
+	} else if assetType == "workflow" {
+		mainPath = fmt.Sprintf("workflows/%s/workflow.yaml", req.ID)
+	} else if assetType == "knowledge" {
+		mainPath = fmt.Sprintf("knowledges/%s/knowledge.md", req.ID)
+	}
+
+	ay := domain.NewAssetYAML(assetType, req.Name, mainPath)
+	ay.Description = req.Description
+	ay.Tags = req.Tags
+	ay.Category = req.Category
+	if ay.Category == "" {
+		ay.Category = "content"
+	}
+
+	repoPath := h.getCurrentRepoPath()
+	if repoPath != "" {
+		// Create content directory and placeholder main file
+		contentDir := filepath.Join(repoPath, fmt.Sprintf("%ss", assetType), req.ID)
+		if err := os.MkdirAll(contentDir, 0755); err == nil {
+			placeholderFile := filepath.Join(contentDir, filepath.Base(mainPath))
+			os.WriteFile(placeholderFile, []byte("# Draft\n\nContent will be added in a future commit.\n"), 0644)
+		}
+	}
+
+	if _, err := h.fileManager.SaveAssetYAML(ctx, assetPath, ay, fmt.Sprintf("Create asset %s", req.ID)); err != nil {
+		h.logger.Warn("failed to create asset.yaml", "asset_id", req.ID, "error", err, "layer", "L5")
 	}
 
 	h.logger.Info("asset created", "asset_id", req.ID, "layer", "L5")
@@ -628,58 +620,7 @@ func (h *AssetHandler) GetAssetContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Legacy .md file structure: read and strip frontmatter
-	fullContent, err := h.indexer.GetFileContent(ctx, id)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "content not found: %s", err)
-		return
-	}
-
-	// Strip frontmatter — find the second ---
-	lines := strings.Split(fullContent, "\n")
-	frontmatterEnd := -1
-	inFrontmatter := false
-	for i, line := range lines {
-		if i == 0 && strings.HasPrefix(line, "---") {
-			inFrontmatter = true
-			continue
-		}
-		if inFrontmatter && strings.HasPrefix(line, "---") {
-			frontmatterEnd = i
-			break
-		}
-	}
-
-	var body string
-	var contentHash string
-	var updatedAt string
-	if frontmatterEnd >= 0 {
-		// Parse frontmatter to get content_hash and updated_at
-		frontmatterBlock := strings.Join(lines[1:frontmatterEnd], "\n")
-		fullFrontmatter := "---\n" + frontmatterBlock + "\n---"
-		fm, _, err := yamlutil.ParseFrontMatter(fullFrontmatter)
-		if err != nil {
-			h.logger.Warn("failed to parse frontmatter", "asset_id", id, "error", err, "layer", "L5")
-		}
-		if fm != nil {
-			contentHash = fm.ContentHash
-			if !fm.UpdatedAt.IsZero() {
-				updatedAt = fm.UpdatedAt.Format(time.RFC3339)
-				w.Header().Set("Last-Modified", updatedAt)
-			}
-		}
-		body = yamlutil.NormalizeBody(strings.Join(lines[frontmatterEnd+1:], "\n"))
-	} else {
-		// No frontmatter found, return as-is
-		body = fullContent
-	}
-
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"id":           id,
-		"content":      body,
-		"content_hash":  contentHash,
-		"updated_at":   updatedAt,
-	})
+	h.writeError(w, http.StatusNotFound, "asset not found or legacy .md assets are not supported")
 }
 
 // SaveAssetContent handles PUT /api/v1/assets/{id}/content.
@@ -756,63 +697,8 @@ func (h *AssetHandler) SaveAssetContent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Legacy .md file structure
-	// Conflict detection: compute hash from current file's body and compare with client's hash
-	if req.ContentHash != "" {
-		currentBody, err := h.fileManager.GetBody(ctx, id)
-		if err == nil {
-			currentHash := sha256.Sum256([]byte(yamlutil.NormalizeBody(currentBody)))
-			currentHashStr := hex.EncodeToString(currentHash[:8])
-			if currentHashStr != req.ContentHash {
-				h.writeError(w, http.StatusConflict, "content has been modified by another session")
-				return
-			}
-		}
-	}
-
-	// Normalize body for consistent hashing and storage
-	normalizedContent := yamlutil.NormalizeBody(req.Content)
-
-	// Compute new hash
-	hashed := sha256.Sum256([]byte(normalizedContent))
-	newHash = hex.EncodeToString(hashed[:8])
-	updatedAt = time.Now()
-
-	// WriteFileOnly saves the file without git commit
-	err = h.fileManager.WriteFileOnly(ctx, id, func(fm *domain.FrontMatter) error {
-		fm.ContentHash = newHash
-		fm.UpdatedAt = updatedAt
-		return nil
-	}, normalizedContent)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "failed to save content: %v", err)
-		return
-	}
-
-	h.logger.Info("asset content saved", "asset_id", id, "layer", "L5")
-
-	// Async: generate triggers in background (does not block response)
-	if h.semanticAnalyzer != nil {
-		go func() {
-			bgCtx := context.Background()
-			triggers, err := h.generateTriggers(bgCtx, id, req.Content)
-			if err == nil && len(triggers) > 0 {
-				h.logger.Info("triggers auto-generated", "asset_id", id, "count", len(triggers), "layer", "L5")
-			}
-		}()
-	}
-
-	// Preference-Applied: return=representation
-	w.Header().Set("Preference-Applied", "return=representation")
-	w.Header().Set("Last-Modified", updatedAt.Format(time.RFC3339))
-
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"id":           id,
-		"content":      normalizedContent,
-		"content_hash": newHash,
-		"updated_at":   updatedAt.Format(time.RFC3339),
-		"message":      "content saved successfully (use /commit to save to git)",
-	})
+	h.writeError(w, http.StatusBadRequest, "legacy .md assets are not supported")
+	return
 }
 
 // CommitAsset handles POST /api/v1/assets/{id}/commit.
@@ -1161,29 +1047,22 @@ func (h *AssetHandler) BatchTagAssets(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// For legacy .md structure, update frontmatter
 		if detail.AssetPath == "" {
-			_, err = h.fileManager.UpdateFrontmatter(ctx, id, func(fm *domain.FrontMatter) error {
-				fm.Tags = newTags
-				return nil
-			}, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
-			if err != nil {
-				errors[id] = fmt.Sprintf("failed to update frontmatter: %v", err)
-				continue
-			}
-		} else {
-			// New folder structure: update asset.yaml
-			ay, err := h.fileManager.GetAssetYAML(ctx, detail.AssetPath)
-			if err != nil {
-				errors[id] = fmt.Sprintf("failed to read asset.yaml: %v", err)
-				continue
-			}
-			ay.Tags = newTags
-			_, err = h.fileManager.SaveAssetYAML(ctx, detail.AssetPath, ay, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
-			if err != nil {
-				errors[id] = fmt.Sprintf("failed to update asset.yaml: %v", err)
-				continue
-			}
+			errors[id] = "legacy .md assets are not supported"
+			continue
+		}
+
+		// New folder structure: update asset.yaml
+		ay, err := h.fileManager.GetAssetYAML(ctx, detail.AssetPath)
+		if err != nil {
+			errors[id] = fmt.Sprintf("failed to read asset.yaml: %v", err)
+			continue
+		}
+		ay.Tags = newTags
+		_, err = h.fileManager.SaveAssetYAML(ctx, detail.AssetPath, ay, fmt.Sprintf("Batch %s tag '%s'", req.Action, req.Tag))
+		if err != nil {
+			errors[id] = fmt.Sprintf("failed to update asset.yaml: %v", err)
+			continue
 		}
 
 		results[id] = "success"
@@ -1219,32 +1098,41 @@ func (h *AssetHandler) ArchiveAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update frontmatter state to archived
-	hash, err := h.fileManager.UpdateFrontmatter(ctx, id, func(fm *domain.FrontMatter) error {
-		fm.State = "archived"
-		fm.UpdatedAt = time.Now()
-		return nil
-	}, fmt.Sprintf("Archive asset %s", id))
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "asset file not found: %s", err)
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
 		return
 	}
 
-	// Update in-memory index so UI reflects change immediately
-	fm, err := h.fileManager.GetFrontmatter(ctx, id)
-	if err == nil {
-		asset := service.Asset{
-			ID:          fm.ID,
-			Name:        fm.Name,
-			Description: fm.Description,
-			AssetType:     fm.AssetType,
-			Tags:        fm.Tags,
-			ContentHash: fm.ContentHash,
-			State:       fm.State,
-		}
-		if err := h.indexer.Save(ctx, asset); err != nil {
-			h.logger.Warn("failed to update index after archive", "asset_id", id, "error", err, "layer", "L5")
-		}
+	if detail.AssetPath == "" {
+		h.writeError(w, http.StatusBadRequest, "legacy .md assets are not supported")
+		return
+	}
+
+	ay, err := h.fileManager.GetAssetYAML(ctx, detail.AssetPath)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read asset.yaml: %v", err)
+		return
+	}
+
+	ay.State = "archived"
+
+	hash, err := h.fileManager.SaveAssetYAML(ctx, detail.AssetPath, ay, fmt.Sprintf("Archive asset %s", id))
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to save asset.yaml: %v", err)
+		return
+	}
+
+	asset := service.Asset{
+		ID:          detail.ID,
+		Name:        detail.Name,
+		Description: detail.Description,
+		AssetType:   detail.AssetType,
+		Tags:        detail.Tags,
+		State:       ay.State,
+	}
+	if err := h.indexer.Save(ctx, asset); err != nil {
+		h.logger.Warn("failed to update index after archive", "asset_id", id, "error", err, "layer", "L5")
 	}
 
 	h.logger.Info("asset archived", "asset_id", id, "commit", hash, "layer", "L5")
@@ -1278,39 +1166,48 @@ func (h *AssetHandler) RestoreAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update frontmatter state to active
-	hash, err := h.fileManager.UpdateFrontmatter(ctx, id, func(fm *domain.FrontMatter) error {
-		fm.State = "active"
-		fm.UpdatedAt = time.Now()
-		return nil
-	}, fmt.Sprintf("Restore asset %s", id))
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "asset file not found: %s", err)
+	detail, err := h.indexer.GetByID(ctx, id)
+	if err != nil || detail == nil {
+		h.writeError(w, http.StatusNotFound, "asset not found: %s", id)
 		return
 	}
 
-	// Update in-memory index so UI reflects change immediately
-	fm, err := h.fileManager.GetFrontmatter(ctx, id)
-	if err == nil {
-		asset := service.Asset{
-			ID:          fm.ID,
-			Name:        fm.Name,
-			Description: fm.Description,
-			AssetType:     fm.AssetType,
-			Tags:        fm.Tags,
-			ContentHash: fm.ContentHash,
-			State:       fm.State,
-		}
-		if err := h.indexer.Save(ctx, asset); err != nil {
-			h.logger.Warn("failed to update index after restore", "asset_id", id, "error", err, "layer", "L5")
-		}
+	if detail.AssetPath == "" {
+		h.writeError(w, http.StatusBadRequest, "legacy .md assets are not supported")
+		return
+	}
+
+	ay, err := h.fileManager.GetAssetYAML(ctx, detail.AssetPath)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to read asset.yaml: %v", err)
+		return
+	}
+
+	ay.State = "published"
+
+	hash, err := h.fileManager.SaveAssetYAML(ctx, detail.AssetPath, ay, fmt.Sprintf("Restore asset %s", id))
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to save asset.yaml: %v", err)
+		return
+	}
+
+	asset := service.Asset{
+		ID:          detail.ID,
+		Name:        detail.Name,
+		Description: detail.Description,
+		AssetType:   detail.AssetType,
+		Tags:        detail.Tags,
+		State:       ay.State,
+	}
+	if err := h.indexer.Save(ctx, asset); err != nil {
+		h.logger.Warn("failed to update index after restore", "asset_id", id, "error", err, "layer", "L5")
 	}
 
 	h.logger.Info("asset restored", "asset_id", id, "commit", hash, "layer", "L5")
 
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"id":      id,
-		"state":   "active",
+		"state":   "published",
 		"message": "asset restored successfully",
 	})
 }

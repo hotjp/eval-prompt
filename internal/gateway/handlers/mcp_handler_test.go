@@ -41,6 +41,7 @@ func newTestMCPHandler() (*MCPHandler, *mock.MockTriggerService, *mock.MockAsset
 				AssetType:     "ai",
 				Tags:        []string{"test"},
 				State:       "created",
+				AssetPath:   "assets/prompts/test.yaml",
 				Snapshots:   []service.SnapshotSummary{},
 				Labels:      []service.LabelInfo{},
 			}, nil
@@ -222,6 +223,7 @@ func TestMCPHandler_E2E_PromptsGetWithVariables(t *testing.T) {
 				AssetType:     "ai",
 				Tags:        []string{"greeting"},
 				State:       "created",
+				AssetPath:   "assets/prompts/test.yaml",
 				Snapshots:   []service.SnapshotSummary{},
 				Labels:      []service.LabelInfo{},
 			}, nil
@@ -263,6 +265,7 @@ func TestMCPHandler_E2E_PromptsGetWithoutVariables(t *testing.T) {
 				AssetType:     "ml",
 				Tags:        []string{"test"},
 				State:       "created",
+				AssetPath:   "assets/prompts/test.yaml",
 				Snapshots:   []service.SnapshotSummary{},
 				Labels:      []service.LabelInfo{},
 			}, nil

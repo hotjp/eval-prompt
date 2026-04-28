@@ -29,6 +29,10 @@ type GitBridger interface {
 	// Returns the commit hash.
 	StageAndCommit(ctx context.Context, filePath, message string) (string, error)
 
+	// StageAndCommitFiles stages multiple files and creates a single commit with the given message.
+	// Returns the commit hash.
+	StageAndCommitFiles(ctx context.Context, filePaths []string, message string) (string, error)
+
 	// Diff returns the diff output between two commits (commit1 and commit2).
 	Diff(ctx context.Context, commit1, commit2 string) (string, error)
 
@@ -66,31 +70,31 @@ type AssetIndexer interface {
 	// Delete removes an asset from the index.
 	Delete(ctx context.Context, id string) error
 
-	// GetFileContent reads the raw content of a prompt file from disk.
-	// Returns the file content or error if the file doesn't exist.
-	GetFileContent(ctx context.Context, id string) (string, error)
+	// GetMainFileContent reads the main file content from an asset.yaml.
+	// assetPath is the path to asset.yaml (e.g., "assets/skills/calculator.yaml").
+	// Returns the main file content, resolved main path, isExternal flag, and error.
+	GetMainFileContent(ctx context.Context, assetPath string) (content string, mainPath string, isExternal bool, err error)
 
-	// GetBody reads the prompt file, strips frontmatter, and returns only the markdown body.
-	// This is the consumer-facing method — frontmatter is internal implementation.
-	GetBody(ctx context.Context, id string) (string, error)
+	// WriteMainFileContent writes content to the main file specified in asset.yaml.
+	// assetPath is the path to asset.yaml.
+	// Returns the new content hash and error.
+	WriteMainFileContent(ctx context.Context, assetPath string, content string) (newContentHash string, err error)
 
-	// SaveFileContent writes the full file content (including frontmatter) to a prompt file and commits it to Git.
-	// If the file doesn't exist, it creates it. Returns the commit hash.
-	SaveFileContent(ctx context.Context, id, fullContent, commitMessage string) (string, error)
-
-	// CreatePlaceholder creates a placeholder .md file with draft state and commits it to Git.
-	// This marks the asset as "claimed" so other Git users know it's taken.
-	CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error
+	// GetAssetFiles returns the files and external file lists from an asset.yaml.
+	// assetPath is the path to asset.yaml.
+	// Returns the files list, external list, and error.
+	GetAssetFiles(ctx context.Context, assetPath string) (files []FileInfo, external []FileInfo, err error)
 
 	// ReInit reinitializes the indexer with a new repository path.
 	// It clears the current index and updates the git bridge path.
 	ReInit(ctx context.Context, path string) error
 
-	// CommitFile stages and commits an existing file without modifying its content.
+	// CommitFile stages and commits an asset without modifying its content.
+	// For folder-based assets, commits both asset.yaml and main file.
 	// Returns the commit hash.
 	CommitFile(ctx context.Context, id string, commitMsg string) (string, error)
 
-	// CommitFiles stages and commits multiple existing files in batch.
+	// CommitFiles stages and commits multiple assets in batch.
 	// Returns a map of asset ID to commit hash.
 	CommitFiles(ctx context.Context, ids []string, commitMsg string) (map[string]string, error)
 }

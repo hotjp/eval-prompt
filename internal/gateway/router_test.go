@@ -165,32 +165,16 @@ func (m *mockAssetIndexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *mockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	return nil
+func (m *mockAssetIndexer) GetMainFileContent(ctx context.Context, assetPath string) (string, string, bool, error) {
+	return "# Test Content", "prompts/test/overview.md", false, nil
 }
 
-func (m *mockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
-	return "", nil
-}
-
-func (m *mockAssetIndexer) SaveFileContent(ctx context.Context, id, content, commitMsg string) (string, error) {
+func (m *mockAssetIndexer) WriteMainFileContent(ctx context.Context, assetPath string, content string) (string, error) {
 	return "mock-commit-hash", nil
 }
 
-func (m *mockAssetIndexer) GetFrontmatter(ctx context.Context, id string) (*domain.FrontMatter, error) {
-	return &domain.FrontMatter{ID: id, Name: "Test Asset"}, nil
-}
-
-func (m *mockAssetIndexer) UpdateFrontmatter(ctx context.Context, id string, updater func(*domain.FrontMatter) error, commitMsg string) (string, error) {
-	return "mock-commit-hash", nil
-}
-
-func (m *mockAssetIndexer) WriteContent(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string, commitMsg string) (string, error) {
-	return "mock-commit-hash", nil
-}
-
-func (m *mockAssetIndexer) GetBody(ctx context.Context, id string) (string, error) {
-	return "# Test Content", nil
+func (m *mockAssetIndexer) GetAssetFiles(ctx context.Context, assetPath string) ([]service.FileInfo, []service.FileInfo, error) {
+	return nil, nil, nil
 }
 
 func (m *mockAssetIndexer) ReInit(ctx context.Context, path string) error {
@@ -207,14 +191,6 @@ func (m *mockAssetIndexer) CommitFiles(ctx context.Context, ids []string, commit
 		results[id] = "mock-commit-hash"
 	}
 	return results, nil
-}
-
-func (m *mockAssetIndexer) WriteFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error, newBody string) error {
-	return nil
-}
-
-func (m *mockAssetIndexer) UpdateFrontmatterFileOnly(ctx context.Context, id string, updater func(*domain.FrontMatter) error) error {
-	return nil
 }
 
 func newTestRouterConfig() RouterConfig {
