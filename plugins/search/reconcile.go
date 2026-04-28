@@ -158,6 +158,7 @@ func (i *Indexer) reconcileAssetYAML(ctx context.Context, assetPath, assetID, as
 		Category:    ay.Category,
 		Tags:        ay.Tags,
 		State:       state,
+		AssetPath:   assetPath,
 	}
 
 	i.assets[assetID] = &assetEntry{asset: asset, detail: detail}
