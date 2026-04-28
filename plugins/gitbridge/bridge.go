@@ -116,13 +116,19 @@ func (b *Bridge) StageAndCommitFiles(ctx context.Context, filePaths []string, me
 	}
 
 	// Create commit
-	hash, err := b.runGit(ctx, "commit", "-m", message, "--author=eval-prompt <agent@eval-prompt.local>")
+	_, err := b.runGit(ctx, "commit", "-m", message, "--author=eval-prompt <agent@eval-prompt.local>")
 	if err != nil {
 		// "nothing to commit" means the file content is unchanged from HEAD (idempotent)
 		if strings.Contains(err.Error(), "nothing to commit") {
 			return "", nil
 		}
 		return "", fmt.Errorf("create commit: %w", err)
+	}
+
+	// Get the actual commit hash
+	hash, err := b.runGit(ctx, "rev-parse", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("get commit hash: %w", err)
 	}
 
 	return strings.TrimSpace(hash), nil
