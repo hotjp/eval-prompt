@@ -522,19 +522,6 @@ func (h *AdminHandler) PutRepoSwitch(w http.ResponseWriter, r *http.Request) {
 		h.configManager.Notify(r.Context(), "repo", []string{"repo_path"})
 	}
 
-	// Trigger async reconcile after repo switch to refresh index with new repo's assets
-	if h.indexer != nil {
-		go func() {
-			ctx := context.Background()
-			if report, err := h.indexer.Reconcile(ctx); err != nil {
-				h.logger.Warn("reconcile failed after repo switch", "error", err, "layer", "L5")
-			} else {
-				h.logger.Info("reconcile completed after repo switch",
-					"added", report.Added, "updated", report.Updated, "deleted", report.Deleted, "layer", "L5")
-			}
-		}()
-	}
-
 	h.writeJSON(w, http.StatusOK, RepoSwitchResponse{
 		Status: "ok",
 		Path:   absPath,
@@ -780,6 +767,22 @@ func (h *AdminHandler) HandleRepoChange(ctx context.Context, domain string, chan
 			if err := r.ReInit(ctx, repoPath); err != nil {
 				h.logger.Error("failed to reinit gitBridge", "error", err)
 			}
+		}
+	}
+
+	// Trigger async reconcile to rebuild the index with new repo's assets.
+	// This runs in a goroutine to avoid blocking the HTTP response.
+	if h.indexer != nil {
+		if r, ok := h.indexer.(interface{ Reconcile(ctx context.Context) (service.ReconcileReport, error) }); ok {
+			go func() {
+				reconcileCtx := context.Background()
+				if report, err := r.Reconcile(reconcileCtx); err != nil {
+					h.logger.Warn("reconcile failed after repo change", "error", err, "layer", "L5")
+				} else {
+					h.logger.Info("reconcile completed after repo change",
+						"added", report.Added, "updated", report.Updated, "deleted", report.Deleted, "layer", "L5")
+				}
+			}()
 		}
 	}
 }
