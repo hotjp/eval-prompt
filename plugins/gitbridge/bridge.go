@@ -154,7 +154,7 @@ func (b *Bridge) Log(ctx context.Context, filePath string, limit int) ([]service
 	}
 
 	var commits []service.CommitInfo
-	lines := strings.Split(strings.TrimSpace(out), "\n")
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -193,7 +193,7 @@ func (b *Bridge) Status(ctx context.Context) (added, modified, deleted []string,
 		return nil, nil, nil, fmt.Errorf("git status: %w", err)
 	}
 
-	lines := strings.Split(strings.TrimSpace(out), "\n")
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	for _, line := range lines {
 		if len(line) < 3 {
 			continue
