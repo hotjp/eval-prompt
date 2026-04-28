@@ -35,6 +35,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
       - name: Build frontend
         run: |
           cd web
@@ -43,6 +49,7 @@ jobs:
 
       - name: Embed frontend
         run: |
+          mkdir -p internal/gateway/web
           rm -rf internal/gateway/web/dist
           cp -r web/dist internal/gateway/web/
 
