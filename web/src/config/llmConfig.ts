@@ -9,6 +9,7 @@ export interface LLMConfig {
   api_key: string
   endpoint?: string
   default_model: string
+  default?: boolean
 }
 
 const STORAGE_KEY = 'ep_llm_configs'

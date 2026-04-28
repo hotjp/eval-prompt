@@ -1,16 +1,20 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Input, Button, Space, message, Spin, Tabs, Tag, Modal, Select } from 'antd'
-import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutlined, ClearOutlined, PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons'
+import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutlined, ClearOutlined, PlusOutlined, DeleteOutlined, SwapOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { loader } from '@monaco-editor/react'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
 import { assetApi, triggerApi, llmApi } from '../api/client'
 import QuickEvalModal from './eval/components/QuickEvalModal'
 import type { AssetDetail } from '../api/client'
 import { getLLMConfigs } from '../config/llmConfig'
 import './EditorViewV2.css'
+
+// Configure Monaco to use local files instead of CDN
+loader.config({ paths: { vs: '/monaco-editor/min' } })
 
 function formatUpdatedAt(dateStr: string): string {
   const date = new Date(dateStr)
@@ -144,6 +148,7 @@ function EditorViewV2() {
   const [chatLoading, setChatLoading] = useState(false)
   const llmConfigs = getLLMConfigs()
   const [selectedModel, setSelectedModel] = useState<string>(llmConfigs.find(c => c.default_model)?.name || llmConfigs[0]?.name || '')
+  const [monacoReady, setMonacoReady] = useState(false)
 
   const toggleThink = (id: string) => {
     setExpandedThinks(prev => {
@@ -440,7 +445,7 @@ function EditorViewV2() {
     setChatLoading(true)
 
     try {
-      const result = await llmApi.chat(chatInput, selectedModel)
+      const result = await llmApi.chat(chatInput, selectedModel, promptValue)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -593,14 +598,22 @@ function EditorViewV2() {
         {/* Monaco Editor */}
         <div className="editor-content">
           {activeTab === 'editor' && (
-            <MonacoEditor
-              height="100%"
-              language="markdown"
-              value={promptValue}
-              onChange={(value) => setPromptValue(value || '')}
-              theme="vs-dark"
-              options={{ minimap: { enabled: false } }}
-            />
+            <div style={{ height: '100%', position: 'relative' }}>
+              {!monacoReady && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#1e1e1e', zIndex: 10 }}>
+                  <Spin size="large" indicator={<LoadingOutlined spin style={{ fontSize: 24, color: '#fff' }} />} />
+                </div>
+              )}
+              <MonacoEditor
+                height="100%"
+                language="markdown"
+                value={promptValue}
+                onChange={(value) => setPromptValue(value || '')}
+                theme="vs-dark"
+                options={{ minimap: { enabled: false } }}
+                onMount={() => setMonacoReady(true)}
+              />
+            </div>
           )}
           {activeTab === 'diff' && (
             <div className="diff-container">

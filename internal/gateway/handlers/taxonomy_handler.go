@@ -31,6 +31,13 @@ func NewTaxonomyHandler(cfg *config.TaxonomyConfig, logger *slog.Logger, filePat
 	}
 }
 
+// SetConfig updates the taxonomy configuration reference.
+func (h *TaxonomyHandler) SetConfig(cfg *config.TaxonomyConfig) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cfg = cfg
+}
+
 func (h *TaxonomyHandler) writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

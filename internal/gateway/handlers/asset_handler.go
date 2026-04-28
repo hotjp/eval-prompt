@@ -43,6 +43,11 @@ func NewAssetHandler(indexer service.AssetIndexer, fileManager service.AssetFile
 	}
 }
 
+// SetConfig updates the configuration reference.
+func (h *AssetHandler) SetConfig(cfg *config.Config) {
+	h.config = cfg
+}
+
 // WithGitBridge sets the git bridge for version history and diff.
 func (h *AssetHandler) WithGitBridge(bridge service.GitBridger) *AssetHandler {
 	h.gitBridge = bridge
@@ -54,6 +59,11 @@ func (h *AssetHandler) WithSemanticAnalyzer(sa service.SemanticAnalyzer, model s
 	h.semanticAnalyzer = sa
 	h.model = model
 	return h
+}
+
+// SetSemanticAnalyzer updates the semantic analyzer reference.
+func (h *AssetHandler) SetSemanticAnalyzer(sa service.SemanticAnalyzer) {
+	h.semanticAnalyzer = sa
 }
 
 // getCurrentRepoPath returns the current repository path.

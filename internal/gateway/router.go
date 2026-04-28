@@ -40,7 +40,10 @@ type RouterConfig struct {
 	AdminHandler      *handlers.AdminHandler
 	LLMConfigHandler  *handlers.LLMConfigHandler
 	TaxonomyHandler   *handlers.TaxonomyHandler
+	AssetHandler      *handlers.AssetHandler
+	EvalHandler       *handlers.EvalHandler
 	ImportHandler     *handlers.ImportHandler
+	ImportChecker     handlers.ImportStatusProvider
 }
 
 // NewRouter creates a new HTTP router with all middleware and handlers registered.
@@ -57,22 +60,28 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 
 	// Create handler instances — use pre-created handlers if provided
 	mcpHandler := handlers.NewMCPHandler(cfg.TriggerService, cfg.IndexService, logger)
-	assetHandler := handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger, cfg.AdminConfig)
-	if cfg.SemanticAnalyzer != nil {
-		assetHandler = assetHandler.WithSemanticAnalyzer(cfg.SemanticAnalyzer, "")
+	assetHandler := cfg.AssetHandler
+	if assetHandler == nil {
+		assetHandler = handlers.NewAssetHandler(cfg.IndexService, cfg.FileManager, logger, cfg.AdminConfig)
+		if cfg.SemanticAnalyzer != nil {
+			assetHandler = assetHandler.WithSemanticAnalyzer(cfg.SemanticAnalyzer, "")
+		}
+		if cfg.GitBridge != nil {
+			assetHandler = assetHandler.WithGitBridge(cfg.GitBridge)
+		}
 	}
-	if cfg.GitBridge != nil {
-		assetHandler = assetHandler.WithGitBridge(cfg.GitBridge)
-	}
-	evalHandler := handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
-	if cfg.SemanticAnalyzer != nil {
-		evalHandler.SetSemanticAnalyzer(cfg.SemanticAnalyzer)
-	}
-	if cfg.LLMInterface != nil {
-		evalHandler.SetLLMInvoker(cfg.LLMInterface, cfg.LLMDefaultModel)
+	evalHandler := cfg.EvalHandler
+	if evalHandler == nil {
+		evalHandler = handlers.NewEvalHandler(cfg.EvalService, cfg.IndexService, logger)
+		if cfg.SemanticAnalyzer != nil {
+			evalHandler.SetSemanticAnalyzer(cfg.SemanticAnalyzer)
+		}
+		if cfg.LLMInterface != nil {
+			evalHandler.SetLLMInvoker(cfg.LLMInterface, cfg.LLMDefaultModel)
+		}
 	}
 	triggerHandler := handlers.NewTriggerHandler(cfg.TriggerService, logger)
-	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, logger)
+	readyHandler := handlers.NewReadyHandler(cfg.StorageClient, cfg.LLMInvoker, cfg.ImportChecker, logger)
 
 	adminHandler := cfg.AdminHandler
 	if adminHandler == nil {
@@ -147,7 +156,9 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	// Chat API
 	mux.HandleFunc("POST /api/v1/chat", evalHandler.Chat)
 
-	// Import SSE route
+	// Import routes
+	mux.HandleFunc("GET /api/v1/import/status", importHandler.HandleStatus)
+	mux.HandleFunc("POST /api/v1/import/run", importHandler.HandleRun)
 	mux.HandleFunc("GET /api/v1/import/events", importHandler.HandleSSE)
 
 	// Trigger API routes

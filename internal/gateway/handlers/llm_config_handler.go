@@ -35,6 +35,13 @@ func NewLLMConfigHandler(cfg *[]config.LLMProviderConfig, logger *slog.Logger, f
 	}
 }
 
+// SetConfig updates the LLM provider configuration reference.
+func (h *LLMConfigHandler) SetConfig(cfg *[]config.LLMProviderConfig) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cfg = cfg
+}
+
 func (h *LLMConfigHandler) writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -59,6 +66,7 @@ func (h *LLMConfigHandler) GetLLMConfig(w http.ResponseWriter, r *http.Request) 
 			APIKey:       maskAPIKey(c.APIKey),
 			Endpoint:     c.Endpoint,
 			DefaultModel: c.DefaultModel,
+			Default:      c.Default,
 		}
 	}
 
@@ -222,6 +230,7 @@ type LLMConfigResp struct {
 	APIKey       string `json:"api_key"`
 	Endpoint     string `json:"endpoint,omitempty"`
 	DefaultModel string `json:"default_model"`
+	Default      bool   `json:"default"`
 }
 
 // LLMConfigReq is the API request for LLM config.

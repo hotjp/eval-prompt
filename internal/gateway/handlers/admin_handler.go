@@ -23,31 +23,44 @@ import (
 	"github.com/eval-prompt/plugins/gitbridge"
 )
 
+// ReloadResult represents the result of reloading a single configuration domain.
+type ReloadResult struct {
+	Domain  string `json:"domain"`
+	Status  string `json:"status"` // "ok" | "error" | "restart_required"
+	Message string `json:"message,omitempty"`
+}
+
+// ConfigReloadCallback is called when configuration is reloaded.
+// It receives the new configuration and returns the reload result for its domain.
+type ConfigReloadCallback func(newCfg *config.Config) ReloadResult
+
 // AdminHandler handles admin API endpoints.
 type AdminHandler struct {
-	logger         *slog.Logger
-	startTime      time.Time
-	restartCount   atomic.Int64
-	lastReloadTime atomic.Value // time.Time
-	pid            int
-	config         *config.Config
-	restartFunc    func()
-	indexer       service.AssetIndexer
-	gitBridge     service.GitBridger
-	configManager service.ConfigManager
+	logger            *slog.Logger
+	startTime         time.Time
+	restartCount      atomic.Int64
+	lastReloadTime    atomic.Value // time.Time
+	pid               int
+	config            *config.Config
+	restartFunc       func()
+	indexer           service.AssetIndexer
+	gitBridge         service.GitBridger
+	configManager     service.ConfigManager
+	reloadCallbacks   []ConfigReloadCallback
 }
 
 // NewAdminHandler creates a new AdminHandler.
 func NewAdminHandler(logger *slog.Logger, cfg *config.Config, restartFunc func(), indexer service.AssetIndexer, gitBridge service.GitBridger, configManager service.ConfigManager) *AdminHandler {
 	h := &AdminHandler{
-		logger:       logger,
-		startTime:    time.Now(),
-		pid:          os.Getpid(),
-		config:       cfg,
-		restartFunc:  restartFunc,
-		indexer:     indexer,
-		gitBridge:   gitBridge,
-		configManager: configManager,
+		logger:         logger,
+		startTime:      time.Now(),
+		pid:            os.Getpid(),
+		config:         cfg,
+		restartFunc:    restartFunc,
+		indexer:        indexer,
+		gitBridge:      gitBridge,
+		configManager:  configManager,
+		reloadCallbacks: make([]ConfigReloadCallback, 0),
 	}
 	h.lastReloadTime.Store(time.Time{})
 
@@ -71,6 +84,11 @@ func NewAdminHandler(logger *slog.Logger, cfg *config.Config, restartFunc func()
 	}
 
 	return h
+}
+
+// RegisterReloadCallback registers a callback to be invoked when configuration is reloaded.
+func (h *AdminHandler) RegisterReloadCallback(fn ConfigReloadCallback) {
+	h.reloadCallbacks = append(h.reloadCallbacks, fn)
 }
 
 // StatusResponse represents the server status response.
@@ -585,20 +603,35 @@ func (h *AdminHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ReloadConfig(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("admin action", "action", "reload", "layer", "L5")
 
-	_, err := config.Load("")
+	newCfg, err := config.Load("")
 	if err != nil {
 		h.logger.Error("failed to reload config", "error", err, "layer", "L5")
 		h.writeError(w, http.StatusInternalServerError, "Failed to reload config: %v", err)
 		return
 	}
 
-	h.lastReloadTime.Store(time.Now())
-	h.logger.Info("config reloaded", "layer", "L5")
+	// Update the in-memory config reference
+	h.config = newCfg
 
-	h.writeJSON(w, http.StatusOK, ReloadResponse{
-		Status:    "ok",
-		Message:   "Configuration reloaded successfully",
-		Timestamp: time.Now().Format(time.RFC3339),
+	results := []ReloadResult{
+		{Domain: "server", Status: "restart_required", Message: "Server port/host changes require a restart"},
+		{Domain: "database", Status: "restart_required", Message: "Database connection changes require a restart"},
+	}
+
+	// Execute all registered reload callbacks
+	for _, cb := range h.reloadCallbacks {
+		result := cb(newCfg)
+		results = append(results, result)
+	}
+
+	h.lastReloadTime.Store(time.Now())
+	h.logger.Info("config reloaded", "results", results, "layer", "L5")
+
+	h.writeJSON(w, http.StatusOK, map[string]any{
+		"status":    "ok",
+		"message":   "Configuration reloaded",
+		"results":   results,
+		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }
 

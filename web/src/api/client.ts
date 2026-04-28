@@ -322,6 +322,15 @@ export const adminApi = {
   saveConfig: async (config: Record<string, any>): Promise<void> => {
     await api.put('/admin/config', config)
   },
+  reload: async (): Promise<{
+    status: string
+    message: string
+    results: { domain: string; status: string; message?: string }[]
+    timestamp: string
+  }> => {
+    const { data } = await api.post('/admin/reload')
+    return data
+  },
 }
 
 export interface AssetListResponse {
@@ -503,12 +512,23 @@ export const llmApi = {
     const { data } = await llmAxios.post('/rewrite', { content, instruction, model_name: modelName, disable_thinking: disableThinking })
     return data
   },
-  chat: async (prompt: string, modelName?: string) => {
-    const { data } = await llmAxios.post('/chat', { prompt, model_name: modelName })
+  chat: async (prompt: string, modelName?: string, context?: string) => {
+    const { data } = await llmAxios.post('/chat', { prompt, model_name: modelName, context })
     return data
   },
   diff: async (oldContent: string, newContent: string, oldVersion: string, newVersion: string) => {
     const { data } = await llmAxios.post('/eval/diff', { old_content: oldContent, new_content: newContent, old_version: oldVersion, new_version: newVersion })
+    return data
+  },
+}
+
+export const importApi = {
+  status: async (): Promise<{ importing: boolean; pending_count: number; import_path: string }> => {
+    const { data } = await api.get('/import/status')
+    return data
+  },
+  run: async (): Promise<{ status: string }> => {
+    const { data } = await api.post('/import/run')
     return data
   },
 }

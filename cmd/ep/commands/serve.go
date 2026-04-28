@@ -15,6 +15,7 @@ import (
 
 	"github.com/eval-prompt/internal/config"
 	"github.com/eval-prompt/internal/gateway"
+	"github.com/eval-prompt/internal/lock"
 	"github.com/eval-prompt/internal/gateway/handlers"
 	"github.com/eval-prompt/internal/gateway/middleware"
 	"github.com/eval-prompt/internal/i18n"
@@ -156,9 +157,20 @@ var serveCmd = &cobra.Command{
 		// Create plugin instances
 		indexer := search.Default()
 		cwd, _ := os.Getwd()
-		// Determine repo path: use config's RepoPath if set, otherwise fall back to cwd
+
+		// Determine repo path: check lock file's current first, then config, then cwd
 		repoPath := cwd
-		if cfg.PromptAssets.RepoPath != "" {
+		if repoLock, err := lock.ReadLock(); err == nil {
+			if current := repoLock.GetCurrent(); current != "" {
+				if absPath, err := filepath.Abs(current); err == nil {
+					if _, statErr := os.Stat(absPath); statErr == nil {
+						repoPath = absPath
+						logger.Info("using repo path from lock file", "path", repoPath)
+					}
+				}
+			}
+		}
+		if repoPath == cwd && cfg.PromptAssets.RepoPath != "" {
 			if absPath, err := filepath.Abs(cfg.PromptAssets.RepoPath); err == nil {
 				if _, statErr := os.Stat(absPath); statErr == nil {
 					repoPath = absPath
@@ -184,6 +196,21 @@ var serveCmd = &cobra.Command{
 			logger.Info("reconcile completed", "added", report.Added, "updated", report.Updated, "deleted", report.Deleted)
 		}
 
+		// Initialize file watcher for .import/ directory
+		importPath := filepath.Join(repoPath, ".import")
+		if _, err := os.Stat(importPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(importPath, 0755); err != nil {
+				logger.Warn("failed to create import directory", "path", importPath, "error", err)
+			}
+		}
+		fileWatcher := service.NewFileWatcher(indexer, indexer, logger, importPath)
+		if err := fileWatcher.Start(cmd.Context()); err != nil {
+			logger.Warn("failed to start file watcher", "error", err)
+		} else {
+			logger.Info("file watcher started", "path", importPath)
+		}
+		importHandler := handlers.NewImportHandler(fileWatcher, logger)
+
 		// Create trigger service
 		triggerService := service.NewTriggerService(indexer, gitBridge)
 
@@ -196,7 +223,8 @@ var serveCmd = &cobra.Command{
 		evalService := service.NewEvalService().
 			WithExecutionStore(executionStore).
 			WithCallStore(callStore).
-			WithEvalsDir(filepath.Join(cwd, "evals"))
+			WithEvalsDir(filepath.Join(cwd, "evals")).
+			WithLLMInvoker(&llmInvokerAdapter{invoker: llmInvoker})
 
 		// Create semantic service only if LLM is properly configured with a model
 		var semanticService *service.SemanticService
@@ -234,6 +262,102 @@ var serveCmd = &cobra.Command{
 		configManager.Register("llm", llmConfigHandler.HandleLLMChange)
 		configManager.Register("taxonomy", taxonomyHandler.HandleTaxonomyChange)
 
+		// Create asset and eval handlers explicitly so they can be updated on config reload
+		assetHandler := handlers.NewAssetHandler(indexer, indexer, logger, cfg)
+		if semanticService != nil {
+			assetHandler = assetHandler.WithSemanticAnalyzer(semanticService, "")
+		}
+		assetHandler = assetHandler.WithGitBridge(gitBridge)
+
+		evalHandler := handlers.NewEvalHandler(evalService, indexer, logger)
+		if semanticService != nil {
+			evalHandler.SetSemanticAnalyzer(semanticService)
+		}
+		evalHandler.SetLLMInvoker(llmInvoker, defaultModel)
+
+		// Register config reload callbacks
+		adminHandler.RegisterReloadCallback(func(newCfg *config.Config) handlers.ReloadResult {
+			// Recreate LLM providers from new config
+			newLLMProviders := make(map[string]llm.Interface)
+			for _, providerConfig := range newCfg.Plugins.LLM {
+				if providerConfig.Provider == "" {
+					continue
+				}
+				provider, err := llm.NewProvider(providerConfig)
+				if err != nil {
+					logger.Warn("failed to create LLM provider on reload", "name", providerConfig.Name, "error", err)
+					continue
+				}
+				newLLMProviders[providerConfig.Name] = provider
+			}
+
+			var newLLMInvoker llm.Interface = &llm.NoopInvoker{}
+			var newDefaultModel string
+			if len(newLLMProviders) > 0 {
+				for _, providerConfig := range newCfg.Plugins.LLM {
+					if providerConfig.Default && providerConfig.Provider != "" {
+						if p, ok := newLLMProviders[providerConfig.Name]; ok {
+							newLLMInvoker = p
+							newDefaultModel = providerConfig.DefaultModel
+							break
+						}
+					}
+				}
+				if newDefaultModel == "" {
+					for name, p := range newLLMProviders {
+						newLLMInvoker = p
+						for _, providerConfig := range newCfg.Plugins.LLM {
+							if providerConfig.Name == name && providerConfig.Provider != "" {
+								newDefaultModel = providerConfig.DefaultModel
+								break
+							}
+						}
+						break
+					}
+				}
+			}
+
+			// Update all LLM-related components
+			llmConfigHandler.SetConfig(&newCfg.Plugins.LLM)
+			llmChecker.SetInvoker(newLLMInvoker)
+			llmChecker.SetDefaultModel(newDefaultModel)
+			evalHandler.SetLLMInvoker(newLLMInvoker, newDefaultModel)
+			evalService.WithLLMInvoker(&llmInvokerAdapter{invoker: newLLMInvoker})
+
+			if newDefaultModel != "" {
+				newSemanticService := service.NewSemanticService(&llmInvokerAdapter{invoker: newLLMInvoker}, newDefaultModel)
+				triggerService.WithSemanticAnalyzer(newSemanticService, newDefaultModel)
+				evalService.WithSemanticAnalyzer(newSemanticService)
+				evalHandler.SetSemanticAnalyzer(newSemanticService)
+				assetHandler.SetSemanticAnalyzer(newSemanticService)
+			}
+
+			return handlers.ReloadResult{
+				Domain:  "plugins.llm",
+				Status:  "ok",
+				Message: fmt.Sprintf("LLM providers reloaded, default model: %s", newDefaultModel),
+			}
+		})
+
+		adminHandler.RegisterReloadCallback(func(newCfg *config.Config) handlers.ReloadResult {
+			newTaxonomy, err := config.LoadTaxonomy("config/taxonomy.yaml")
+			if err != nil {
+				return handlers.ReloadResult{Domain: "taxonomy", Status: "error", Message: err.Error()}
+			}
+			taxonomyHandler.SetConfig(newTaxonomy)
+			return handlers.ReloadResult{Domain: "taxonomy", Status: "ok", Message: "Taxonomy reloaded from config/taxonomy.yaml"}
+		})
+
+		adminHandler.RegisterReloadCallback(func(newCfg *config.Config) handlers.ReloadResult {
+			assetHandler.SetConfig(newCfg)
+			return handlers.ReloadResult{Domain: "prompt_assets", Status: "ok"}
+		})
+
+		adminHandler.RegisterReloadCallback(func(newCfg *config.Config) handlers.ReloadResult {
+			i18n.SetLangIfNotEnv(newCfg.Lang)
+			return handlers.ReloadResult{Domain: "lang", Status: "ok"}
+		})
+
 		// Create router with dependency injection — pass pre-created handlers
 		router := gateway.NewRouter(gateway.RouterConfig{
 			TriggerService:   triggerService,
@@ -257,6 +381,10 @@ var serveCmd = &cobra.Command{
 			AdminHandler:    adminHandler,
 			LLMConfigHandler: llmConfigHandler,
 			TaxonomyHandler: taxonomyHandler,
+			AssetHandler:    assetHandler,
+			EvalHandler:     evalHandler,
+			ImportHandler:   importHandler,
+			ImportChecker:   fileWatcher,
 		})
 
 		// Create HTTP server
@@ -287,6 +415,11 @@ var serveCmd = &cobra.Command{
 			// Close storage if open
 			if storageClient != nil {
 				storageClient.Close()
+			}
+
+			// Stop file watcher
+			if fileWatcher != nil {
+				fileWatcher.Stop()
 			}
 
 			close(shutdownChan)

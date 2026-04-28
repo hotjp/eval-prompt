@@ -161,8 +161,26 @@ function Sidebar() {
   const handleReloadConfig = async () => {
     setLoading(true)
     try {
-      await new Promise(r => setTimeout(r, 800))
-      message.success(t('sidebar_config_reloaded'))
+      const resp = await adminApi.reload()
+      const restartDomains = resp.results.filter(r => r.status === 'restart_required')
+      const errorDomains = resp.results.filter(r => r.status === 'error')
+
+      if (errorDomains.length > 0) {
+        message.error(
+          t('sidebar_config_reload_failed') + ': ' +
+          errorDomains.map(r => `${r.domain} (${r.message})`).join(', ')
+        )
+      } else if (restartDomains.length > 0) {
+        message.success(
+          t('sidebar_config_reloaded') +
+          ' — ' +
+          restartDomains.map(r => r.domain).join(', ') +
+          ' ' +
+          'require restart'
+        )
+      } else {
+        message.success(t('sidebar_config_reloaded'))
+      }
       setStatusOpen(false)
     } catch {
       message.error(t('sidebar_config_reload_failed'))
@@ -729,17 +747,34 @@ function Sidebar() {
                   label: (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ff4d4f' }}>
                       <WarningOutlined />
-                      <span>{t('sidebar_no_git_repo')}</span>
+                      <span>{repoStatus?.current?.error || t('sidebar_no_git_repo')}</span>
                     </div>
                   ),
                   disabled: true,
                 },
-                {
-                  key: 'hint',
-                  label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>{t('sidebar_init_hint')}</span>,
-                  disabled: true,
-                },
-                { type: 'divider' as const },
+                ...(repoStatus?.repos && repoStatus.repos.length > 0 ? [
+                  {
+                    key: 'current',
+                    label: <span style={{ fontSize: 11, color: '#8c8c8c' }}>{t('sidebar_current')}: {repoStatus?.current?.path}</span>,
+                    disabled: true,
+                  },
+                  {
+                    key: 'switch',
+                    label: t('sidebar_switch_repo'),
+                    icon: <SwapOutlined />,
+                    children: repoStatus.repos.map(r => ({
+                      key: `repo-${r.path}`,
+                      label: (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12 }}>{r.path.split('/').pop()}</span>
+                          {repoStatusIcon(r)}
+                        </div>
+                      ),
+                      onClick: () => handleSwitchRepo(r.path),
+                    })),
+                  },
+                  { type: 'divider' as const },
+                ] : []),
                 {
                   key: 'init',
                   label: t('sidebar_init_repo'),
@@ -752,7 +787,7 @@ function Sidebar() {
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ff4d4f', cursor: 'pointer' }}>
               <WarningOutlined style={{ fontSize: 11 }} />
-              {t('sidebar_no_repo')}
+              {repoStatus?.current?.error === 'path not found' ? t('sidebar_repo_not_found') : repoStatus?.current?.error || t('sidebar_no_repo')}
             </span>
           </Dropdown>
         )}

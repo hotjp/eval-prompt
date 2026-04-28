@@ -892,7 +892,8 @@ func cleanRewriteResponse(s string) string {
 
 // ChatRequest represents a chat request.
 type ChatRequest struct {
-	Prompt string `json:"prompt"`
+	Prompt  string `json:"prompt"`
+	Context string `json:"context"`
 }
 
 // Chat handles POST /api/v1/chat.
@@ -913,7 +914,12 @@ func (h *EvalHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.llmInvoker.Invoke(r.Context(), req.Prompt, h.defaultModel, 0.7)
+	fullPrompt := req.Prompt
+	if req.Context != "" {
+		fullPrompt = fmt.Sprintf("Here is the prompt content I am currently editing:\n\n```\n%s\n```\n\nPlease answer my question based on the above prompt content:\n\n%s", req.Context, req.Prompt)
+	}
+
+	resp, err := h.llmInvoker.Invoke(r.Context(), fullPrompt, h.defaultModel, 0.7)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "chat failed: %v", err)
 		return

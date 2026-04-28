@@ -18,6 +18,7 @@ import ExecutionListView from './views/ExecutionListView'
 import CallLogView from './views/CallLogView'
 import { loadAssetTypesFromAPI } from './config/assetTypes'
 import { loadTagsFromAPI } from './config/tags'
+import { loadLLMConfigsFromAPI } from './config/llmConfig'
 import { useExecutionPolling } from './views/eval/hooks/useExecutionPolling'
 
 const { Content } = Layout
@@ -33,6 +34,7 @@ function App() {
     initRef.current = true
     loadAssetTypesFromAPI()
     loadTagsFromAPI()
+    loadLLMConfigsFromAPI()
   }, [])
 
   return (

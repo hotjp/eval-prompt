@@ -65,6 +65,18 @@ function SettingsView() {
     })
   }, [])
 
+  // Load LLM configs from API on mount and when entering LLM section
+  useEffect(() => {
+    if (selectedSection === 'llm') {
+      llmConfigApi.get().then((configs) => {
+        setLlmConfigs(configs.map((c, i) => ({ ...c, key: c.name || `llm-${i}` })))
+      }).catch(() => {
+        // fallback to localStorage
+        setLlmConfigs(getLLMConfigs().map((c, i) => ({ ...c, key: c.name || `llm-${i}` })))
+      })
+    }
+  }, [selectedSection])
+
   const menuItems = [
     {
       key: 'categories',
