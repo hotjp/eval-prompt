@@ -83,16 +83,18 @@
 
 ### i18n 国际化架构
 
-**唯一真源**：`i18n/locales/` — 根目录存放语言包 JSON 文件
+**前后端独立管理**，不再共享翻译文件。两端的翻译场景完全不同（后端 CLI 消息 vs 前端 UI 标签），合并维护反而增加耦合。
 
-**三端分布**：
+**后端（Go CLI）**：
 | 位置 | 用途 | 管理方式 |
 |------|------|----------|
-| `i18n/locales/` | 唯一真源，编辑器直接修改 | 手动编辑 |
-| `internal/i18n/locales/` | Go `//go:embed` 嵌入二进制 | `make build` 时同步 |
-| `web/src/i18n/locales/` | Web import 源 | `make build` 时同步 |
+| `internal/i18n/locales/` | Go `//go:embed` 嵌入二进制 | 手动编辑 |
+| `internal/i18n/messages.go` | key 常量定义 | 手动编辑 |
 
-**同步机制**：`make build` 和 `make release` 自动将 `i18n/locales/` 复制到 embed 目录
+**前端（Web UI）**：
+| 位置 | 用途 | 管理方式 |
+|------|------|----------|
+| `web/src/i18n/locales/` | Web import 源 | 手动编辑 |
 
 **Go 端使用**：
 - `i18n.T(key, pongo2.Context{"var": val})` — 模板语法 `{{var}}`
@@ -108,10 +110,8 @@
 **Message constants**：`internal/i18n/messages.go` 定义所有 key 常量，CLI 命令通过 `i18n.MsgXXX` 引用
 
 **新增翻译 key**：
-1. 编辑 `i18n/locales/zh-CN.json` 和 `en-US.json`
-2. 运行 `make build` 同步到 embed 目录
-3. Go 端：`messages.go` 添加常量，CLI 命令使用 `i18n.T(i18n.MsgKey, ...)`
-4. Web 端：组件中直接使用 `t('key_name')`
+- **Go 端**：编辑 `internal/i18n/locales/zh-CN.json` 和 `en-US.json`，在 `messages.go` 添加常量
+- **Web 端**：编辑 `web/src/i18n/locales/zh-CN.json` 和 `en-US.json`，组件中直接使用 `t('key_name')`
 
 ### Frontmatter 与 API 分离
 - **Frontmatter 是 Git/filesystem 内部实现，API 从不直接操作**
