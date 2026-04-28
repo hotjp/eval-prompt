@@ -226,9 +226,16 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 				State:       entry.asset.State,
 				LatestScore: latestScore,
 				Keywords:    entry.detail.Keywords,
+				UpdatedAt:   entry.asset.UpdatedAt,
 			})
 		}
 	}
+
+	// Sort by UpdatedAt descending (most recent first)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].UpdatedAt.After(results[j].UpdatedAt)
+	})
+
 	return results, nil
 }
 
@@ -259,6 +266,7 @@ func (i *Indexer) Save(ctx context.Context, asset service.Asset) error {
 			Category:    asset.Category,
 			Tags:        asset.Tags,
 			State:       asset.State,
+			AssetPath:   asset.AssetPath,
 			Snapshots:   []service.SnapshotSummary{},
 			Labels:      []service.LabelInfo{},
 		},

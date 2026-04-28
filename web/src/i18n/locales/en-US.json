@@ -490,6 +490,7 @@
   "sidebar_no_git_repo": "No Git repository",
   "sidebar_init_hint": "Initialize a repo to start",
   "sidebar_no_repo": "No Repo",
+  "sidebar_repo_not_found": "Repo Not Found",
   "sidebar_eval_running_warning": "An eval is running. Please wait for it to finish before restarting.",
   "sidebar_restart_sent": "Restart signal sent — server is restarting",
   "sidebar_restart_failed": "Failed to send restart signal",

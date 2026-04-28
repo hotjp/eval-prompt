@@ -4,16 +4,34 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/eval-prompt/internal/service"
 )
+
+// ImportStatusProvider provides a lightweight snapshot of the import queue.
+type ImportStatusProvider interface {
+	GetStatus() service.ImportStatus
+}
 
 // ReadyHandler handles readiness check endpoints.
 type ReadyHandler struct {
-	storage   StorageChecker
-	llm       LLMChecker
-	logger    *slog.Logger
+	storage       StorageChecker
+	llm           LLMChecker
+	importChecker ImportStatusProvider
+	logger        *slog.Logger
+
+	// LLM check cache to avoid hammering the LLM provider on every readyz call.
+	// Only applies to the actual LLM ping; model_config check is always cheap.
+	llmCache struct {
+		healthy   bool
+		message   string
+		expiresAt time.Time
+	}
+	llmCacheTTL time.Duration
 }
 
 // StorageChecker is an interface for checking database readiness.
@@ -28,11 +46,13 @@ type LLMChecker interface {
 }
 
 // NewReadyHandler creates a new ReadyHandler.
-func NewReadyHandler(storage StorageChecker, llm LLMChecker, logger *slog.Logger) *ReadyHandler {
+func NewReadyHandler(storage StorageChecker, llm LLMChecker, importChecker ImportStatusProvider, logger *slog.Logger) *ReadyHandler {
 	return &ReadyHandler{
-		storage: storage,
-		llm:     llm,
-		logger:  logger,
+		storage:       storage,
+		llm:           llm,
+		importChecker: importChecker,
+		logger:        logger,
+		llmCacheTTL:   30 * time.Minute,
 	}
 }
 
@@ -76,21 +96,41 @@ func (h *ReadyHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 		checks["database"] = CheckResult{Status: "ok"}
 	}
 
-	// Check 2: LLM Provider (optional, degraded on failure)
+	// Check 2: LLM Provider (optional, degraded on failure) with 30s cache
 	if h.llm != nil {
-		llmCtx, llmCancel := context.WithTimeout(ctx, 5*time.Second)
-		defer llmCancel()
-		if err := h.llm.Ping(llmCtx); err != nil {
-			h.logger.Warn("LLM check failed, marking as degraded", "error", err, "layer", "L5")
-			checks["llm"] = CheckResult{
-				Status:  "degraded",
-				Message: err.Error(),
-			}
-			if overallStatus == "ok" {
-				overallStatus = "degraded"
+		now := time.Now()
+		if now.Before(h.llmCache.expiresAt) {
+			// Use cached result
+			if h.llmCache.healthy {
+				checks["llm"] = CheckResult{Status: "ok"}
+			} else {
+				checks["llm"] = CheckResult{Status: "degraded", Message: h.llmCache.message}
+				if overallStatus == "ok" {
+					overallStatus = "degraded"
+				}
 			}
 		} else {
-			checks["llm"] = CheckResult{Status: "ok"}
+			// Cache miss or expired: actually ping the LLM
+			llmCtx, llmCancel := context.WithTimeout(ctx, 5*time.Second)
+			err := h.llm.Ping(llmCtx)
+			llmCancel()
+			if err != nil {
+				h.logger.Warn("LLM check failed, marking as degraded", "error", err, "layer", "L5")
+				h.llmCache.healthy = false
+				h.llmCache.message = err.Error()
+				checks["llm"] = CheckResult{
+					Status:  "degraded",
+					Message: err.Error(),
+				}
+				if overallStatus == "ok" {
+					overallStatus = "degraded"
+				}
+			} else {
+				h.llmCache.healthy = true
+				h.llmCache.message = ""
+				checks["llm"] = CheckResult{Status: "ok"}
+			}
+			h.llmCache.expiresAt = now.Add(h.llmCacheTTL)
 		}
 
 		// Check 3: Model config (warn if default model not set)
@@ -107,6 +147,24 @@ func (h *ReadyHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 				Status:  "ok",
 				Message: h.llm.DefaultModel(),
 			}
+		}
+	}
+
+	// Check 4: Import queue (informational — does not affect overall status)
+	if h.importChecker != nil {
+		st := h.importChecker.GetStatus()
+		if st.Importing {
+			checks["import"] = CheckResult{
+				Status:  "importing",
+				Message: fmt.Sprintf("import in progress (%d pending)", st.PendingCount),
+			}
+		} else if st.PendingCount > 0 {
+			checks["import"] = CheckResult{
+				Status:  "pending",
+				Message: fmt.Sprintf("%d folder(s) waiting in .import/", st.PendingCount),
+			}
+		} else {
+			checks["import"] = CheckResult{Status: "ok"}
 		}
 	}
 

@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Tag, Input, Button, Space, message, Spin, Dropdown, Modal } from 'antd'
 import type { MenuProps } from 'antd'
-import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReloadOutlined, EditOutlined, HistoryOutlined, CheckCircleOutlined, MoreOutlined, RollbackOutlined, DeleteOutlined, InboxOutlined, ImportOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { assetApi, adminApi } from '../api/client'
+import { assetApi, adminApi, importApi } from '../api/client'
 import type { AssetSummary } from '../api/client'
 import { useStore } from '../store'
 import { getAssetTypes } from '../config/assetTypes'
@@ -32,6 +32,7 @@ function AssetListView() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('active')
+  const [importStatus, setImportStatus] = useState<{ importing: boolean; pending_count: number } | null>(null)
   const setShowInitRepoModal = useStore(s => s.setShowInitRepoModal)
 
   const selectedCategory = searchParams.get('category') || ''
@@ -44,6 +45,20 @@ function AssetListView() {
     loadAssets()
   }, [])
 
+  useEffect(() => {
+    const checkImport = async () => {
+      try {
+        const status = await importApi.status()
+        setImportStatus(status)
+      } catch {
+        setImportStatus(null)
+      }
+    }
+    checkImport()
+    const interval = setInterval(checkImport, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
   const loadAssets = async () => {
     setLoading(true)
     try {
@@ -53,6 +68,16 @@ function AssetListView() {
       message.error(t('asset_list_load_failed'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleImport = async () => {
+    try {
+      await importApi.run()
+      message.success(t('import_started') || 'Import started')
+      setImportStatus(prev => prev ? { ...prev, importing: true } : null)
+    } catch {
+      message.error(t('import_failed') || 'Import failed')
     }
   }
 
@@ -290,6 +315,19 @@ function AssetListView() {
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
               {t('asset_list_create')}
             </Button>
+          )}
+          {importStatus && importStatus.pending_count > 0 && (
+            <Button
+              icon={<ImportOutlined />}
+              loading={importStatus.importing}
+              onClick={handleImport}
+              title={t('import_tooltip') || `Import ${importStatus.pending_count} folder(s) from .import/`}
+            >
+              {t('import_button') || 'Import'} ({importStatus.pending_count})
+            </Button>
+          )}
+          {importStatus && importStatus.importing && (
+            <span style={{ color: '#1890ff', fontSize: 12 }}>{t('importing') || 'Importing...'}</span>
           )}
           <span style={{ color: '#888', fontSize: 12 }}>
             {filteredAssets.length} {filteredAssets.length !== 1 ? t('asset_list_assets') : t('asset_list_asset')}

@@ -257,6 +257,7 @@
   "sidebar_no_git_repo": "无 Git 仓库",
   "sidebar_init_hint": "初始化一个仓库以开始",
   "sidebar_no_repo": "无仓库",
+  "sidebar_repo_not_found": "仓库未找到",
   "sidebar_eval_running_warning": "有评测正在运行。请等待评测完成后重启。",
   "sidebar_restart_sent": "重启信号已发送 — 服务器正在重启",
   "sidebar_restart_failed": "发送重启信号失败",

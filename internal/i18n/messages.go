@@ -93,6 +93,8 @@ const (
 	MsgEvalCancelShort      = "eval_cancel_short"
 	MsgEvalCancelFailed     = "eval_cancel_failed"
 	MsgEvalCancelStarted    = "eval_cancel_started"
+	MsgEvalExecutionStarted = "eval_execution_started"
+	MsgEvalExecutionCancelled = "eval_execution_cancelled"
 	MsgEvalCompareTitle     = "eval_compare_title"
 	MsgEvalScoreDelta       = "eval_score_delta"
 	MsgEvalCasesShort       = "eval_cases_short"

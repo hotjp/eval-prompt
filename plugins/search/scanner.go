@@ -4,7 +4,6 @@ package search
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,70 +55,189 @@ func (i *Indexer) Scan(ctx context.Context, source string) (*service.ScanResult,
 	}
 
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue // Skip files, only process directories
-		}
-
-		dirName := entry.Name()
-		result.ScannedDirs = append(result.ScannedDirs, dirName)
-
-		// Detect asset type from directory contents
-		assetType, mainFile, err := i.detectAssetType(filepath.Join(sourcePath, dirName))
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("detect type for %s: %v", dirName, err))
+		if entry.IsDir() {
+			// Process directory
+			if err := i.importDirectory(ctx, sourcePath, repoPath, entry.Name(), result); err != nil {
+				result.Errors = append(result.Errors, err.Error())
+			}
 			continue
 		}
 
-		// Generate asset.yaml
-		ay := i.generateAssetYAML(dirName, assetType, mainFile)
-
-		// Determine destination paths
-		assetDir := fmt.Sprintf("%s/%s", assetType, dirName) // e.g., "skills/calculator"
-		assetYAMLPath := filepath.Join("assets", ay.AssetType+"s", fmt.Sprintf("%s.yaml", dirName))
-
-		// Check if asset.yaml already exists (update) or is new (create)
-		existingAY, err := i.GetAssetYAML(ctx, assetYAMLPath)
-		if err == nil && existingAY != nil {
-			// Update existing - merge with new data but preserve metadata
-			ay.Metadata = existingAY.Metadata
-			result.UpdatedAssets = append(result.UpdatedAssets, dirName)
-		} else {
-			result.CreatedAssets = append(result.CreatedAssets, dirName)
+		// Process single file directly placed in .import/
+		if err := i.importSingleFile(ctx, sourcePath, repoPath, entry.Name(), result); err != nil {
+			result.Errors = append(result.Errors, err.Error())
 		}
-
-		// Move files from source to destination
-		sourceDir := filepath.Join(sourcePath, dirName)
-		destDir := filepath.Join(repoPath, assetDir)
-
-		if err := os.MkdirAll(destDir, 0755); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("create dest dir %s: %v", destDir, err))
-			continue
-		}
-
-		// Move all files from source to destination
-		if err := i.moveDirectoryContents(sourceDir, destDir); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("move files for %s: %v", dirName, err))
-			continue
-		}
-
-		// Remove empty source directory
-		os.Remove(sourceDir)
-
-		// Update main path in asset.yaml to reflect new location
-		ay.Main = filepath.Join(assetDir, filepath.Base(mainFile))
-
-		// Save asset.yaml
-		commitMsg := fmt.Sprintf("Import %s %s", ay.AssetType, ay.Name)
-		commitHash, err := i.SaveAssetYAML(ctx, assetYAMLPath, ay, commitMsg)
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("save asset.yaml for %s: %v", dirName, err))
-			continue
-		}
-
-		result.Commits[dirName] = commitHash
 	}
 
 	return result, nil
+}
+
+// assetTypeDir returns the plural directory name for an asset type.
+func assetTypeDir(assetType string) string {
+	switch assetType {
+	case "prompt":
+		return "prompts"
+	case "skill":
+		return "skills"
+	case "workflow":
+		return "workflows"
+	case "agent":
+		return "agents"
+	case "knowledge":
+		return "knowledges"
+	case "system":
+		return "systems"
+	case "tool":
+		return "tools"
+	default:
+		return assetType + "s"
+	}
+}
+
+// importDirectory imports a single directory from the source path.
+func (i *Indexer) importDirectory(ctx context.Context, sourcePath, repoPath, dirName string, result *service.ScanResult) error {
+	result.ScannedDirs = append(result.ScannedDirs, dirName)
+
+	// Detect asset type from directory contents
+	assetType, mainFile, err := i.detectAssetType(filepath.Join(sourcePath, dirName))
+	if err != nil {
+		return fmt.Errorf("detect type for %s: %v", dirName, err)
+	}
+
+	// Generate asset.yaml
+	ay := i.generateAssetYAML(dirName, assetType, mainFile)
+
+	// Determine destination paths
+	assetDir := fmt.Sprintf("%s/%s", assetTypeDir(assetType), dirName) // e.g., "prompts/my-prompt"
+	assetYAMLPath := filepath.Join("assets", assetTypeDir(assetType), fmt.Sprintf("%s.yaml", dirName))
+
+	// Check if asset.yaml already exists (update) or is new (create)
+	existingAY, err := i.GetAssetYAML(ctx, assetYAMLPath)
+	if err == nil && existingAY != nil {
+		// Update existing - merge with new data but preserve metadata
+		ay.Metadata = existingAY.Metadata
+		result.UpdatedAssets = append(result.UpdatedAssets, dirName)
+	} else {
+		result.CreatedAssets = append(result.CreatedAssets, dirName)
+	}
+
+	// Move files from source to destination
+	sourceDir := filepath.Join(sourcePath, dirName)
+	destDir := filepath.Join(repoPath, assetDir)
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("create dest dir %s: %v", destDir, err)
+	}
+
+	// Move all files from source to destination
+	if err := i.moveDirectoryContents(sourceDir, destDir); err != nil {
+		return fmt.Errorf("move files for %s: %v", dirName, err)
+	}
+
+	// Remove empty source directory
+	os.Remove(sourceDir)
+
+	// Update main path in asset.yaml to reflect new location
+	ay.Main = filepath.Join(assetDir, filepath.Base(mainFile))
+
+	// Save asset.yaml
+	commitMsg := fmt.Sprintf("Import %s %s", ay.AssetType, ay.Name)
+	commitHash, err := i.SaveAssetYAML(ctx, assetYAMLPath, ay, commitMsg)
+	if err != nil {
+		return fmt.Errorf("save asset.yaml for %s: %v", dirName, err)
+	}
+
+	result.Commits[dirName] = commitHash
+	return nil
+}
+
+// importSingleFile imports a single file directly placed in the import directory.
+func (i *Indexer) importSingleFile(ctx context.Context, sourcePath, repoPath, fileName string, result *service.ScanResult) error {
+	assetType, mainFile, assetID, err := i.detectAssetTypeFromFile(fileName)
+	if err != nil {
+		return fmt.Errorf("detect type for %s: %v", fileName, err)
+	}
+
+	result.ScannedDirs = append(result.ScannedDirs, fileName)
+
+	// Generate asset.yaml
+	ay := i.generateAssetYAML(assetID, assetType, mainFile)
+
+	// Determine destination paths
+	assetDir := fmt.Sprintf("%s/%s", assetTypeDir(assetType), assetID)
+	assetYAMLPath := filepath.Join("assets", assetTypeDir(assetType), fmt.Sprintf("%s.yaml", assetID))
+
+	// Check if asset.yaml already exists (update) or is new (create)
+	existingAY, err := i.GetAssetYAML(ctx, assetYAMLPath)
+	if err == nil && existingAY != nil {
+		ay.Metadata = existingAY.Metadata
+		result.UpdatedAssets = append(result.UpdatedAssets, assetID)
+	} else {
+		result.CreatedAssets = append(result.CreatedAssets, assetID)
+	}
+
+	// Create destination directory and move the single file
+	destDir := filepath.Join(repoPath, assetDir)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("create dest dir %s: %v", destDir, err)
+	}
+
+	srcFile := filepath.Join(sourcePath, fileName)
+	dstFile := filepath.Join(destDir, fileName)
+	if err := i.moveFile(srcFile, dstFile); err != nil {
+		return fmt.Errorf("move file %s: %v", fileName, err)
+	}
+
+	// Update main path in asset.yaml to reflect new location
+	ay.Main = filepath.Join(assetDir, fileName)
+
+	// Save asset.yaml
+	commitMsg := fmt.Sprintf("Import %s %s", ay.AssetType, ay.Name)
+	commitHash, err := i.SaveAssetYAML(ctx, assetYAMLPath, ay, commitMsg)
+	if err != nil {
+		return fmt.Errorf("save asset.yaml for %s: %v", fileName, err)
+	}
+
+	result.Commits[assetID] = commitHash
+	return nil
+}
+
+// detectAssetTypeFromFile detects asset type from a single file name/extension.
+func (i *Indexer) detectAssetTypeFromFile(fileName string) (assetType, mainFile, assetID string, err error) {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	base := strings.TrimSuffix(fileName, ext)
+
+	switch ext {
+	case ".py":
+		return "skill", fileName, base, nil
+	case ".yaml", ".yml":
+		return "workflow", fileName, base, nil
+	case ".md":
+		return "prompt", fileName, base, nil
+	default:
+		return "", "", "", fmt.Errorf("unsupported file extension '%s' for file: %s", ext, fileName)
+	}
+}
+
+// moveFile moves a single file from src to dst using copy+delete.
+func (i *Indexer) moveFile(srcPath, destPath string) error {
+	if _, err := os.Stat(destPath); err == nil {
+		if err := os.Remove(destPath); err != nil {
+			return fmt.Errorf("remove existing dest: %w", err)
+		}
+	}
+
+	input, err := os.ReadFile(srcPath)
+	if err != nil {
+		return fmt.Errorf("read source: %w", err)
+	}
+	if err := os.WriteFile(destPath, input, 0644); err != nil {
+		return fmt.Errorf("write dest: %w", err)
+	}
+	if err := os.Remove(srcPath); err != nil {
+		return fmt.Errorf("remove source: %w", err)
+	}
+	return nil
 }
 
 // detectAssetType detects the asset type from the directory contents.
@@ -271,35 +389,8 @@ func (i *Indexer) moveDirectoryContents(srcDir, destDir string) error {
 			// Move file using copy+delete (rename may fail across filesystems)
 			srcPath := filepath.Join(srcDir, entry.Name())
 			destPath := filepath.Join(destDir, entry.Name())
-
-			// Check if dest already exists
-			if _, err := os.Stat(destPath); err == nil {
-				// File exists, remove it first
-				os.Remove(destPath)
-			}
-
-			// Copy file content
-			srcFile, err := os.Open(srcPath)
-			if err != nil {
-				return fmt.Errorf("open source file %s: %w", entry.Name(), err)
-			}
-			defer srcFile.Close()
-
-			destFile, err := os.Create(destPath)
-			if err != nil {
-				return fmt.Errorf("create dest file %s: %w", entry.Name(), err)
-			}
-			defer destFile.Close()
-
-			if _, err := io.Copy(destFile, srcFile); err != nil {
-				return fmt.Errorf("copy file %s: %w", entry.Name(), err)
-			}
-			srcFile.Close()
-			destFile.Close()
-
-			// Remove source file after successful copy
-			if err := os.Remove(srcPath); err != nil {
-				return fmt.Errorf("remove source file %s: %w", entry.Name(), err)
+			if err := i.moveFile(srcPath, destPath); err != nil {
+				return fmt.Errorf("move file %s: %w", entry.Name(), err)
 			}
 		}
 	}

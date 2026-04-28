@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Card, Button, Space, Tag, Spin, message, Collapse, List, Row, Col, Checkbox } from 'antd'
+import { Card, Button, Space, Tag, Spin, message, Collapse, List, Row, Col, Checkbox, Modal, Form, Input } from 'antd'
 import { PlusOutlined, PlayCircleOutlined, LinkOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { assetApi, evalApi } from '../../api/client'
-import type { AssetDetail } from '../../api/client'
+import type { AssetDetail, TestCase } from '../../api/client'
 import { useStore } from '../../store'
 
 function EvalDesignView() {
@@ -14,6 +14,9 @@ function EvalDesignView() {
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set())
+  const [addCaseModalOpen, setAddCaseModalOpen] = useState(false)
+  const [form] = Form.useForm()
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (id) loadAsset(id)
@@ -84,6 +87,29 @@ function EvalDesignView() {
     }
   }
 
+  const handleAddCase = async (values: { name: string; input: string; expected?: string }) => {
+    if (!id || !asset) return
+    setSubmitting(true)
+    try {
+      const newCase: TestCase = {
+        id: `case_${Date.now()}`,
+        name: values.name,
+        input: values.input,
+        expected: values.expected,
+      }
+      const updatedCases = [...(asset.test_cases || []), newCase]
+      await assetApi.update(id, { test_cases: updatedCases } as any)
+      setAsset({ ...asset, test_cases: updatedCases })
+      setAddCaseModalOpen(false)
+      form.resetFields()
+      message.success('Test case added')
+    } catch {
+      message.error('Failed to add test case')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />
   }
@@ -116,7 +142,7 @@ function EvalDesignView() {
                     Run Selected
                   </Button>
                 )}
-                <Button size="small" icon={<PlusOutlined />}>
+                <Button size="small" icon={<PlusOutlined />} onClick={() => setAddCaseModalOpen(true)}>
                   Add Case
                 </Button>
               </Space>
@@ -205,6 +231,50 @@ function EvalDesignView() {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        title={t('eval_cases_add_case')}
+        open={addCaseModalOpen}
+        onCancel={() => { setAddCaseModalOpen(false); form.resetFields() }}
+        footer={null}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleAddCase}
+        >
+          <Form.Item
+            name="name"
+            label={t('eval_cases_name')}
+            rules={[{ required: true, message: 'Please enter a name' }]}
+          >
+            <Input placeholder="e.g., Basic prompt test" />
+          </Form.Item>
+          <Form.Item
+            name="input"
+            label={t('eval_cases_input')}
+            rules={[{ required: true, message: 'Please enter input' }]}
+          >
+            <Input.TextArea rows={4} placeholder="Test input..." />
+          </Form.Item>
+          <Form.Item
+            name="expected"
+            label={t('eval_cases_expected')}
+          >
+            <Input.TextArea rows={3} placeholder="Expected output (optional)" />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit" loading={submitting}>
+                {t('common_add')}
+              </Button>
+              <Button onClick={() => { setAddCaseModalOpen(false); form.resetFields() }}>
+                {t('common_cancel')}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </Space>
   )
 }

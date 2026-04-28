@@ -5,16 +5,12 @@ import { SaveOutlined, PlayCircleOutlined, DiffOutlined, EditOutlined, SendOutli
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { loader } from '@monaco-editor/react'
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react'
 import { assetApi, triggerApi, llmApi } from '../api/client'
 import QuickEvalModal from './eval/components/QuickEvalModal'
 import type { AssetDetail } from '../api/client'
 import { getLLMConfigs } from '../config/llmConfig'
 import './EditorViewV2.css'
-
-// Configure Monaco to use local files instead of CDN
-loader.config({ paths: { vs: '/monaco-editor/min' } })
 
 function formatUpdatedAt(dateStr: string): string {
   const date = new Date(dateStr)

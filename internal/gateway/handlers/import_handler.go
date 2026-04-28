@@ -24,6 +24,32 @@ func NewImportHandler(fileWatcher *service.FileWatcher, logger *slog.Logger) *Im
 	}
 }
 
+// HandleStatus handles GET /api/v1/import/status.
+func (h *ImportHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
+	if h.fileWatcher == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "file watcher not enabled")
+		return
+	}
+
+	status := h.fileWatcher.GetStatus()
+	h.writeJSON(w, http.StatusOK, status)
+}
+
+// HandleRun handles POST /api/v1/import/run - triggers a manual import.
+func (h *ImportHandler) HandleRun(w http.ResponseWriter, r *http.Request) {
+	if h.fileWatcher == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "file watcher not enabled")
+		return
+	}
+
+	if err := h.fileWatcher.TriggerImport(r.Context()); err != nil {
+		h.writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	h.writeJSON(w, http.StatusAccepted, map[string]any{"status": "accepted"})
+}
+
 // HandleSSE handles GET /api/v1/import/events - SSE connection for import event streaming.
 func (h *ImportHandler) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	if h.fileWatcher == nil {
@@ -75,12 +101,17 @@ func (h *ImportHandler) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// writeJSON writes a JSON response.
+func (h *ImportHandler) writeJSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
 // writeError writes an error response.
 func (h *ImportHandler) writeError(w http.ResponseWriter, status int, format string, args ...any) {
 	h.logger.Error(fmt.Sprintf(format, args...), "layer", "L5", "status", status)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]any{
+	h.writeJSON(w, status, map[string]any{
 		"error": fmt.Sprintf(format, args...),
 	})
 }

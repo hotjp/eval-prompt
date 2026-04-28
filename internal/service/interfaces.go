@@ -115,11 +115,12 @@ type AssetSummary struct {
 	Name        string
 	Description string
 	Category    string
-	AssetType     string
+	AssetType   string
 	Tags        []string
 	State       string
 	LatestScore *float64
-	Keywords    []string `json:"keywords,omitempty"` // LLM-generated keywords for enhanced search
+	Keywords    []string    `json:"keywords,omitempty"` // LLM-generated keywords for enhanced search
+	UpdatedAt   time.Time   `json:"updated_at,omitempty"`
 }
 
 // AssetDetail is a full asset representation.
