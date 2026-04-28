@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eval-prompt/internal/lock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,6 +29,22 @@ func buildBinary(t *testing.T) string {
 	err = os.Chmod(binaryPath, 0755)
 	require.NoError(t, err, "should make binary executable")
 	return binaryPath
+}
+
+// initTestRepo initializes a test repo and registers cleanup to remove it from lock file.
+func initTestRepo(t *testing.T, ep string) string {
+	tmpDir := t.TempDir()
+	cmd := exec.Command(ep, "init", tmpDir)
+	cmd.CombinedOutput()
+	// Register cleanup to remove temp repo from lock file after test
+	t.Cleanup(func() {
+		repoLock, err := lock.ReadLock()
+		if err == nil {
+			repoLock.RemoveRepo(tmpDir)
+			lock.WriteLock(repoLock)
+		}
+	})
+	return tmpDir
 }
 
 func TestInitCommand(t *testing.T) {

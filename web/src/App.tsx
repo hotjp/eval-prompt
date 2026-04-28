@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from 'antd'
 import Sidebar from './components/Sidebar'
 import AssetListView from './views/AssetListView'
-import EditorView from './views/EditorView'
 import EditorViewV2 from './views/EditorViewV2'
 import CreateAssetView from './views/CreateAssetView'
 import VersionTreeView from './views/VersionTreeView'
@@ -46,8 +45,7 @@ function App() {
             <Route path="/assets" element={<AssetListView />} />
             <Route path="/assets/new" element={<CreateAssetView />} />
             <Route path="/assets/:id" element={<AssetDetailRouter />} />
-            <Route path="/assets/:id/edit" element={<EditorView />} />
-            <Route path="/assets/:id/edit-v2" element={<EditorViewV2 />} />
+            <Route path="/assets/:id/edit" element={<EditorViewV2 />} />
             <Route path="/assets/:id/versions" element={<VersionTreeView />} />
             <Route path="/assets/:id/eval" element={<EvalLayout />}>
               <Route index element={<EvalRunView />} />
