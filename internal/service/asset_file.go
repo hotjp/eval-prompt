@@ -36,7 +36,8 @@ type AssetFileManager interface {
 
 	// SaveAssetYAML writes an AssetYAML to disk and commits it to Git.
 	// The assetPath is relative to the repo root (e.g., "assets/skills/calculator.yaml").
-	SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error)
+	// extraFiles are additional paths (relative to repo root) to stage in the same commit.
+	SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string, extraFiles ...string) (string, error)
 
 	// MoveAssetFiles moves files from sourceDir to destDir and stages them in Git.
 	// The sourceDir and destDir are relative to the repo root.

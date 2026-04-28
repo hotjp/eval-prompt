@@ -329,7 +329,7 @@ func (i *Indexer) GetAssetYAML(ctx context.Context, assetPath string) (*domain.A
 }
 
 // SaveAssetYAML writes an AssetYAML to disk and commits it to Git.
-func (i *Indexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error) {
+func (i *Indexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string, extraFiles ...string) (string, error) {
 	if i.gitBridge == nil {
 		return "", fmt.Errorf("git bridge not configured")
 	}
@@ -357,9 +357,20 @@ func (i *Indexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domai
 	}
 
 	// Git add + commit
-	commitHash, err := i.gitBridge.StageAndCommit(ctx, assetPath, commitMsg)
-	if err != nil {
-		return "", fmt.Errorf("git commit: %w", err)
+	var commitHash string
+	if len(extraFiles) > 0 {
+		files := append([]string{assetPath}, extraFiles...)
+		var commitErr error
+		commitHash, commitErr = i.gitBridge.StageAndCommitFiles(ctx, files, commitMsg)
+		if commitErr != nil {
+			return "", fmt.Errorf("git commit: %w", commitErr)
+		}
+	} else {
+		var commitErr error
+		commitHash, commitErr = i.gitBridge.StageAndCommit(ctx, assetPath, commitMsg)
+		if commitErr != nil {
+			return "", fmt.Errorf("git commit: %w", commitErr)
+		}
 	}
 
 	return commitHash, nil

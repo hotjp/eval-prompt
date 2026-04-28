@@ -93,7 +93,7 @@ type MockAssetFileManager struct {
 	GetAssetFilesFunc        func(ctx context.Context, assetPath string) (files []service.FileInfo, external []service.FileInfo, err error)
 	ScanFunc                 func(ctx context.Context, source string) (*service.ScanResult, error)
 	GetAssetYAMLFunc         func(ctx context.Context, assetPath string) (*domain.AssetYAML, error)
-	SaveAssetYAMLFunc        func(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error)
+	SaveAssetYAMLFunc        func(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string, extraFiles []string) (string, error)
 	MoveAssetFilesFunc       func(ctx context.Context, sourceDir, destDir string) error
 	GetRepoPathFunc          func() string
 }
@@ -133,9 +133,9 @@ func (m *MockAssetFileManager) GetAssetYAML(ctx context.Context, assetPath strin
 	return domain.NewAssetYAML("prompt", "Test Asset", "test/main.md"), nil
 }
 
-func (m *MockAssetFileManager) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error) {
+func (m *MockAssetFileManager) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string, extraFiles ...string) (string, error) {
 	if m.SaveAssetYAMLFunc != nil {
-		return m.SaveAssetYAMLFunc(ctx, assetPath, ay, commitMsg)
+		return m.SaveAssetYAMLFunc(ctx, assetPath, ay, commitMsg, extraFiles)
 	}
 	return "mock-commit-hash", nil
 }

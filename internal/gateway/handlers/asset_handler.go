@@ -423,22 +423,7 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		assetType = "prompt"
 	}
 
-	asset := service.Asset{
-		ID:          req.ID,
-		Name:        req.Name,
-		Description: req.Description,
-		AssetType:   assetType,
-		Tags:        req.Tags,
-		State:       "created",
-		RepoPath:    h.getCurrentRepoPath(),
-	}
-
-	if err := h.indexer.Save(ctx, asset); err != nil {
-		h.writeError(w, http.StatusInternalServerError, "failed to create asset: %v", err)
-		return
-	}
-
-	// Create asset.yaml and placeholder content (best effort — non-fatal if git unavailable)
+	// Determine asset paths before saving to index
 	assetPath := fmt.Sprintf("assets/%ss/%s.yaml", assetType, req.ID)
 	mainPath := fmt.Sprintf("%ss/%s/overview.md", assetType, req.ID)
 	if assetType == "skill" {
@@ -453,6 +438,22 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 		mainPath = fmt.Sprintf("knowledges/%s/knowledge.md", req.ID)
 	}
 
+	asset := service.Asset{
+		ID:          req.ID,
+		Name:        req.Name,
+		Description: req.Description,
+		AssetType:   assetType,
+		Tags:        req.Tags,
+		State:       "created",
+		RepoPath:    h.getCurrentRepoPath(),
+		AssetPath:   assetPath,
+	}
+
+	if err := h.indexer.Save(ctx, asset); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "failed to create asset: %v", err)
+		return
+	}
+
 	ay := domain.NewAssetYAML(assetType, req.Name, mainPath)
 	ay.Description = req.Description
 	ay.Tags = req.Tags
@@ -462,16 +463,18 @@ func (h *AssetHandler) CreateAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repoPath := h.getCurrentRepoPath()
+	var extraFiles []string
 	if repoPath != "" {
 		// Create content directory and placeholder main file
 		contentDir := filepath.Join(repoPath, fmt.Sprintf("%ss", assetType), req.ID)
 		if err := os.MkdirAll(contentDir, 0755); err == nil {
 			placeholderFile := filepath.Join(contentDir, filepath.Base(mainPath))
 			os.WriteFile(placeholderFile, []byte("# Draft\n\nContent will be added in a future commit.\n"), 0644)
+			extraFiles = append(extraFiles, mainPath)
 		}
 	}
 
-	if _, err := h.fileManager.SaveAssetYAML(ctx, assetPath, ay, fmt.Sprintf("Create asset %s", req.ID)); err != nil {
+	if _, err := h.fileManager.SaveAssetYAML(ctx, assetPath, ay, fmt.Sprintf("Create asset %s", req.ID), extraFiles...); err != nil {
 		h.logger.Warn("failed to create asset.yaml", "asset_id", req.ID, "error", err, "layer", "L5")
 	}
 
@@ -552,6 +555,7 @@ func (h *AssetHandler) UpdateAsset(w http.ResponseWriter, r *http.Request) {
 		AssetType:     detail.AssetType,
 		Tags:        detail.Tags,
 		State:       detail.State,
+		AssetPath:   detail.AssetPath,
 	}
 
 	if err := h.indexer.Save(ctx, asset); err != nil {
@@ -1041,6 +1045,7 @@ func (h *AssetHandler) BatchTagAssets(w http.ResponseWriter, r *http.Request) {
 			AssetType:     detail.AssetType,
 			Tags:        newTags,
 			State:       detail.State,
+			AssetPath:   detail.AssetPath,
 		}
 		if err := h.indexer.Save(ctx, asset); err != nil {
 			errors[id] = fmt.Sprintf("failed to update index: %v", err)
@@ -1130,6 +1135,7 @@ func (h *AssetHandler) ArchiveAsset(w http.ResponseWriter, r *http.Request) {
 		AssetType:   detail.AssetType,
 		Tags:        detail.Tags,
 		State:       ay.State,
+		AssetPath:   detail.AssetPath,
 	}
 	if err := h.indexer.Save(ctx, asset); err != nil {
 		h.logger.Warn("failed to update index after archive", "asset_id", id, "error", err, "layer", "L5")
@@ -1198,6 +1204,7 @@ func (h *AssetHandler) RestoreAsset(w http.ResponseWriter, r *http.Request) {
 		AssetType:   detail.AssetType,
 		Tags:        detail.Tags,
 		State:       ay.State,
+		AssetPath:   detail.AssetPath,
 	}
 	if err := h.indexer.Save(ctx, asset); err != nil {
 		h.logger.Warn("failed to update index after restore", "asset_id", id, "error", err, "layer", "L5")

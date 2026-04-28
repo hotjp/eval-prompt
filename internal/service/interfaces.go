@@ -213,6 +213,7 @@ type Asset struct {
 	ContentHash string
 	FilePath    string
 	RepoPath    string // repo isolation
+	AssetPath   string // path to asset.yaml registry file (e.g., "assets/prompts/id.yaml")
 	State       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

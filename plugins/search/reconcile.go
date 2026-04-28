@@ -145,6 +145,7 @@ func (i *Indexer) reconcileAssetYAML(ctx context.Context, assetPath, assetID, as
 		State:       state,
 		RepoPath:    repoPath,
 		FilePath:    mainResolved,
+		AssetPath:   assetPath,
 	}
 
 	// Check if asset already exists (update) or is new (add)

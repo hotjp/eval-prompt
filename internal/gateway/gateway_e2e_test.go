@@ -715,10 +715,6 @@ func (m *e2eMockAssetIndexer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *e2eMockAssetIndexer) CreatePlaceholder(ctx context.Context, id, name, bizLine string, tags []string, category string) error {
-	return nil
-}
-
 func (m *e2eMockAssetIndexer) GetFileContent(ctx context.Context, id string) (string, error) {
 	return "", nil
 }
@@ -787,7 +783,7 @@ func (m *e2eMockAssetIndexer) GetAssetYAML(ctx context.Context, assetPath string
 	return domain.NewAssetYAML("prompt", "Test Asset", "test/main.md"), nil
 }
 
-func (m *e2eMockAssetIndexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string) (string, error) {
+func (m *e2eMockAssetIndexer) SaveAssetYAML(ctx context.Context, assetPath string, ay *domain.AssetYAML, commitMsg string, extraFiles ...string) (string, error) {
 	return "mock-commit-hash", nil
 }
 

@@ -74,6 +74,7 @@ func (i *Indexer) persist() error {
 		TestCases   []domain.TestCase         `json:"test_cases"`
 		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
 		Labels      []service.LabelInfo       `json:"labels"`
+		AssetPath   string                    `json:"asset_path"`
 	}
 	data := make([]persistEntry, 0, len(i.assets))
 	for _, entry := range i.assets {
@@ -92,6 +93,7 @@ func (i *Indexer) persist() error {
 			TestCases:   entry.detail.TestCases,
 			RecommendedSnapshotID: entry.detail.RecommendedSnapshotID,
 			Labels:      entry.detail.Labels,
+			AssetPath:   entry.detail.AssetPath,
 		})
 	}
 	enc := json.NewEncoder(f)
@@ -128,6 +130,7 @@ func (i *Indexer) Load() error {
 		TestCases   []domain.TestCase         `json:"test_cases"`
 		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
 		Labels      []service.LabelInfo       `json:"labels"`
+		AssetPath   string                    `json:"asset_path"`
 	}
 	var data []persistEntry
 	if err := json.NewDecoder(f).Decode(&data); err != nil {
@@ -146,6 +149,7 @@ func (i *Indexer) Load() error {
 				AssetType:     pe.AssetType,
 				Tags:        pe.Tags,
 				State:       pe.State,
+				AssetPath:   pe.AssetPath,
 			},
 			detail: &service.AssetDetail{
 				ID:          pe.ID,
@@ -162,6 +166,7 @@ func (i *Indexer) Load() error {
 				TestCases:   pe.TestCases,
 				RecommendedSnapshotID: pe.RecommendedSnapshotID,
 				Labels:      pe.Labels,
+				AssetPath:   pe.AssetPath,
 			},
 		}
 	}
@@ -774,70 +779,11 @@ func (i *Indexer) GetFileContent(ctx context.Context, id string) (string, error)
 	return content, nil
 }
 
-// CreatePlaceholder creates a placeholder file for a new asset.
+// CreatePlaceholder is intentionally removed.
+// Asset creation is handled by AssetHandler.CreateAsset which follows RFC_FOLDER_STRUCTURE.md:
+// - Index: assets/{type}s/{id}.yaml
+// - Content: {type}s/{id}/overview.md (or type-specific main file)
+// The old implementation incorrectly placed both asset.yaml and main.md under assets/{type}s/{id}/.
 func (i *Indexer) CreatePlaceholder(ctx context.Context, id, name, assetType string, tags []string, category string) error {
-	repoPath := i.gitBridge.RepoPath()
-	if repoPath == "" {
-		return fmt.Errorf("repository not initialized")
-	}
-
-	// Determine the subdirectory based on asset type
-	subDir := assetType
-	switch assetType {
-	case "prompt":
-		subDir = "prompts"
-	case "skill":
-		subDir = "skills"
-	case "agent":
-		subDir = "agents"
-	case "mcp":
-		subDir = "mcp"
-	case "workflow":
-		subDir = "workflows"
-	case "knowledge":
-		subDir = "knowledge"
-	default:
-		subDir = "prompts"
-	}
-
-	// Create directory structure
-	assetDir := filepath.Join(repoPath, "assets", subDir, id)
-	if err := os.MkdirAll(assetDir, 0755); err != nil {
-		return fmt.Errorf("create asset directory: %w", err)
-	}
-
-	// Create asset.yaml
-	ay := domain.NewAssetYAML(assetType, name, filepath.Join(subDir, id, "main.md"))
-	ay.Tags = tags
-	ay.Category = category
-
-	assetYamlPath := filepath.Join(assetDir, "asset.yaml")
-	yamlContent, err := domain.SerializeAssetYAML(ay)
-	if err != nil {
-		return fmt.Errorf("serialize asset.yaml: %w", err)
-	}
-	if err := os.WriteFile(assetYamlPath, []byte(yamlContent), 0644); err != nil {
-		return fmt.Errorf("write asset.yaml: %w", err)
-	}
-
-	// Create main.md with frontmatter
-	fm := &domain.FrontMatter{
-		ID:          id,
-		Name:        name,
-		AssetType:     assetType,
-		Tags:        tags,
-		State:       "draft",
-		ContentHash: "placeholder",
-	}
-	yamlStr, err := yamlutil.SerializeFrontMatter(fm)
-	if err != nil {
-		return fmt.Errorf("serialize frontmatter: %w", err)
-	}
-	mainContent := fmt.Sprintf("---\n%s---\n\n# %s\n\nPlaceholder content", yamlStr, name)
-	mainPath := filepath.Join(assetDir, "main.md")
-	if err := os.WriteFile(mainPath, []byte(mainContent), 0644); err != nil {
-		return fmt.Errorf("write main.md: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("CreatePlaceholder is deprecated: use CreateAsset handler instead")
 }
