@@ -2,17 +2,19 @@ import { useEffect, useRef } from 'react'
 import { useStore } from '../../../store'
 import { executionApi } from '../../../api/client'
 
-const POLL_INTERVAL = 2000
+const ACTIVE_POLL_INTERVAL = 2000
+const IDLE_POLL_INTERVAL = 10000
 
 export function useExecutionPolling() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
+  const isPollingRef = useRef(false)
 
   useEffect(() => {
     isMountedRef.current = true
 
     const tick = async () => {
-      if (!isMountedRef.current) return
+      if (!isMountedRef.current || isPollingRef.current) return
 
       const runningEvals = useStore.getState().runningEvals
       const activeEvals = runningEvals.filter(
@@ -20,6 +22,7 @@ export function useExecutionPolling() {
       )
 
       if (activeEvals.length > 0) {
+        isPollingRef.current = true
         await Promise.all(
           activeEvals.map(async (re) => {
             try {
@@ -29,14 +32,14 @@ export function useExecutionPolling() {
                   ? { completed: exec.completed_cases, total: exec.total_cases }
                   : undefined
 
-              const statusMap: Record<string, 'pending' | 'running' | 'completed' | 'failed' | 'cancelling'> = {
+              const statusMap: Record<string, 'pending' | 'running' | 'completed' | 'failed' | 'cancelling' | 'cancelled'> = {
                 pending: 'pending',
                 initializing: 'pending',
                 running: 'running',
                 completed: 'completed',
                 passed: 'completed',
                 failed: 'failed',
-                cancelled: 'failed',
+                cancelled: 'cancelled',
                 cancelling: 'cancelling',
               }
 
@@ -46,20 +49,17 @@ export function useExecutionPolling() {
                 status: mappedStatus,
                 progress,
               })
-
-              if (mappedStatus === 'completed' || mappedStatus === 'failed') {
-                setTimeout(() => {
-                  useStore.getState().removeRunningEval(re.id)
-                }, 5000)
-              }
             } catch {
               useStore.getState().updateRunningEval(re.id, { status: 'failed' })
             }
           })
         )
+        isPollingRef.current = false
       }
 
-      timerRef.current = setTimeout(tick, POLL_INTERVAL)
+      // Schedule next tick: fast if there are active evals, slower if idle
+      const nextInterval = activeEvals.length > 0 ? ACTIVE_POLL_INTERVAL : IDLE_POLL_INTERVAL
+      timerRef.current = setTimeout(tick, nextInterval)
     }
 
     tick()

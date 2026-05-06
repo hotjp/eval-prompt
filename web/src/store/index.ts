@@ -37,7 +37,7 @@ export interface RunningEval {
   id: string
   assetId: string
   assetName: string
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelling'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelling' | 'cancelled'
   progress?: { completed: number; total: number }
   startedAt: number
 }

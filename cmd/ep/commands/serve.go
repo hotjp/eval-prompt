@@ -21,6 +21,7 @@ import (
 	"github.com/eval-prompt/internal/i18n"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/storage"
+	"github.com/eval-prompt/plugins/eval"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/llm"
 	"github.com/eval-prompt/plugins/search"
@@ -224,7 +225,8 @@ var serveCmd = &cobra.Command{
 			WithExecutionStore(executionStore).
 			WithCallStore(callStore).
 			WithEvalsDir(filepath.Join(cwd, "evals")).
-			WithLLMInvoker(&llmInvokerAdapter{invoker: llmInvoker})
+			WithLLMInvoker(&llmInvokerAdapter{invoker: llmInvoker}).
+			WithEvalRunner(eval.NewRunner())
 
 		// Create semantic service only if LLM is properly configured with a model
 		var semanticService *service.SemanticService

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, Outlet } from 'react-router-dom'
-import { Card, Tag, Button, Space, Spin, message, Tabs } from 'antd'
+import { Card, Tag, Button, Space, Spin, message, Tabs, Empty } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { assetApi } from '../../api/client'
 import type { AssetDetail } from '../../api/client'
@@ -19,7 +19,7 @@ function EvalLayout() {
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const activeTab = location.pathname.split('/').pop() || 'run'
+  const activeTab = location.pathname.split('/eval/')[1]?.split('/')[0] || 'run'
 
   useEffect(() => {
     if (id) loadAsset(id)
@@ -42,7 +42,16 @@ function EvalLayout() {
   }
 
   if (!asset) {
-    return <div>{t('eval_panel_asset_not_found')}</div>
+    return (
+      <Empty
+        description={t('eval_panel_asset_not_found')}
+        style={{ marginTop: 100 }}
+      >
+        <Button type="primary" onClick={() => navigate('/assets')}>
+          {t('common_back_to_assets')}
+        </Button>
+      </Empty>
+    )
   }
 
   return (
@@ -55,7 +64,7 @@ function EvalLayout() {
           <Space>
             <Tag>{asset.category || 'content'}</Tag>
             <Tag color={asset.state === 'active' ? 'green' : 'orange'}>{asset.state}</Tag>
-            <Button size="small" onClick={() => navigate(`/assets/${id}/edit-v2`)}>
+            <Button size="small" onClick={() => navigate(`/assets/${id}/edit`)}>
               {t('editor_v2_version_tree')}
             </Button>
           </Space>

@@ -72,11 +72,11 @@ func TestEvalService_GenerateReport_NotConfigured(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for not configured")
 	}
-	// GenerateReport requires evals directory to be configured
-	if err != nil && err.Error() == "evals directory not configured" {
-		return // expected (evalsDir not set in test)
+	// GenerateReport now tries execution store and prompts directory
+	if err != nil && (err.Error() == "prompts directory not found: open prompts: no such file or directory" || err.Error() == "eval run not found: run-id") {
+		return // expected
 	}
-	t.Errorf("expected 'evals directory not configured', got %v", err)
+	t.Errorf("expected prompts directory not found or run not found, got %v", err)
 }
 
 func TestEvalService_DiagnoseEval_NotConfigured(t *testing.T) {

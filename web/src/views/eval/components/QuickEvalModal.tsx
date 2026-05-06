@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, Button, Space, Select, InputNumber, Progress, message, Statistic, Row, Col } from 'antd'
-import { PlayCircleOutlined } from '@ant-design/icons'
+import { PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import { evalApi, executionApi, llmConfigApi } from '../../../api/client'
-import type { Execution } from '../../../api/client'
+import type { Execution, EvalReport } from '../../../api/client'
 import { useStore } from '../../../store'
 
 interface QuickEvalModalProps {
@@ -24,29 +24,44 @@ function QuickEvalModal({ assetId, assetName, open, onClose }: QuickEvalModalPro
   const [executing, setExecuting] = useState(false)
   const [executionId, setExecutionId] = useState<string | null>(null)
   const [execution, setExecution] = useState<Execution | null>(null)
+  const [report, setReport] = useState<EvalReport | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   const runningEvals = useStore((s) => s.runningEvals)
   const addRunningEval = useStore((s) => s.addRunningEval)
+  const updateRunningEval = useStore((s) => s.updateRunningEval)
 
 
-  const thisRunningEval = runningEvals.find((e) => e.assetId === assetId && (e.status === 'running' || e.status === 'pending'))
+  const thisRunningEval = runningEvals.find(
+    (e) => e.assetId === assetId && (e.status === 'running' || e.status === 'pending')
+  )
 
+  // Reset state when modal opens
   useEffect(() => {
-    if (!open) return
-    setModelsLoading(true)
-    llmConfigApi
-      .get()
-      .then((configs) => {
-        const modelSet = new Set<string>()
-        configs.forEach((c) => {
-          if (c.default_model) modelSet.add(c.default_model)
+    if (open) {
+      setExecutionId(null)
+      setExecution(null)
+      setReport(null)
+      setCancelling(false)
+      setModelsLoading(true)
+      llmConfigApi
+        .get()
+        .then((configs) => {
+          const modelSet = new Set<string>()
+          configs.forEach((c) => {
+            if (c.default_model) modelSet.add(c.default_model)
+          })
+          const modelList = Array.from(modelSet)
+          setModels(modelList)
+          if (!evalModel && modelList.length > 0) {
+            setEvalModel(modelList[0])
+          }
         })
-        setModels(Array.from(modelSet))
-      })
-      .catch(() => {
-        message.warning('Failed to load model list')
-      })
-      .finally(() => setModelsLoading(false))
+        .catch(() => {
+          message.warning('Failed to load model list')
+        })
+        .finally(() => setModelsLoading(false))
+    }
   }, [open])
 
   // Poll local execution status
@@ -61,9 +76,18 @@ function QuickEvalModal({ assetId, assetName, open, onClose }: QuickEvalModalPro
         setExecution(exec)
         if (exec.status === 'running' || exec.status === 'pending' || exec.status === 'initializing') {
           setTimeout(poll, 2000)
+        } else {
+          // Fetch report on completion
+          try {
+            const r = await evalApi.report(executionId)
+            setReport(r)
+          } catch {
+            // ignore
+          }
         }
       } catch {
-        // ignore
+        // stop polling on error
+        return
       }
     }
     poll()
@@ -102,17 +126,28 @@ function QuickEvalModal({ assetId, assetName, open, onClose }: QuickEvalModalPro
     }
   }
 
-  const isRunning = thisRunningEval !== undefined || (execution && ['running', 'pending', 'initializing'].includes(execution.status))
-  const isCompleted = execution && ['completed', 'passed', 'failed'].includes(execution.status)
+  const handleCancel = async () => {
+    if (!executionId) return
+    setCancelling(true)
+    try {
+      await evalApi.cancelExecution(executionId)
+      updateRunningEval(executionId, { status: 'cancelling' })
+      message.info('Cancellation requested')
+    } catch {
+      message.error('Failed to cancel')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const isRunning =
+    thisRunningEval !== undefined ||
+    (execution && ['running', 'pending', 'initializing'].includes(execution.status))
+  const isCompleted =
+    execution && ['completed', 'passed', 'failed', 'cancelled'].includes(execution.status)
 
   return (
-    <Modal
-      title={`Quick Eval: ${assetName}`}
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={520}
-    >
+    <Modal title={`Quick Eval: ${assetName}`} open={open} onCancel={onClose} footer={null} width={520}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Config */}
         <Row gutter={12}>
@@ -171,48 +206,100 @@ function QuickEvalModal({ assetId, assetName, open, onClose }: QuickEvalModalPro
         </Row>
 
         {/* Actions */}
-        <Button
-          type="primary"
-          icon={<PlayCircleOutlined />}
-          onClick={handleRun}
-          loading={executing}
-          disabled={!!isRunning}
-          block
-        >
-          {isRunning ? 'Eval Running...' : 'Start Eval'}
-        </Button>
+        <Space style={{ width: '100%' }}>
+          <Button
+            type="primary"
+            icon={<PlayCircleOutlined />}
+            onClick={handleRun}
+            loading={executing}
+            disabled={!!isRunning}
+            style={{ flex: 1 }}
+            block
+          >
+            {isRunning ? 'Eval Running...' : 'Start Eval'}
+          </Button>
+          {isRunning && (
+            <Button danger icon={<StopOutlined />} onClick={handleCancel} loading={cancelling}>
+              Cancel
+            </Button>
+          )}
+        </Space>
 
         {/* Progress */}
         {isRunning && execution && (
           <div style={{ padding: 12, background: '#f6ffed', borderRadius: 6 }}>
-            <Progress
-              percent={execution.total_cases > 0 ? Math.round((execution.completed_cases / execution.total_cases) * 100) : 0}
-              status="active"
-              format={() => `${execution!.completed_cases} / ${execution!.total_cases} cases`}
-            />
+            {execution.total_cases === 0 ? (
+              <Progress percent={0} status="active" showInfo={false} />
+            ) : (
+              <Progress
+                percent={Math.round((execution.completed_cases / execution.total_cases) * 100)}
+                status="active"
+                format={() => `${execution!.completed_cases} / ${execution!.total_cases} cases`}
+              />
+            )}
+            {execution.total_cases === 0 && (
+              <div style={{ textAlign: 'center', fontSize: 12, color: '#888' }}>Initializing...</div>
+            )}
           </div>
         )}
 
         {/* Result Snapshot */}
         {isCompleted && execution && (
-          <div style={{ padding: 12, background: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
+          <div
+            style={{
+              padding: 12,
+              background: '#f6ffed',
+              borderRadius: 6,
+              border: '1px solid #b7eb8f',
+            }}
+          >
             <Row gutter={16}>
-              <Col span={12}>
+              <Col span={report ? 6 : 12}>
                 <Statistic
                   title="Status"
                   value={execution.status}
-                  valueStyle={{ color: execution.status === 'passed' || execution.status === 'completed' ? '#52c41a' : '#ff4d4f' }}
+                  valueStyle={{
+                    color:
+                      execution.status === 'passed' || execution.status === 'completed'
+                        ? '#52c41a'
+                        : '#ff4d4f',
+                  }}
                 />
               </Col>
-              <Col span={12}>
-                <Statistic
-                  title="Progress"
-                  value={`${execution.completed_cases} / ${execution.total_cases}`}
-                />
-              </Col>
+              {report && (
+                <>
+                  <Col span={6}>
+                    <Statistic title="Overall" value={report.overall_score ?? 0} suffix="/ 100" />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="Deterministic"
+                      value={Math.round((report.deterministic_score ?? 0) * 100)}
+                      suffix="/ 100"
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic title="Rubric" value={report.rubric_score ?? 0} suffix="/ 100" />
+                  </Col>
+                </>
+              )}
+              {!report && (
+                <Col span={12}>
+                  <Statistic
+                    title="Progress"
+                    value={`${execution.completed_cases} / ${execution.total_cases}`}
+                  />
+                </Col>
+              )}
             </Row>
             <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <Button type="primary" onClick={() => { onClose(); navigate(`/assets/${assetId}/eval/report/${executionId}`) }}>
+              <Button
+                type="primary"
+                onClick={() => {
+                  onClose()
+                  navigate(`/assets/${assetId}/eval/report/${executionId}`)
+                }}
+              >
                 View Full Report →
               </Button>
             </div>

@@ -14,6 +14,7 @@ import (
 	"github.com/eval-prompt/internal/pathutil"
 	"github.com/eval-prompt/internal/service"
 	"github.com/eval-prompt/internal/yamlutil"
+	"github.com/eval-prompt/plugins/eval"
 	"github.com/eval-prompt/plugins/gitbridge"
 	"github.com/eval-prompt/plugins/search"
 	"github.com/flosch/pongo2/v6"
@@ -30,7 +31,8 @@ func newEvalService(evalsDir string) *service.EvalService {
 	svc := service.NewEvalService().
 		WithExecutionStore(service.NewExecutionFileStore(filepath.Join(baseDir, "executions"))).
 		WithCallStore(service.NewLLMCallFileStore(filepath.Join(baseDir, "calls"))).
-		WithEvalsDir(evalsBase)
+		WithEvalsDir(evalsBase).
+		WithEvalRunner(eval.NewRunner())
 	return svc
 }
 

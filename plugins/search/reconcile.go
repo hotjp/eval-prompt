@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/eval-prompt/internal/domain"
 	"github.com/eval-prompt/internal/service"
@@ -134,6 +135,13 @@ func (i *Indexer) reconcileAssetYAML(ctx context.Context, assetPath, assetID, as
 	// Build file tree (for future use, currently not stored)
 	_ = i.buildFileTree(ay, repoPath)
 
+	// Use metadata timestamps if available, otherwise default to zero (will be sorted stably)
+	var createdAt, updatedAt time.Time
+	if ay.Metadata != nil {
+		createdAt = ay.Metadata.CreatedAt
+		updatedAt = ay.Metadata.UpdatedAt
+	}
+
 	// Create asset entry
 	asset := service.Asset{
 		ID:          assetID,
@@ -146,6 +154,8 @@ func (i *Indexer) reconcileAssetYAML(ctx context.Context, assetPath, assetID, as
 		RepoPath:    repoPath,
 		FilePath:    mainResolved,
 		AssetPath:   assetPath,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 
 	// Check if asset already exists (update) or is new (add)

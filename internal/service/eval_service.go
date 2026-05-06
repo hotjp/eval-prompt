@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -269,6 +270,85 @@ type RunEvalRequest struct {
 	Temperature     float64
 }
 
+// evalCaseInfo holds information about an eval case for running.
+type evalCaseInfo struct {
+	id       string
+	content  string
+	expected string
+	rubric   Rubric
+}
+
+// loadEvalCasesForRun loads eval cases either from explicit case IDs or from asset test_cases.
+func (s *EvalService) loadEvalCasesForRun(ctx context.Context, assetID string, caseIDs []string) ([]evalCaseInfo, error) {
+	if len(caseIDs) > 0 {
+		var cases []evalCaseInfo
+		for _, caseID := range caseIDs {
+			content, err := s.readEvalCase(ctx, caseID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read eval case %s: %w", caseID, err)
+			}
+			cases = append(cases, evalCaseInfo{id: caseID, content: content})
+		}
+		return cases, nil
+	}
+
+	// Fallback: load test_cases from asset frontmatter
+	filePath := filepath.Join("prompts", assetID+".md")
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read asset file: %w", err)
+	}
+	fm, _, err := yamlutil.ParseFrontMatter(string(content))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
+	}
+	var cases []evalCaseInfo
+	for _, tc := range fm.TestCases {
+		inputStr := ""
+		switch v := tc.Input.(type) {
+		case string:
+			inputStr = v
+		case map[string]interface{}:
+			b, _ := json.Marshal(v)
+			inputStr = string(b)
+		default:
+			if tc.Input != nil {
+				inputStr = fmt.Sprintf("%v", v)
+			}
+		}
+		expectedStr := ""
+		if tc.Expected != nil {
+			expectedStr = tc.Expected.Content
+		}
+		var rubric Rubric
+		if len(tc.Rubric) > 0 {
+			rubric.MaxScore = 100
+			for _, rc := range tc.Rubric {
+				weight := int(rc.Weight)
+				if weight == 0 {
+					weight = 1
+				}
+				desc := rc.Criteria
+				if desc == "" {
+					desc = rc.Check
+				}
+				rubric.Checks = append(rubric.Checks, RubricCheck{
+					ID:          rc.Check,
+					Description: desc,
+					Weight:      weight,
+				})
+			}
+		}
+		cases = append(cases, evalCaseInfo{
+			id:       tc.ID,
+			content:  inputStr,
+			expected: expectedStr,
+			rubric:   rubric,
+		})
+	}
+	return cases, nil
+}
+
 // RunEval executes evaluation for an asset snapshot.
 // NOTE: This method requires an eval runner implementation.
 func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain.EvalExecution, error) {
@@ -282,6 +362,15 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 		return nil, fmt.Errorf("call store not configured")
 	}
 
+	// Load eval cases
+	cases, err := s.loadEvalCasesForRun(ctx, req.AssetID, req.EvalCaseIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no eval cases found for asset %s", req.AssetID)
+	}
+
 	// Create execution
 	exec := &domain.EvalExecution{
 		ID:          domain.NewULID(),
@@ -290,12 +379,18 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 		Mode:        req.Mode,
 		RunsPerCase: req.RunsPerCase,
 		CaseIDs:     req.EvalCaseIDs,
-		TotalRuns:   len(req.EvalCaseIDs) * req.RunsPerCase,
+		TotalRuns:   len(cases) * req.RunsPerCase,
 		Status:      domain.ExecutionStatusRunning,
 		Concurrency: req.Concurrency,
 		Model:       req.Model,
 		Temperature: req.Temperature,
 		CreatedAt:   time.Now(),
+	}
+	if len(exec.CaseIDs) == 0 {
+		exec.CaseIDs = make([]string, len(cases))
+		for i, c := range cases {
+			exec.CaseIDs[i] = c.id
+		}
 	}
 
 	// Save execution to file store
@@ -314,13 +409,13 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 
 	// Create work items
 	type workItem struct {
-		caseID    string
+		caseInfo  evalCaseInfo
 		runNumber int
 	}
 	items := make([]workItem, 0, exec.TotalRuns)
-	for _, caseID := range req.EvalCaseIDs {
+	for _, c := range cases {
 		for run := 1; run <= req.RunsPerCase; run++ {
-			items = append(items, workItem{caseID: caseID, runNumber: run})
+			items = append(items, workItem{caseInfo: c, runNumber: run})
 		}
 	}
 
@@ -330,6 +425,12 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 	mu := sync.Mutex{}
 	completed := 0
 	failed := 0
+	totalTokensIn := 0
+	totalTokensOut := 0
+	totalDurationMs := int64(0)
+	totalDeterministicScore := 0.0
+	totalRubricScore := 0
+	rubricRuns := 0
 
 	for i, item := range items {
 		wg.Add(1)
@@ -347,23 +448,12 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 				mu.Lock()
 				failed++
 				mu.Unlock()
-				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
-				return
-			}
-
-			// Read eval case
-			caseContent, err := s.readEvalCase(ctx, it.caseID)
-			if err != nil {
-				slog.Warn("failed to read eval case", "case_id", it.caseID, "error", err)
-				mu.Lock()
-				failed++
-				mu.Unlock()
-				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
+				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseInfo.id, it.runNumber, req.Model, req.Temperature, err.Error())
 				return
 			}
 
 			// Build prompt
-			fullPrompt := fmt.Sprintf("%s\n\n%s", promptContent, caseContent)
+			fullPrompt := fmt.Sprintf("%s\n\n%s", promptContent, it.caseInfo.content)
 
 			// Invoke LLM
 			start := time.Now()
@@ -374,20 +464,66 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 				mu.Lock()
 				failed++
 				mu.Unlock()
-				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, err.Error())
+				s.appendFailedCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseInfo.id, it.runNumber, req.Model, req.Temperature, err.Error())
 				return
 			}
 
+			// Simple deterministic scoring: check if response contains expected output
+			deterministicScore := 1.0
+			if it.caseInfo.expected != "" && !strings.Contains(resp.Content, it.caseInfo.expected) {
+				deterministicScore = 0.0
+			}
+
+			// Rubric-based scoring via eval runner (LLM-as-a-judge)
+			rubricScore := 0
+			if s.evalRunner != nil && len(it.caseInfo.rubric.Checks) > 0 {
+				rubricResult, rerr := s.evalRunner.RunRubric(ctx, resp.Content, it.caseInfo.rubric, s.llmInvoker, req.Model)
+				if rerr != nil {
+					slog.Warn("rubric evaluation failed", "run_id", runID, "error", rerr)
+				} else {
+					rubricScore = rubricResult.Score
+				}
+			}
+
 			// Append successful call
-			s.appendSuccessfulCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseID, it.runNumber, req.Model, req.Temperature, *resp, latencyMs)
+			s.appendSuccessfulCall(ctx, exec.ID, runID, req.AssetID, req.SnapshotVersion, it.caseInfo.id, it.runNumber, req.Model, req.Temperature, *resp, latencyMs)
 
 			mu.Lock()
 			completed++
+			totalTokensIn += resp.TokensIn
+			totalTokensOut += resp.TokensOut
+			totalDurationMs += latencyMs
+			totalDeterministicScore += deterministicScore
+			if rubricScore > 0 || len(it.caseInfo.rubric.Checks) > 0 {
+				totalRubricScore += rubricScore
+				rubricRuns++
+			}
 			mu.Unlock()
 		}(i, item)
 	}
 
 	wg.Wait()
+
+	// Calculate final scores
+	avgDeterministicScore := 0.0
+	if completed > 0 {
+		avgDeterministicScore = totalDeterministicScore / float64(completed)
+	}
+	avgRubricScore := 0
+	if rubricRuns > 0 {
+		avgRubricScore = totalRubricScore / rubricRuns
+	}
+
+	overallScore := 0
+	if exec.TotalRuns > 0 {
+		overallScore = int((float64(completed) / float64(exec.TotalRuns)) * 100)
+	}
+	// Blend deterministic score and rubric score (weighted 50/50 when rubric exists)
+	if rubricRuns > 0 && completed > 0 {
+		overallScore = int((avgDeterministicScore*0.5 + float64(avgRubricScore)/100.0*0.5) * 100)
+	} else if avgDeterministicScore < 1.0 && completed > 0 {
+		overallScore = int(float64(overallScore) * avgDeterministicScore)
+	}
 
 	// Update execution status
 	var finalStatus domain.ExecutionStatus
@@ -414,7 +550,7 @@ func (s *EvalService) RunEval(ctx context.Context, req *RunEvalRequest) (*domain
 	}
 
 	// Update asset frontmatter with eval history
-	if err := s.updateAssetEvalHistory(ctx, exec); err != nil {
+	if err := s.updateAssetEvalHistory(ctx, exec, overallScore, avgDeterministicScore, avgRubricScore, totalTokensIn, totalTokensOut, totalDurationMs); err != nil {
 		slog.Warn("failed to update asset eval_history", "error", err)
 	}
 
@@ -512,11 +648,69 @@ func (s *EvalService) appendFailedCall(ctx context.Context, execID, runID, asset
 }
 
 // updateAssetEvalHistory updates the asset's eval history after an execution.
-// In folder-based design, eval history is stored in SQLite only (not in frontmatter).
-func (s *EvalService) updateAssetEvalHistory(ctx context.Context, exec *domain.EvalExecution) error {
-	// Eval history is persisted in SQLite by the eval runner.
-	// Folder-based assets do not store eval_history in frontmatter.
-	// Notify indexer to refresh in case the asset state changed.
+func (s *EvalService) updateAssetEvalHistory(ctx context.Context, exec *domain.EvalExecution, overallScore int, deterministicScore float64, rubricScore int, tokensIn, tokensOut int, durationMs int64) error {
+	filePath := filepath.Join("prompts", exec.AssetID+".md")
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read asset file: %w", err)
+	}
+
+	fm, body, err := yamlutil.ParseFrontMatter(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to parse frontmatter: %w", err)
+	}
+
+	// Add eval history entry
+	entry := domain.EvalHistoryEntry{
+		RunID:              exec.ID,
+		SnapshotID:         exec.SnapshotID,
+		Score:              overallScore,
+		DeterministicScore: deterministicScore,
+		RubricScore:        rubricScore,
+		Model:              exec.Model,
+		EvalCaseVersion:    strings.Join(exec.CaseIDs, ","),
+		TokensIn:           tokensIn,
+		TokensOut:          tokensOut,
+		DurationMs:         durationMs,
+		Date:               time.Now().Format("2006-01-02"),
+		By:                 "system",
+	}
+
+	fm.EvalHistory = append([]domain.EvalHistoryEntry{entry}, fm.EvalHistory...)
+	if len(fm.EvalHistory) > 50 {
+		fm.EvalHistory = fm.EvalHistory[:50]
+	}
+
+	// Update eval stats
+	if fm.EvalStats == nil {
+		fm.EvalStats = make(domain.EvalStats)
+	}
+	model := exec.Model
+	if model == "" {
+		model = "default"
+	}
+	stat := fm.EvalStats[model]
+	stat.Count++
+	if stat.Count == 1 {
+		stat.Mean = float64(overallScore)
+		stat.LastRun = entry.Date
+	} else {
+		stat.Mean = stat.Mean + (float64(overallScore)-stat.Mean)/float64(stat.Count)
+		stat.LastRun = entry.Date
+	}
+	fm.EvalStats[model] = stat
+
+	// Write back
+	updatedContent, err := yamlutil.FormatMarkdown(fm, body)
+	if err != nil {
+		return fmt.Errorf("failed to format markdown: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, []byte(updatedContent), 0644); err != nil {
+		return fmt.Errorf("failed to write asset file: %w", err)
+	}
+
+	// Notify indexer
 	if s.configManager != nil {
 		s.configManager.Notify(ctx, "repo", []string{exec.AssetID})
 	}
@@ -524,13 +718,16 @@ func (s *EvalService) updateAssetEvalHistory(ctx context.Context, exec *domain.E
 }
 
 // GetExecution retrieves an eval execution by ID.
-// Eval executions are tracked via in-memory coordinators.
 func (s *EvalService) GetExecution(ctx context.Context, executionID string) (*domain.EvalExecution, error) {
 	// Check coordinators for running executions
 	if coord, ok := s.coordinators.Load(executionID); ok {
 		if c, ok := coord.(*Coordinator); ok {
 			return c.execution, nil
 		}
+	}
+	// Fallback to execution store
+	if s.executionStore != nil {
+		return s.executionStore.Get(ctx, executionID)
 	}
 	return nil, fmt.Errorf("execution not found: %s", executionID)
 }
@@ -548,7 +745,9 @@ func (s *EvalService) CancelExecution(ctx context.Context, executionID string) e
 			return nil
 		}
 	}
-	return fmt.Errorf("execution not found: %s", executionID)
+	// RunEval runs synchronously and does not register in coordinators.
+	// If the execution is not found in coordinators, it has likely already completed.
+	return fmt.Errorf("execution not found or already completed: %s", executionID)
 }
 
 // ListExecutions lists eval executions with pagination.
@@ -689,7 +888,7 @@ func (s *EvalService) ListEvalRuns(ctx context.Context, assetID string) ([]*Eval
 			AssetID:            assetID,
 			Status:             status,
 			DeterministicScore: entry.DeterministicScore,
-			RubricScore:        entry.Score,
+			RubricScore:        entry.RubricScore,
 			CreatedAt:          createdAt,
 		})
 	}
@@ -797,29 +996,32 @@ func (s *EvalService) CompareEval(ctx context.Context, assetID string, v1, v2 st
 
 // GenerateReport generates a detailed evaluation report.
 func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalReport, error) {
-	// Find the run in asset's eval history
-	if s.evalsDir == "" {
-		return nil, fmt.Errorf("evals directory not configured")
-	}
-
-	// Validate runID format to prevent path traversal
-	if err := pathutil.ValidateID(runID); err != nil {
-		return nil, fmt.Errorf("invalid run id: %w", err)
-	}
-
-	entries, err := os.ReadDir(s.evalsDir)
-	if err != nil {
-		return nil, fmt.Errorf("evals directory not found: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
+	// Try to get asset ID from execution store first
+	var assetID string
+	if s.executionStore != nil {
+		if exec, err := s.executionStore.Get(ctx, runID); err == nil && exec != nil {
+			assetID = exec.AssetID
 		}
+	}
 
-		assetID := strings.TrimSuffix(entry.Name(), ".md")
-		filePath := filepath.Join("prompts", assetID+".md")
+	var assetsToCheck []string
+	if assetID != "" {
+		assetsToCheck = []string{assetID}
+	} else {
+		entries, err := os.ReadDir("prompts")
+		if err != nil {
+			return nil, fmt.Errorf("prompts directory not found: %w", err)
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
+			assetsToCheck = append(assetsToCheck, strings.TrimSuffix(entry.Name(), ".md"))
+		}
+	}
 
+	for _, aid := range assetsToCheck {
+		filePath := filepath.Join("prompts", aid+".md")
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			continue
@@ -839,12 +1041,13 @@ func (s *EvalService) GenerateReport(ctx context.Context, runID string) (*EvalRe
 
 				return &EvalReport{
 					RunID:              runID,
-					AssetID:            assetID,
+					AssetID:            aid,
 					SnapshotVersion:    e.SnapshotID,
 					Status:             status,
 					OverallScore:       e.Score,
 					DeterministicScore: e.DeterministicScore,
-					RubricScore:        e.Score,
+					RubricScore:        e.RubricScore,
+					CheckResults:       []CheckResult{},
 					TokenUsage: TokenUsage{
 						Input:  e.TokensIn,
 						Output: e.TokensOut,

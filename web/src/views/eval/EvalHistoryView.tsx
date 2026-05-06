@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Table, Tag, Button, Space, Spin, message, Row, Col, Statistic } from 'antd'
+import { Card, Table, Tag, Button, Space, Spin, message, Row, Col, Statistic, Empty, Tooltip } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import * as echarts from 'echarts'
 import { useTranslation } from 'react-i18next'
@@ -27,42 +27,50 @@ function EvalHistoryView() {
     if (chartRef.current && !chartInstance.current) {
       chartInstance.current = echarts.init(chartRef.current)
     }
+    const handleResize = () => {
+      chartInstance.current?.resize()
+    }
+    window.addEventListener('resize', handleResize)
     return () => {
+      window.removeEventListener('resize', handleResize)
       chartInstance.current?.dispose()
     }
   }, [])
 
   useEffect(() => {
-    if (chartInstance.current && runs.length > 0) {
-      const sortedRuns = [...runs].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      )
-      const option = {
-        title: { text: 'Eval Score Trend', left: 'center' },
-        xAxis: {
-          type: 'category',
-          data: sortedRuns.map((r) => new Date(r.created_at).toLocaleDateString()),
-        },
-        yAxis: { type: 'value', min: 0, max: 1 },
-        series: [
-          {
-            name: 'Deterministic',
-            type: 'line',
-            data: sortedRuns.map((r) => r.deterministic_score),
-            smooth: true,
-          },
-          {
-            name: 'Rubric',
-            type: 'line',
-            data: sortedRuns.map((r) => r.rubric_score),
-            smooth: true,
-          },
-        ],
-        legend: { bottom: 0 },
-        tooltip: { trigger: 'axis' },
-      }
-      chartInstance.current.setOption(option)
+    if (!chartInstance.current) return
+    if (runs.length === 0) {
+      chartInstance.current.clear()
+      return
     }
+    const sortedRuns = [...runs].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+    const option = {
+      title: { text: 'Eval Score Trend', left: 'center' },
+      xAxis: {
+        type: 'category',
+        data: sortedRuns.map((r) => new Date(r.created_at).toLocaleDateString()),
+      },
+      yAxis: { type: 'value', min: 0, max: 100 },
+      series: [
+        {
+          name: 'Deterministic',
+          type: 'line',
+          data: sortedRuns.map((r) => (r.deterministic_score ?? 0) * 100),
+          smooth: true,
+        },
+        {
+          name: 'Rubric',
+          type: 'line',
+          data: sortedRuns.map((r) => r.rubric_score),
+          smooth: true,
+        },
+      ],
+      legend: { bottom: 0 },
+      tooltip: { trigger: 'axis' },
+    }
+    chartInstance.current.setOption(option, true)
   }, [runs])
 
   const loadData = async (assetId: string) => {
@@ -95,13 +103,13 @@ function EvalHistoryView() {
       <Card>
         <Row gutter={16}>
           <Col span={6}>
-            <Statistic title="Deterministic Score" value={currentRun?.deterministic_score ?? 0} precision={2} suffix="/ 1.0" />
+            <Statistic title="Deterministic Score" value={(currentRun?.deterministic_score ?? 0) * 100} precision={0} suffix="/ 100" />
           </Col>
           <Col span={6}>
-            <Statistic title="Rubric Score" value={currentRun?.rubric_score ?? 0} precision={2} suffix="/ 1.0" />
+            <Statistic title="Rubric Score" value={currentRun?.rubric_score ?? 0} precision={0} suffix="/ 100" />
           </Col>
           <Col span={6}>
-            <Statistic title="Overall Score" value={currentRun?.overall_score ?? 0} precision={2} suffix="/ 1.0" />
+            <Statistic title="Overall Score" value={currentRun?.overall_score ?? 0} precision={0} suffix="/ 100" />
           </Col>
           <Col span={6}>
             <Statistic title="Pass Rate" value={passRate} precision={1} suffix="%" />
@@ -114,7 +122,11 @@ function EvalHistoryView() {
         title={t('eval_panel_score_trend')}
         extra={<Button icon={<ReloadOutlined />} onClick={() => id && loadData(id)}>{t('eval_panel_refresh')}</Button>}
       >
-        <div ref={chartRef} style={{ height: 300 }} />
+        {runs.length === 0 ? (
+          <Empty description="No eval runs yet. Go to the Run tab to start one." style={{ margin: '40px 0' }} />
+        ) : (
+          <div ref={chartRef} style={{ height: 300 }} />
+        )}
       </Card>
 
       {/* Runs Table with selection */}
@@ -134,6 +146,7 @@ function EvalHistoryView() {
           rowKey="id"
           size="small"
           pagination={false}
+          locale={{ emptyText: 'No eval runs yet. Go to the Run tab to start one.' }}
           rowSelection={{
             type: 'checkbox',
             selectedRowKeys: Array.from(selectedRuns),
@@ -143,7 +156,7 @@ function EvalHistoryView() {
             }),
           }}
           columns={[
-            { title: t('eval_panel_col_run_id'), dataIndex: 'id', key: 'id', render: (id: string) => id.slice(-8) },
+            { title: t('eval_panel_col_run_id'), dataIndex: 'id', key: 'id', render: (runId: string) => <Tooltip title={runId}><span>{runId.slice(-8)}</span></Tooltip> },
             {
               title: t('eval_panel_col_status'),
               dataIndex: 'status',

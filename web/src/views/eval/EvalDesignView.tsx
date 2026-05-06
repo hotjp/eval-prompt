@@ -17,10 +17,19 @@ function EvalDesignView() {
   const [addCaseModalOpen, setAddCaseModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
+  const [runningCaseId, setRunningCaseId] = useState<string | null>(null)
+  const [runningSelected, setRunningSelected] = useState(false)
+  const [activeKeys, setActiveKeys] = useState<(string | number)[]>([])
 
   useEffect(() => {
     if (id) loadAsset(id)
   }, [id])
+
+  useEffect(() => {
+    if (asset?.test_cases && asset.test_cases.length > 0) {
+      setActiveKeys([asset.test_cases[0].id || 0])
+    }
+  }, [asset?.test_cases?.length])
 
   const loadAsset = async (assetId: string) => {
     setLoading(true)
@@ -44,7 +53,8 @@ function EvalDesignView() {
   }
 
   const handleRunSelected = async () => {
-    if (!id || selectedCaseIds.size === 0) return
+    if (!id || selectedCaseIds.size === 0 || runningSelected) return
+    setRunningSelected(true)
     try {
       const result = await evalApi.execute({
         asset_id: id,
@@ -62,11 +72,14 @@ function EvalDesignView() {
       message.info('Eval started for selected cases')
     } catch {
       message.error('Failed to start eval')
+    } finally {
+      setRunningSelected(false)
     }
   }
 
   const handleRunCase = async (caseId: string) => {
-    if (!id) return
+    if (!id || runningCaseId) return
+    setRunningCaseId(caseId)
     try {
       const result = await evalApi.execute({
         asset_id: id,
@@ -84,6 +97,8 @@ function EvalDesignView() {
       message.info('Case eval started')
     } catch {
       message.error('Failed to start case eval')
+    } finally {
+      setRunningCaseId(null)
     }
   }
 
@@ -92,7 +107,7 @@ function EvalDesignView() {
     setSubmitting(true)
     try {
       const newCase: TestCase = {
-        id: `case_${Date.now()}`,
+        id: `case_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         name: values.name,
         input: values.input,
         expected: values.expected,
@@ -138,9 +153,19 @@ function EvalDesignView() {
             extra={
               <Space>
                 {selectedCaseIds.size > 0 && (
-                  <Button size="small" icon={<PlayCircleOutlined />} onClick={handleRunSelected}>
+                  <Button size="small" icon={<PlayCircleOutlined />} onClick={handleRunSelected} loading={runningSelected}>
                     Run Selected
                   </Button>
+                )}
+                {testCases.length > 0 && (
+                  <>
+                    <Button size="small" onClick={() => setActiveKeys(testCases.map((tc, idx) => tc.id || idx))}>
+                      Expand All
+                    </Button>
+                    <Button size="small" onClick={() => setActiveKeys([])}>
+                      Collapse All
+                    </Button>
+                  </>
                 )}
                 <Button size="small" icon={<PlusOutlined />} onClick={() => setAddCaseModalOpen(true)}>
                   Add Case
@@ -150,6 +175,8 @@ function EvalDesignView() {
           >
             {testCases.length > 0 ? (
               <Collapse
+                activeKey={activeKeys}
+                onChange={(keys) => setActiveKeys(keys as (string | number)[])}
                 items={testCases.map((tc, idx) => ({
                   key: tc.id || idx,
                   label: (
@@ -191,6 +218,7 @@ function EvalDesignView() {
                         size="small"
                         icon={<PlayCircleOutlined />}
                         onClick={() => handleRunCase(tc.id || String(idx))}
+                        loading={runningCaseId === (tc.id || String(idx))}
                       >
                         Run this case
                       </Button>
@@ -214,12 +242,7 @@ function EvalDesignView() {
                 dataSource={metricRefs}
                 renderItem={(ref) => (
                   <List.Item>
-                    <Tag
-                      icon={<LinkOutlined />}
-                      color="blue"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => { /* navigate to metric */ }}
-                    >
+                    <Tag icon={<LinkOutlined />} color="blue">
                       {ref}
                     </Tag>
                   </List.Item>

@@ -3,16 +3,22 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Button, Space, Select, InputNumber, Progress, Tag, message, Row, Col, Statistic, Input, Radio, Checkbox, Tooltip } from 'antd'
 import { PlayCircleOutlined, StopOutlined, SaveOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { evalApi, executionApi, llmConfigApi } from '../../api/client'
+import { evalApi, executionApi, llmConfigApi, assetApi } from '../../api/client'
 import type { Execution, EvalReport, OrchestrateResponse } from '../../api/client'
 import { useStore } from '../../store'
 
 interface Preset {
   name: string
+  evalType: 'single' | 'orchestrate'
   mode: string
   model: string
   temperature: number
   concurrency: number
+  selectedPlugins: string[]
+  injectionStrategy: string
+  parallelism: number
+  confidenceLevel: number
+  baselineId: string
 }
 
 const PRESETS_KEY = 'eval-presets'
@@ -58,6 +64,13 @@ function EvalRunView() {
   const [confidenceLevel, setConfidenceLevel] = useState<number>(0.95)
   const [baselineId, setBaselineId] = useState<string>('')
   const [orchestrateResult, setOrchestrateResult] = useState<OrchestrateResponse | null>(null)
+  const [assetName, setAssetName] = useState<string>(id || '')
+
+  useEffect(() => {
+    if (id) {
+      assetApi.get(id).then((a) => setAssetName(a.name)).catch(() => setAssetName(id || ''))
+    }
+  }, [id])
 
   // Fetch available models from backend
   useEffect(() => {
@@ -83,7 +96,7 @@ function EvalRunView() {
 
   // Poll local execution status for detailed view
   useEffect(() => {
-    if (!localExecution?.id || !hasRunning) return
+    if (!localExecution?.id) return
 
     let cancelled = false
     const poll = async () => {
@@ -103,24 +116,30 @@ function EvalRunView() {
           }
         }
       } catch {
-        // ignore
+        // stop polling on error
+        return
       }
     }
     poll()
     return () => {
       cancelled = true
     }
-  }, [localExecution?.id, hasRunning])
+  }, [localExecution?.id])
 
   const handleLoadPreset = (presetName: string) => {
     const preset = presets.find((p) => p.name === presetName)
-    if (preset) {
-      setEvalMode(preset.mode)
-      setEvalModel(preset.model)
-      setEvalTemperature(preset.temperature)
-      setConcurrency(preset.concurrency)
-      setSelectedPreset(presetName)
-    }
+    if (!preset) return
+    setEvalType(preset.evalType || 'single')
+    setEvalMode(preset.mode)
+    setEvalModel(preset.model)
+    setEvalTemperature(preset.temperature)
+    setConcurrency(preset.concurrency)
+    setSelectedPlugins(preset.selectedPlugins || ['bertscore'])
+    setInjectionStrategy(preset.injectionStrategy || 'default')
+    setParallelism(preset.parallelism || 1)
+    setConfidenceLevel(preset.confidenceLevel || 0.95)
+    setBaselineId(preset.baselineId || '')
+    setSelectedPreset(presetName)
   }
 
   const handleSavePreset = () => {
@@ -130,10 +149,16 @@ function EvalRunView() {
     }
     const newPreset: Preset = {
       name: savePresetName.trim(),
+      evalType,
       mode: evalMode,
       model: evalModel,
       temperature: evalTemperature,
       concurrency,
+      selectedPlugins,
+      injectionStrategy,
+      parallelism,
+      confidenceLevel,
+      baselineId,
     }
     const updated = [...presets.filter((p) => p.name !== newPreset.name), newPreset]
     setPresets(updated)
@@ -163,6 +188,13 @@ function EvalRunView() {
           baseline_id: baselineId || undefined,
         })
         setOrchestrateResult(result)
+        addRunningEval({
+          id: `orch-${Date.now()}`,
+          assetId: id,
+          assetName: assetName || id || '',
+          status: 'completed',
+          startedAt: Date.now(),
+        })
         message.success(t('eval_orchestrate_completed'))
       } else {
         // Single plugin evaluation (existing flow)
@@ -177,7 +209,7 @@ function EvalRunView() {
         addRunningEval({
           id: result.execution_id,
           assetId: id,
-          assetName: id,
+          assetName: assetName || id || '',
           status: 'running',
           startedAt: Date.now(),
         })
@@ -298,58 +330,60 @@ function EvalRunView() {
             </div>
           )}
 
-          <Row gutter={16}>
-            <Col span={6}>
-              <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Mode</div>
-              <Select
-                value={evalMode}
-                onChange={setEvalMode}
-                style={{ width: '100%' }}
-                disabled={hasRunning}
-                options={[
-                  { value: 'single', label: t('eval_panel_mode_single') },
-                  { value: 'batch', label: t('eval_panel_mode_batch') },
-                  { value: 'matrix', label: t('eval_panel_mode_matrix') },
-                ]}
-              />
-            </Col>
-            <Col span={6}>
-              <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Model</div>
-              <Select
-                value={evalModel || undefined}
-                onChange={setEvalModel}
-                style={{ width: '100%' }}
-                disabled={hasRunning || modelsLoading}
-                loading={modelsLoading}
-                placeholder={t('eval_panel_select_model')}
-                allowClear
-                options={models.map((m) => ({ value: m, label: m }))}
-              />
-            </Col>
-            <Col span={6}>
-              <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Temperature</div>
-              <InputNumber
-                value={evalTemperature}
-                onChange={(v) => setEvalTemperature(v ?? 0.7)}
-                min={0}
-                max={2}
-                step={0.1}
-                disabled={hasRunning}
-                style={{ width: '100%' }}
-              />
-            </Col>
-            <Col span={6}>
-              <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Concurrency</div>
-              <InputNumber
-                value={concurrency}
-                onChange={(v) => setConcurrency(v ?? 1)}
-                min={1}
-                max={10}
-                disabled={hasRunning}
-                style={{ width: '100%' }}
-              />
-            </Col>
-          </Row>
+          {evalType === 'single' && (
+            <Row gutter={16}>
+              <Col span={6}>
+                <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Mode</div>
+                <Select
+                  value={evalMode}
+                  onChange={setEvalMode}
+                  style={{ width: '100%' }}
+                  disabled={hasRunning}
+                  options={[
+                    { value: 'single', label: t('eval_panel_mode_single') },
+                    { value: 'batch', label: t('eval_panel_mode_batch') },
+                    { value: 'matrix', label: t('eval_panel_mode_matrix') },
+                  ]}
+                />
+              </Col>
+              <Col span={6}>
+                <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Model</div>
+                <Select
+                  value={evalModel || undefined}
+                  onChange={setEvalModel}
+                  style={{ width: '100%' }}
+                  disabled={hasRunning || modelsLoading}
+                  loading={modelsLoading}
+                  placeholder={t('eval_panel_select_model')}
+                  allowClear
+                  options={models.map((m) => ({ value: m, label: m }))}
+                />
+              </Col>
+              <Col span={6}>
+                <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Temperature</div>
+                <InputNumber
+                  value={evalTemperature}
+                  onChange={(v) => setEvalTemperature(v ?? 0.7)}
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  disabled={hasRunning}
+                  style={{ width: '100%' }}
+                />
+              </Col>
+              <Col span={6}>
+                <div style={{ marginBottom: 4, fontSize: 12, color: '#888' }}>Concurrency</div>
+                <InputNumber
+                  value={concurrency}
+                  onChange={(v) => setConcurrency(v ?? 1)}
+                  min={1}
+                  max={10}
+                  disabled={hasRunning}
+                  style={{ width: '100%' }}
+                />
+              </Col>
+            </Row>
+          )}
 
           {/* Presets */}
           <Space wrap>
@@ -406,7 +440,7 @@ function EvalRunView() {
               >
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
                   <Space>
-                    <Tag color={re.status === 'running' ? 'blue' : re.status === 'pending' ? 'orange' : 'default'}>
+                    <Tag color={re.status === 'running' ? 'blue' : re.status === 'pending' ? 'orange' : re.status === 'cancelled' ? 'purple' : 'default'}>
                       {re.status}
                     </Tag>
                     <code style={{ fontSize: 11 }}>{re.id.slice(-8)}</code>
@@ -436,45 +470,45 @@ function EvalRunView() {
       )}
 
       {/* Latest Result Snapshot */}
-      {latestCompleted && localExecution && localExecution.status !== 'running' && localExecution.status !== 'pending' && (
+      {latestCompleted && (
         <Card title="Latest Result">
           <Row gutter={16}>
             <Col span={latestReport ? 4 : 6}>
-              <Statistic title="Status" value={localExecution.status} />
+              <Statistic title="Status" value={latestCompleted.status} />
             </Col>
             <Col span={latestReport ? 4 : 6}>
               <Statistic
                 title="Progress"
-                value={`${localExecution.completed_cases} / ${localExecution.total_cases}`}
+                value={`${latestCompleted.progress?.completed ?? 0} / ${latestCompleted.progress?.total ?? 0}`}
               />
             </Col>
             {latestReport && (
               <>
                 <Col span={4}>
-                  <Statistic title="Overall" value={latestReport.overall_score} precision={2} suffix="/ 1.0" />
+                  <Statistic title="Overall" value={latestReport.overall_score ?? 0} precision={0} suffix="/ 100" />
                 </Col>
                 <Col span={4}>
-                  <Statistic title="Deterministic" value={latestReport.deterministic_score} precision={2} suffix="/ 1.0" />
+                  <Statistic title="Deterministic" value={(latestReport.deterministic_score ?? 0) * 100} precision={0} suffix="/ 100" />
                 </Col>
                 <Col span={4}>
-                  <Statistic title="Rubric" value={latestReport.rubric_score} precision={2} suffix="/ 1.0" />
+                  <Statistic title="Rubric" value={latestReport.rubric_score ?? 0} precision={0} suffix="/ 100" />
                 </Col>
               </>
             )}
             {!latestReport && (
               <>
                 <Col span={6}>
-                  <Statistic title="Model" value={localExecution.model || 'N/A'} />
+                  <Statistic title="Execution ID" value={latestCompleted.id.slice(-8)} />
                 </Col>
                 <Col span={6}>
-                  <Statistic title="Temperature" value={localExecution.temperature} />
+                  <Statistic title="Finished" value={new Date(latestCompleted.startedAt).toLocaleTimeString()} />
                 </Col>
               </>
             )}
           </Row>
           {latestReport && (
             <div style={{ marginTop: 12, textAlign: 'right' }}>
-              <Button size="small" onClick={() => navigate(`/assets/${id}/eval/report/${localExecution.id}`)}>
+              <Button size="small" onClick={() => navigate(`/assets/${id}/eval/report/${latestCompleted.id}`)}>
                 View Full Report →
               </Button>
             </div>

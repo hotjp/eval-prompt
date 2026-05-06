@@ -75,6 +75,8 @@ func (i *Indexer) persist() error {
 		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
 		Labels      []service.LabelInfo       `json:"labels"`
 		AssetPath   string                    `json:"asset_path"`
+		CreatedAt   time.Time                 `json:"created_at,omitempty"`
+		UpdatedAt   time.Time                 `json:"updated_at,omitempty"`
 	}
 	data := make([]persistEntry, 0, len(i.assets))
 	for _, entry := range i.assets {
@@ -94,6 +96,8 @@ func (i *Indexer) persist() error {
 			RecommendedSnapshotID: entry.detail.RecommendedSnapshotID,
 			Labels:      entry.detail.Labels,
 			AssetPath:   entry.detail.AssetPath,
+			CreatedAt:   entry.asset.CreatedAt,
+			UpdatedAt:   entry.asset.UpdatedAt,
 		})
 	}
 	enc := json.NewEncoder(f)
@@ -131,6 +135,8 @@ func (i *Indexer) Load() error {
 		RecommendedSnapshotID string           `json:"recommended_snapshot_id"`
 		Labels      []service.LabelInfo       `json:"labels"`
 		AssetPath   string                    `json:"asset_path"`
+		CreatedAt   time.Time                 `json:"created_at,omitempty"`
+		UpdatedAt   time.Time                 `json:"updated_at,omitempty"`
 	}
 	var data []persistEntry
 	if err := json.NewDecoder(f).Decode(&data); err != nil {
@@ -150,6 +156,8 @@ func (i *Indexer) Load() error {
 				Tags:        pe.Tags,
 				State:       pe.State,
 				AssetPath:   pe.AssetPath,
+				CreatedAt:   pe.CreatedAt,
+				UpdatedAt:   pe.UpdatedAt,
 			},
 			detail: &service.AssetDetail{
 				ID:          pe.ID,
@@ -231,8 +239,11 @@ func (i *Indexer) Search(ctx context.Context, query string, filters service.Sear
 		}
 	}
 
-	// Sort by UpdatedAt descending (most recent first)
+	// Sort by UpdatedAt descending (most recent first), then by ID ascending for stability
 	sort.Slice(results, func(i, j int) bool {
+		if results[i].UpdatedAt.Equal(results[j].UpdatedAt) {
+			return results[i].ID < results[j].ID
+		}
 		return results[i].UpdatedAt.After(results[j].UpdatedAt)
 	})
 
